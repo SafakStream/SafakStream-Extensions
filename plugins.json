@@ -9,7 +9,7 @@
             "SafakStream"
         ],
         "description": "Film, Dizi, Anime, Asya Dizileri ve Torrentler i\u00e7in tek adres \u00e7\u00f6z\u00fcm\u00fc - SafakStream taraf\u0131ndan uyarland\u0131.",
-        "fileSize": 608428,
+        "fileSize": 609151,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -21,7 +21,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CineStream.png",
         "apiVersion": 1,
-        "fileHash": "sha256-5f5517617a6a981792f83e332a2ef5fbb7b73448c20bfb97f9426549b8ca910e"
+        "fileHash": "sha256-7968e3ab5120b3afaa0a25f1100832f9f8293bed8bd9778d989c55258333dea3"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
