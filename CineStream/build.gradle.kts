@@ -45,4 +45,7 @@ dependencies {
     
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // AppCompat (AlertDialog için)
+    implementation("androidx.appcompat:appcompat:1.7.0")
 }
