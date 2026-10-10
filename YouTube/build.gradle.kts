@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -11,7 +9,6 @@ android {
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 34
     }
 
     compileOptions {
@@ -20,15 +17,13 @@ android {
     }
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
-    }
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
-    compileOnly("com.github.recloudstream:cloudstream:4.5.0")
+    // Sadece CloudStream API'si — NewPipe YOK
+    compileOnly("com.github.recloudstream:cloudstream:master-SNAPSHOT")
     implementation("com.github.Blatzar:NiceHttp:0.4.0")
     implementation("org.jsoup:jsoup:1.17.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 }
