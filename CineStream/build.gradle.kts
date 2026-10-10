@@ -1,12 +1,13 @@
 // CineStream/build.gradle.kts
-version = 1 // Kendi deponuz için sürüm numarası
+version = 1
 
 // NOT: Orijinal kod local.properties'ten API anahtarı okuyordu.
 // Biz bu anahtarları geçici olarak boş bırakıyoruz.
-// Eğer ilgili özellikleri (Simkl, TMDB vb.) kullanmak isterseniz,
-// kendi API anahtarlarınızı buraya yazmanız gerekir.
 android {
     defaultConfig {
+        // BU SATIRI EKLEYİN:
+        android.buildFeatures.buildConfig = true
+        
         buildConfigField("String", "SIMKL_API", "\"\"")
         buildConfigField("String", "TMDB_KEY", "\"\"")
         buildConfigField("String", "CASTLE_KEY", "\"\"")
@@ -17,9 +18,9 @@ android {
 }
 
 cloudstream {
-    language = "tr" // Türkçe yaptık
+    language = "tr"
     description = "Film, Dizi, Anime, Asya Dizileri ve Torrentler için tek adres çözümü - SafakStream tarafından uyarlandı."
-    authors = listOf("SafakStream") // Kendi adınızı yazdık
+    authors = listOf("SafakStream")
     status = 1
     tvTypes = listOf(
         "TvSeries",
@@ -28,6 +29,5 @@ cloudstream {
         "Anime",
         "Torrent"
     )
-    // İkon yolunu depomuza göre düzenledik
     iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CineStream.png"
 }
