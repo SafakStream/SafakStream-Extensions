@@ -1,13 +1,9 @@
 package com.safakstream.dizipal
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.loadExtractor
-import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
-import org.jsoup.Jsoup
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -26,6 +22,11 @@ class DizipalProvider : MainAPI() {
 
     companion object {
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        private val HEADERS = mapOf(
+            "User-Agent" to USER_AGENT,
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language" to "tr-TR,tr;q=0.9,en;q=0.8"
+        )
     }
 
     override val mainPage = mainPageOf(
@@ -36,30 +37,44 @@ class DizipalProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}/page/$page"
-        val document = app.get(url, headers = mapOf("User-Agent" to USER_AGENT)).document
-        val items = document.select("article, div.movie-box, div.poster, div.series-item").mapNotNull { it.toSearchResult() }
+        val document = app.get(url, headers = HEADERS).document
+        val items = document.select("a[data-dizipal-pageloader]").mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, items)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-        val title = this.selectFirst("h2, h3, .title, a")?.text()?.trim() ?: return null
-        val href = this.selectFirst("a")?.attr("href") ?: return null
-        val poster = this.selectFirst("img")?.let {
-            it.attr("data-src").ifBlank { it.attr("src") }
-        }
-        return newMovieSearchResponse(title, fixUrl(href), TvType.TvSeries) {
+        // Kart: <a data-dizipal-pageloader="true" href="..." title="...">
+        val href = this.attr("href").takeIf { it.isNotBlank() } ?: return null
+        
+        // Başlık: önce title attribute'u, sonra img alt'ı, sonra slug'dan türet
+        val title = this.attr("title").removeSuffix(" izle").trim().takeIf { it.isNotBlank() }
+            ?: this.selectFirst("img[alt]")?.attr("alt")?.removeSuffix(" izle")?.trim()?.takeIf { it.isNotBlank() }
+            ?: href.substringAfterLast("/").replace("-", " ").split(" ").joinToString(" ") { 
+                it.replaceFirstChar { c -> c.uppercase() } 
+            }
+        
+        // Poster: img.lazyload[data-src] veya img[data-src]
+        val poster = this.selectFirst("img.lazyload[data-src]")?.attr("data-src")
+            ?.takeIf { it.isNotBlank() && !it.startsWith("data:") }
+            ?: this.selectFirst("img[data-src]")?.attr("data-src")
+                ?.takeIf { it.isNotBlank() && !it.startsWith("data:") }
+        
+        // Tür: URL'de /movies/ geçiyorsa Movie, /series/ geçiyorsa TvSeries
+        val type = if (href.contains("/movies/")) TvType.Movie else TvType.TvSeries
+        
+        return newMovieSearchResponse(title, fixUrl(href), type) {
             this.posterUrl = poster
         }
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/?s=${query.replace(" ", "+")}"
-        val document = app.get(url, headers = mapOf("User-Agent" to USER_AGENT)).document
-        return document.select("article, div.movie-box, div.poster, div.series-item").mapNotNull { it.toSearchResult() }
+        val document = app.get(url, headers = HEADERS).document
+        return document.select("a[data-dizipal-pageloader]").mapNotNull { it.toSearchResult() }
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, headers = mapOf("User-Agent" to USER_AGENT)).document
+        val document = app.get(url, headers = HEADERS).document
         val ldJson = document.selectFirst("script[type=application/ld+json]")?.data() ?: return null
 
         val json = JSONObject(ldJson)
@@ -124,12 +139,9 @@ class DizipalProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data, headers = mapOf("User-Agent" to USER_AGENT)).document
+        val document = app.get(data, headers = HEADERS).document
 
-        // 1) data-rm-k="true" div'inde şifreli JSON var
-        val encryptedJson = document.selectFirst("div[data-rm-k=true]")?.text()
-
-        // 2) iframe'i bul (JS çalıştırmayanlar için fallback)
+        // iframe'i bul (JS çalıştırmayanlar için fallback)
         val iframeSrc = document.selectFirst("iframe[src]")?.attr("src")
 
         if (!iframeSrc.isNullOrBlank()) {
@@ -137,10 +149,7 @@ class DizipalProvider : MainAPI() {
             return true
         }
 
-        // 3) Eğer iframe boşsa, JS şifre çözme gerekli
-        // Cloudstream WebViewResolver ile video URL'sini yakalayacağız
-        // (Bu kısmı sonra ekleyeceğiz)
-
+        // TODO: Şifreli video için WebViewResolver eklenmeli
         return false
     }
 }
