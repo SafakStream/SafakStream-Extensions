@@ -19,16 +19,6 @@ object ProviderRegistry {
     val builtInProviders = listOf(
         // ── Torrents ──────────────────────────────────────────────
         ProviderDef(
-            key = "p_torrentio", displayName = "🧲 Torrentio", isTorrent = true,
-            executeStandard = { res, _, cb -> invokeStremioTorrents("Torrentio", torrentioAPI, res.imdbId, res.season, res.episode, cb) },
-            executeAnime = { res, _, cb -> invokeStremioTorrents("Torrentio", torrentioAPI, "kitsu:${res.kitsuId}", res.season, res.episode, cb) }
-        ),
-        ProviderDef(
-            key = "p_torrentsdb", displayName = "🧲 TorrentsDB", isTorrent = true,
-            executeStandard = { res, _, cb -> invokeStremioTorrents("TorrentsDB", torrentsdbAPI, res.imdbId, res.season, res.episode, cb) },
-            executeAnime = { res, _, cb -> invokeStremioTorrents("TorrentsDB", torrentsdbAPI, "kitsu:${res.kitsuId}", res.season, res.episode, cb) }
-        ),
-        ProviderDef(
             key = "p_animetosho", displayName = "🧲 AnimeTosho", isTorrent = true,
             executeAnime = { res, _, cb -> invokeAnimetosho(res.kitsuId, res.malId, res.episode, cb) }
         ),
@@ -71,10 +61,6 @@ object ProviderRegistry {
         ProviderDef(
             key = "p_allmovieland", displayName = "Allmovieland",
             executeStandard = { res, _, cb -> invokeAllmovieland(res.imdbId, res.season, res.episode, cb) },
-        ),
-        ProviderDef(
-            key = "p_hdhub4u", displayName = "Hdhub4u",
-            executeStandard = { res, subCb, cb -> invokeHdhub4u(res.imdbId, res.season, res.episode, subCb ,cb) },
         ),
         ProviderDef(
             key = "p_hexa", displayName = "Hexa",
@@ -154,11 +140,6 @@ object ProviderRegistry {
             executeStandard = { res, subCb, cb -> if (res.isBollywood) invokeVegamovies("RogMovies", res.imdbId, res.season, res.episode, subCb, cb) }
         ),
         ProviderDef(
-            key = "p_bollyflix", displayName = "Bollyflix",
-            executeStandard = { res, subCb, cb -> invokeBollyflix(res.imdbId, res.season, res.episode, subCb, cb) },
-            executeAnime = { res, subCb, cb -> invokeBollyflix(res.imdbId, res.imdbSeason, res.imdbEpisode, subCb, cb) }
-        ),
-        ProviderDef(
             key = "p_topmovies", displayName = "TopMovies",
             executeStandard = { res, subCb, cb -> if (res.isBollywood) invokeTopMovies(res.imdbId, res.season, res.episode, subCb, cb) }
         ),
@@ -189,21 +170,6 @@ object ProviderRegistry {
             key = "p_uhdmovies", displayName = "UHDMovies",
             executeStandard = { res, subCb, cb -> if (!res.isBollywood) invokeUhdmovies(res.title, res.year, res.season, res.episode, cb, subCb) },
             executeAnime = { res, subCb, cb -> invokeUhdmovies(res.imdbTitle, res.imdbYear, res.imdbSeason, res.imdbEpisode, cb, subCb) }
-        ),
-        ProviderDef(
-            key = "p_moviesdrive", displayName = "MoviesDrive",
-            executeStandard = { res, subCb, cb -> invokeMoviesdrive(res.title, res.imdbId, res.season, res.episode, subCb, cb) },
-            executeAnime = { res, subCb, cb -> invokeMoviesdrive(res.imdbTitle, res.imdbId, res.imdbSeason, res.imdbEpisode, subCb, cb) }
-        ),
-        ProviderDef(
-            key = "p_hindmoviez", displayName = "Hindmoviez",
-            executeStandard = { res, subCb, cb -> if (!res.isBollywood) invokeHindmoviez(res.imdbId, res.season, res.episode, subCb, cb) },
-            executeAnime = { res, subCb, cb -> invokeHindmoviez(res.imdbId, res.imdbSeason, res.imdbEpisode, subCb, cb) }
-        ),
-        ProviderDef(
-            key = "p_4khdhub", displayName = "4KHDHub",
-            executeStandard = { res, subCb, cb -> if (!res.isBollywood) invoke4khdhub(res.title, res.year, res.season, res.episode, subCb, cb) },
-            executeAnime = { res, subCb, cb -> invoke4khdhub(res.imdbTitle, res.imdbYear, res.imdbSeason, res.imdbEpisode, subCb, cb) }
         ),
         ProviderDef(
             key = "p_primesrc", displayName = "PrimeSrc",
@@ -247,10 +213,6 @@ object ProviderRegistry {
         ProviderDef(
             key = "p_asiaflix", displayName = "Asiaflix",
             executeStandard = { res, subCb, cb -> if (!res.isAnime) invokeAsiaflix(res.title, res.season, res.episode, res.airedYear ?: res.year, subCb, cb) }
-        ),
-        ProviderDef(
-            key = "p_skymovies", displayName = "SkyMovies",
-            executeStandard = { res, subCb, cb -> if (!res.isAnime) invokeSkymovies(res.title, res.airedYear ?: res.year, res.episode, subCb, cb) }
         ),
         ProviderDef(
             key = "p_kisskh", displayName = "KissKH",
