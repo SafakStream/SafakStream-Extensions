@@ -33,7 +33,7 @@
             "SafakStream"
         ],
         "description": "Dizipal - T\u00fcrk\u00e7e dizi ve film izleme sitesi eklentisi.",
-        "fileSize": 13353,
+        "fileSize": 14222,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -42,7 +42,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/Dizipal.png",
         "apiVersion": 1,
-        "fileHash": "sha256-b4f0dce327e514ab2cce3d6e9bc2720083ec61b7dac8bd32e2b6231ad992484b"
+        "fileHash": "sha256-bfeb36b1e37db85e7feb1647bba687fc8d2367f7f0d117ac9243edab2b67a721"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
