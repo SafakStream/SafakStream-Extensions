@@ -48,7 +48,6 @@ class DizipalProvider : MainAPI() {
     private fun Element.toSearchResult(): SearchResponse? {
         val href = this.attr("href").takeIf { it.isNotBlank() } ?: return null
         
-        // Başlık: title > img[alt] > slug
         val titleFromAttr = this.attr("title").removeSuffix(" izle").trim()
         val titleFromAlt = this.selectFirst("img[alt]")?.attr("alt")?.removeSuffix(" izle")?.trim()
         val titleFromSlug = href.substringAfterLast("/")
@@ -61,7 +60,6 @@ class DizipalProvider : MainAPI() {
             ?: titleFromAlt?.takeIf { it.isNotBlank() && !it.contains("Dizipal", ignoreCase = true) }
             ?: titleFromSlug
         
-        // Poster
         val poster = this.selectFirst("img[data-src]")?.attr("data-src")
             ?.takeIf { it.isNotBlank() && !it.startsWith("data:") }
         
@@ -87,13 +85,71 @@ class DizipalProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url, headers = HEADERS).document
-        val ldJson = document.selectFirst("script[type=application/ld+json]")?.data() ?: return null
-
-        val json = JSONObject(ldJson)
-        val type = json.optString("@type")
-        val title = json.optString("name").ifBlank {
+        
+        // TÜM JSON-LD'leri al, içlerinden TVSeries/Movie olanı bul
+        val jsonLdScripts = document.select("script[type=application/ld+json]")
+        var jsonObj: JSONObject? = null
+        
+        for (script in jsonLdScripts) {
+            try {
+                val parsed = JSONObject(script.data())
+                val parsedType = parsed.optString("@type")
+                if (parsedType == "TVSeries" || parsedType == "Movie" || parsedType == "TVEpisode") {
+                    jsonObj = parsed
+                    break
+                }
+            } catch (e: Exception) {
+                // Parse edilemeyen JSON-LD'yi atla
+            }
+        }
+        
+        // JSON-LD yoksa HTML'den çek
+        if (jsonObj == null) {
+            val title = document.selectFirst("h1")?.text() ?: return null
+            val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
+            val plot = document.selectFirst("meta[property=og:description]")?.attr("content")
+            
+            val type = when {
+                url.contains("/movies/") -> TvType.Movie
+                else -> TvType.TvSeries
+            }
+            
+            return newMovieLoadResponse(title, url, type, url) {
+                this.posterUrl = poster
+                this.plot = plot
+            }
+        }
+        
+        val json = jsonObj
+        
+        // @type string veya array olabilir
+        val typeRaw = json.opt("@type")
+        val type = when (typeRaw) {
+            is String -> typeRaw
+            is JSONArray -> {
+                var found = "TVSeries"
+                for (i in 0 until typeRaw.length()) {
+                    val t = typeRaw.optString(i)
+                    if (t == "TVSeries" || t == "Movie" || t == "TVEpisode") {
+                        found = t
+                        break
+                    }
+                }
+                found
+            }
+            else -> "TVSeries"
+        }
+        
+        // name string veya array olabilir
+        val nameRaw = json.opt("name")
+        val title = when (nameRaw) {
+            is String -> nameRaw
+            is JSONArray -> if (nameRaw.length() > 0) nameRaw.optString(0) else ""
+            else -> ""
+        }.ifBlank {
             document.selectFirst("h1")?.text() ?: return null
         }
+        
         val description = json.optString("description").takeIf { it.isNotBlank() }
         val poster = json.optString("image").takeIf { it.isNotBlank() }
         val year = json.optString("datePublished").take(4).toIntOrNull()
@@ -107,13 +163,38 @@ class DizipalProvider : MainAPI() {
         val episodes = mutableListOf<Episode>()
 
         if (tvType == TvType.TvSeries) {
-            val seasons = json.optJSONArray("containsSeason") ?: JSONArray()
-            for (i in 0 until seasons.length()) {
-                val season = seasons.getJSONObject(i)
+            val seasonsRaw = json.opt("containsSeason")
+            
+            // containsSeason array veya object olabilir!
+            val seasonsList = mutableListOf<JSONObject>()
+            when (seasonsRaw) {
+                is JSONArray -> {
+                    for (i in 0 until seasonsRaw.length()) {
+                        seasonsRaw.optJSONObject(i)?.let { seasonsList.add(it) }
+                    }
+                }
+                is JSONObject -> {
+                    seasonsList.add(seasonsRaw)
+                }
+            }
+            
+            for ((i, season) in seasonsList.withIndex()) {
                 val seasonNum = season.optInt("seasonNumber", i + 1)
-                val eps = season.optJSONArray("episode") ?: JSONArray()
-                for (j in 0 until eps.length()) {
-                    val ep = eps.getJSONObject(j)
+                val epsRaw = season.opt("episode")
+                
+                val epsList = mutableListOf<JSONObject>()
+                when (epsRaw) {
+                    is JSONArray -> {
+                        for (j in 0 until epsRaw.length()) {
+                            epsRaw.optJSONObject(j)?.let { epsList.add(it) }
+                        }
+                    }
+                    is JSONObject -> {
+                        epsList.add(epsRaw)
+                    }
+                }
+                
+                for ((j, ep) in epsList.withIndex()) {
                     val epName = ep.optString("name").ifBlank { "$seasonNum. Sezon ${j + 1}. Bölüm" }
                     val epUrl = ep.optString("url")
                     val epNum = ep.optInt("episodeNumber", j + 1)
