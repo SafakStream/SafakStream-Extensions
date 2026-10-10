@@ -3,11 +3,11 @@ package com.safakstream.youtube
 import android.content.SharedPreferences
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.loadExtractor
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.Page
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.channel.ChannelInfo
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo
 import org.schabi.newpipe.extractor.kiosk.KioskInfo
@@ -18,7 +18,6 @@ import org.schabi.newpipe.extractor.localization.Localization
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.StreamInfo
-import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
 open class YouTubeProvider(
@@ -29,10 +28,10 @@ open class YouTubeProvider(
     override val supportedTypes = setOf(TvType.Others)
     override var lang = "it"
     override val hasMainPage = true
-    override val sequentialMainPage = true
+    override var sequentialMainPage = true // 'var' yapıldı
 
     var country: String = "IT"
-    val SEARCH_CONTENT_FILTER = "videos"
+    open val SEARCH_CONTENT_FILTER = "videos" // 'open' yapıldı
 
     val service = ServiceList.YouTube
 
@@ -53,22 +52,8 @@ open class YouTubeProvider(
             getTrendingVideoUrls(page)?.let { sections.add(it) }
         }
 
-        val savedPlaylistsJson = sharedPrefs?.getString("savedLists", null)
-        val savedPlaylists = if (savedPlaylistsJson.isNullOrBlank()) {
-            // Varsayılan veya boş liste
-            emptyList()
-        } else {
-            // JSON parse işlemi (basitleştirildi)
-            emptyList() // Bu kısmı daha sonra dolduracağız
-        }
-
-        if (savedPlaylists.isNotEmpty()) {
-            val list = savedPlaylists.map { /* Playlistleri yükle */ }
-            // Bu kısım orijinal kodda karmaşık, şimdilik es geçiyoruz.
-        }
-
         if (sections.isEmpty()) {
-            sections.add(HomePageList("There are no sections to load. Go to the settings to add them", emptyList()))
+            sections.add(HomePageList("Ayarlardan bölüm ekleyin", emptyList()))
         }
 
         return newHomePageResponse(sections, true)
@@ -103,9 +88,9 @@ open class YouTubeProvider(
 
         val searchResponses = videos
             .filter { !it.isShortFormContent }
-            .map {
-                newMovieSearchResponse(it.name, it.url, TvType.Others) {
-                    this.posterUrl = it.thumbnails.lastOrNull()?.url
+            .map { item ->
+                newMovieSearchResponse(item.name, item.url, TvType.Others) {
+                    this.posterUrl = item.thumbnails.lastOrNull()?.url
                 }
             }
         return HomePageList("Trending", searchResponses, true)
@@ -136,13 +121,13 @@ open class YouTubeProvider(
             SEARCH_PAGE = more.nextPage
         }
 
-        val finalResults = pageResults.mapNotNull {
-            when (it.infoType) {
-                InfoItem.InfoType.STREAM -> newMovieSearchResponse(it.name, it.url, TvType.Others) {
-                    this.posterUrl = it.thumbnails.lastOrNull()?.url
+        val finalResults = pageResults.mapNotNull { item ->
+            when (item.infoType) {
+                InfoItem.InfoType.STREAM -> newMovieSearchResponse(item.name, item.url, TvType.Others) {
+                    this.posterUrl = item.thumbnails.lastOrNull()?.url
                 }
-                InfoItem.InfoType.PLAYLIST, InfoItem.InfoType.CHANNEL -> newTvSeriesSearchResponse(it.name, it.url, TvType.Others) {
-                    this.posterUrl = it.thumbnails.lastOrNull()?.url
+                InfoItem.InfoType.PLAYLIST, InfoItem.InfoType.CHANNEL -> newTvSeriesSearchResponse(item.name, item.url, TvType.Others) {
+                    this.posterUrl = item.thumbnails.lastOrNull()?.url
                 }
                 else -> null
             }
@@ -180,9 +165,9 @@ open class YouTubeProvider(
             }
         }
 
-        val searchResponses = videos.map {
-            newMovieSearchResponse(it.name, it.url, TvType.Others) {
-                this.posterUrl = it.thumbnails.lastOrNull()?.url
+        val searchResponses = videos.map { item ->
+            newMovieSearchResponse(item.name, item.url, TvType.Others) {
+                this.posterUrl = item.thumbnails.lastOrNull()?.url
             }
         }
         return HomePageList("${playlistInfo.uploaderName}: ${playlistInfo.name}", searchResponses, true)
@@ -222,9 +207,9 @@ open class YouTubeProvider(
             }
         }
 
-        val searchResponses = videos.map {
-            newMovieSearchResponse(it.name, it.url, TvType.Others) {
-                this.posterUrl = it.thumbnails.lastOrNull()?.url
+        val searchResponses = videos.map { item ->
+            newMovieSearchResponse(item.name, item.url, TvType.Others) {
+                this.posterUrl = item.thumbnails.lastOrNull()?.url
             }
         }
         return HomePageList(channelInfo.name, searchResponses, true)
