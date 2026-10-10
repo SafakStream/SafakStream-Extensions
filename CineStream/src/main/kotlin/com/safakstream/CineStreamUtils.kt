@@ -782,3 +782,872 @@ suspend fun loadSourceNameExtractor(
             callback(newLink)
         }
     }
+
+    when {
+        url.contains("hubcloud.") || url.contains("vcloud.") -> HubCloud().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("gdflix.") || url.contains("gdlink.") -> GDFlix().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("fastdlserver.") -> fastdlserver().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("linksmod.") -> Linksmod().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("hubdrive.") -> Hubdrive().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("gofile.") -> Gofile().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("driveleech.") || url.contains("driveseed.") -> Driveleech().getUrl(url, referer, subtitleCallback, processLink)
+        url.contains("howblogs.") -> Howblogs().getUrl(url, referer, subtitleCallback, processLink)
+        else -> loadExtractor(url, referer, subtitleCallback, processLink)
+    }
+}
+
+suspend fun loadCustomExtractor(
+    name: String? = null,
+    url: String,
+    referer: String? = null,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit,
+    quality: Int? = null,
+    serverName: String = "",
+) = supervisorScope {
+
+    val processLink: (ExtractorLink) -> Unit = { link ->
+        launch(Dispatchers.IO) {
+            val newLink = newExtractorLink(
+                name ?: link.source,
+                name ?: link.name,
+                link.url,
+                type = link.type
+            ) {
+                this.quality = quality ?: link.quality
+                this.referer = link.referer
+                this.headers = link.headers
+                this.extractorData = link.extractorData
+            }
+
+            callback(newLink)
+        }
+    }
+
+    loadExtractor(url, referer, subtitleCallback, processLink)
+}
+
+fun fixUrl(url: String, domain: String): String {
+    if (url.startsWith("http")) {
+        return url
+    }
+    if (url.isEmpty()) {
+        return ""
+    }
+
+    val startsWithNoHttp = url.startsWith("//")
+    if (startsWithNoHttp) {
+        return "https:$url"
+    } else {
+        if (url.startsWith('/')) {
+            return domain + url
+        }
+        return "$domain/$url"
+    }
+}
+
+//Anizip
+fun getEpAnizipId(json: String, ep: Int): Int? {
+    val root = parseJson<Anizip>(json)
+    val episode = root.episodes?.get(ep.toString())
+    val anidbEid = episode?.anidbEid
+    return anidbEid
+}
+
+// --- Converts bytes → readable GB/MB ---
+fun formatSize(bytes: Long): String {
+    if (bytes <= 0) return "-"
+    val kb = 1024.0
+    val mb = kb * 1024
+    val gb = mb * 1024
+    return when {
+        bytes >= gb -> String.format("%.2f GB", bytes / gb)
+        bytes >= mb -> String.format("%.2f MB", bytes / mb)
+        else -> String.format("%.2f KB", bytes / kb)
+    }
+}
+
+suspend fun bypassHrefli(url: String): String? {
+    fun Document.getFormUrl(): String {
+        return this.select("form#landing").attr("action")
+    }
+
+    fun Document.getFormData(): Map<String, String> {
+        return this.select("form#landing input").associate { it.attr("name") to it.attr("value") }
+    }
+
+    val host = getBaseUrl(url)
+    var res = app.get(url).document
+    var formUrl = res.getFormUrl()
+    var formData = res.getFormData()
+
+    res = app.post(formUrl, data = formData).document
+    formUrl = res.getFormUrl()
+    formData = res.getFormData()
+
+    res = app.post(formUrl, data = formData).document
+    val skToken = res.selectFirst("script:containsData(?go=)")?.data()?.substringAfter("?go=")
+        ?.substringBefore("\"") ?: return null
+    val driveUrl = app.get(
+        "$host?go=$skToken", cookies = mapOf(
+            skToken to "${formData["_wp_http2"]}"
+        )
+    ).document.selectFirst("meta[http-equiv=refresh]")?.attr("content")?.substringAfter("url=")
+    val path = app.get(driveUrl ?: return null).text.substringAfter("replace(\"")
+        .substringBefore("\")")
+    if (path == "/404") return null
+    return fixUrl(path, getBaseUrl(driveUrl))
+}
+
+suspend fun getAniListInfo(animeId: Int): AnimeInfo? {
+    val query = """
+        query (${'$'}id: Int) {
+            Media (id: ${'$'}id, type: ANIME) {
+                title {
+                    english
+                    romaji
+                }
+                bannerImage
+                description(asHtml: false)
+            }
+        }
+    """.trimIndent()
+
+    val requestData = mapOf(
+        "query" to query,
+        "variables" to mapOf("id" to animeId)
+    )
+
+    val response = app.post(
+        "https://graphql.anilist.co",
+        json = requestData
+    ).parsedSafe<AniListResponse>()
+
+    val media = response?.data?.media ?: return null
+
+    val finalBanner = media.bannerImage?.takeUnless { it.isBlank() || it == "null" }
+    val finalTitle = media.title?.english?.takeUnless { it.isBlank() || it == "null" }
+    val finaromajiTitle = media.title?.romaji?.takeUnless { it.isBlank() || it == "null" }
+    val finalDescription = media.description?.takeUnless { it.isBlank() || it == "null" }
+
+    return AnimeInfo(
+        title = finalTitle,
+        romajiTitle = finaromajiTitle,
+        banner = finalBanner,
+        description = finalDescription
+    )
+}
+
+suspend fun fetchTmdbLogoUrl(
+    tmdbAPI: String,
+    apiKey: String,
+    type: TvType,
+    tmdbId: Int?,
+    appLangCode: String?
+): String? {
+
+    if (tmdbId == null) return null
+
+    val url = if (type == TvType.Movie)
+        "$tmdbAPI/movie/$tmdbId/images?api_key=$apiKey"
+    else
+        "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
+
+    val json = runCatching { JSONObject(app.get(url).text) }.getOrNull() ?: return null
+    val logos = json.optJSONArray("logos") ?: return null
+    if (logos.length() == 0) return null
+
+    val lang = appLangCode?.trim()?.lowercase()?.substringBefore("-")
+
+    fun path(o: JSONObject) = o.optString("file_path")
+    fun isSvg(o: JSONObject) = path(o).endsWith(".svg", true)
+    fun urlOf(o: JSONObject) = "https://image.tmdb.org/t/p/w500${path(o)}"
+
+    // Language match
+    var svgFallback: JSONObject? = null
+
+    for (i in 0 until logos.length()) {
+        val logo = logos.optJSONObject(i) ?: continue
+        val p = path(logo)
+        if (p.isBlank()) continue
+
+        val l = logo.optString("iso_639_1").trim().lowercase()
+        if (l == lang) {
+            if (!isSvg(logo)) return urlOf(logo)
+            if (svgFallback == null) svgFallback = logo
+        }
+    }
+    svgFallback?.let { return urlOf(it) }
+
+    // Highest voted fallback
+    var best: JSONObject? = null
+    var bestSvg: JSONObject? = null
+
+    fun voted(o: JSONObject) = o.optDouble("vote_average", 0.0) > 0 && o.optInt("vote_count", 0) > 0
+
+    fun better(a: JSONObject?, b: JSONObject): Boolean {
+        if (a == null) return true
+        val aAvg = a.optDouble("vote_average", 0.0)
+        val aCnt = a.optInt("vote_count", 0)
+        val bAvg = b.optDouble("vote_average", 0.0)
+        val bCnt = b.optInt("vote_count", 0)
+        return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
+    }
+
+    for (i in 0 until logos.length()) {
+        val logo = logos.optJSONObject(i) ?: continue
+        if (!voted(logo)) continue
+
+        if (isSvg(logo)) {
+            if (better(bestSvg, logo)) bestSvg = logo
+        } else {
+            if (better(best, logo)) best = logo
+        }
+    }
+
+    best?.let { return urlOf(it) }
+    bestSvg?.let { return urlOf(it) }
+
+    // No language match & no voted logos
+    return null
+}
+
+suspend fun generateMagnetLink(url: String, hash: String?): String {
+    val response = app.get(url)
+    val trackerList = response.text.trim().split("\n")
+
+    // Build the magnet link
+    return buildString {
+        append("magnet:?xt=urn:btih:$hash")
+        trackerList.forEach { tracker ->
+            if (tracker.isNotBlank()) {
+                append("&tr=").append(tracker.trim())
+            }
+        }
+    }
+}
+
+suspend fun getRedirectLinks(url: String): String {
+    fun encode(value: String): String {
+        return base64Encode(value.toByteArray())
+    }
+
+    fun decode(value: String): String {
+        return base64Decode(value)
+    }
+
+    fun rot13(value: String): String {
+        return value.map {
+            when (it) {
+                in 'A'..'Z' -> 'A' + (it - 'A' + 13) % 26
+                in 'a'..'z' -> 'a' + (it - 'a' + 13) % 26
+                else -> it
+            }
+        }.joinToString("")
+    }
+
+    return try {
+        val doc = app.get(url).text
+
+        val regex = """s\('o','([A-Za-z0-9+/=]+)'|ck\('_wp_http_\d+','([^']+)'""".toRegex()
+
+        val combinedString = regex.findAll(doc)
+            .mapNotNull { it.groups[1]?.value ?: it.groups[2]?.value }
+            .joinToString("")
+
+        if (combinedString.isEmpty()) return ""
+
+        val decodedString = decode(rot13(decode(decode(combinedString))))
+        val jsonObject = JSONObject(decodedString)
+
+        val encodedUrl = decode(jsonObject.optString("o", "")).trim()
+        val data = encode(jsonObject.optString("data", "")).trim()
+        val wphttp1 = jsonObject.optString("blog_url", "").trim()
+
+        val directLink = if (wphttp1.isNotEmpty() && data.isNotEmpty()) {
+            runCatching {
+                app.get("$wphttp1?re=$data").document.select("body").text().trim()
+            }.getOrDefault("")
+        } else {
+            ""
+        }
+
+        encodedUrl.ifEmpty { directLink }
+    } catch (e: Exception) {
+        ""
+    }
+}
+
+fun decryptVidzeeUrl(encryptedUrl: String, secret: String): String? {
+    return try {
+        val decodedString = base64Decode(encryptedUrl)
+        val parts = decodedString.split(":", limit = 2)
+        if (parts.size < 2) return null
+
+        val iv         = base64DecodeArray(parts[0])
+        val ciphertext = base64DecodeArray(parts[1])
+
+        val key = secret.padEnd(32, '\u0000').toByteArray(Charsets.UTF_8)
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(iv))
+        String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+
+//Vidrock
+
+fun decryptVidrockUrl(encryptedPayload: String): String? {
+    return try {
+        val aesKeyHex = "7f3e9c2a8b5d1f4e6a9c3b7d2e5f8a1c4b6d9e2f5a8c1b4d7e9f2a5c8b1d4e7f"
+        val keyBytes = aesKeyHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+
+        var standardBase64 = encryptedPayload.replace("-", "+").replace("_", "/")
+
+        while (standardBase64.length % 4 != 0) {
+            standardBase64 += "="
+        }
+
+        val encryptedData = base64DecodeArray(standardBase64)
+
+        val nonce = encryptedData.copyOfRange(0, 12)
+        val cipherTextWithTag = encryptedData.copyOfRange(12, encryptedData.size)
+
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val keySpec = SecretKeySpec(keyBytes, "AES")
+        val gcmSpec = GCMParameterSpec(128, nonce)
+
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, gcmSpec)
+        val decryptedBytes = cipher.doFinal(cipherTextWithTag)
+
+        String(decryptedBytes, Charsets.UTF_8)
+    } catch (e: Exception) {
+        Log.e("Vidrock", "Decryption failed")
+        null
+    }
+}
+
+//Peachify
+fun peachifyDecrypt(encrypt: String): String? {
+    return try {
+        val parts = encrypt.split(".")
+        if (parts.size < 3) return null
+
+        val iv         = b64UrlDecode(parts[0])
+        val cipherData = b64UrlDecode(parts[1]) + b64UrlDecode(parts[2])
+
+        val keyBytes = "a8f2a1b5e9c470814f6b2c3a5d8e7f9c1a2b3c4d5e3f7a8b8cad1e2d0a4d5c5d"
+            .chunked(2)
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
+
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(keyBytes, "AES"),
+            GCMParameterSpec(128, iv)
+        )
+        String(cipher.doFinal(cipherData), Charsets.UTF_8)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+fun b64UrlDecode(s: String): ByteArray {
+    return s.replace('-', '+').replace('_', '/')
+        .let { it + "=".repeat((4 - it.length % 4) % 4) }
+        .let { base64DecodeArray(it) }
+}
+
+//Zinkmovies
+
+fun extractSeasonLinks(content: org.jsoup.nodes.Element, season: Int): List<String> {
+    val links = mutableListOf<String>()
+    var inTargetSeason = false
+    content.children().forEach { child ->
+        when {
+            child.hasClass("lgtagmessage") -> {
+                inTargetSeason = Regex("""Season\s+0*$season\b""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(child.text())
+            }
+            child.hasClass("movie-button-container") && inTargetSeason -> {
+                child.selectFirst("a.movie-simple-button")
+                    ?.attr("href")
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { links.add(it) }
+            }
+        }
+    }
+    return links
+}
+
+suspend fun generateZinkLinks(url: String): List<ZinkLink> {
+    return runCatching {
+
+        val firstDoc = app.get(url).document
+        val title = firstDoc.select("h1.file-title").text()
+        val firstHtml = firstDoc.html()
+
+        val randomId = Regex("""generateDownloadLink\(['"]([^'"]+)""")
+            .find(firstHtml)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: return emptyList()
+
+        val ajaxEndpoint = Regex("""https://[^"'\\s]+ajax_generate_token\.php""")
+            .find(firstHtml)
+            ?.value
+            ?: return emptyList()
+
+        val downloadBase = Regex("""https://[^"'\\s]+/dl/""")
+            .find(firstHtml)
+            ?.value
+            ?: return emptyList()
+
+        val token = retry  { app.post(
+            url = "$ajaxEndpoint?random_id=$randomId",
+            data = mapOf(
+                "random_id" to randomId
+            ),
+            headers = mapOf(
+                "X-Requested-With" to "XMLHttpRequest"
+            )
+        ).parsedSafe<ZinkTokenResponse>()
+            ?.token
+
+        } ?: return emptyList()
+
+        val generatedUrl = downloadBase + token
+
+        val generatedDoc = app.get(generatedUrl).document
+
+        val results = generatedDoc
+            .select("#mirror-buttons a[href]")
+            .mapNotNull { element ->
+
+                val href = element.attr("href").trim()
+
+                if (href.isBlank()) return@mapNotNull null
+
+                ZinkLink(
+                    name = element.text()
+                        .replace("Generate", "", true)
+                        .trim(),
+                    url = href,
+                    title = title,
+                )
+            }
+            .toMutableList()
+
+        generatedDoc.selectFirst("#worker-btn")?.let { btn: Element ->
+
+            val workerId = Regex("""handleServerRequest\(['"]worker['"]\s*,\s*['"]([^'"]+)""")
+                .find(btn.attr("onclick"))
+                ?.groupValues
+                ?.getOrNull(1)
+
+            val serverHandler = Regex("""SERVER_HANDLER_URL\s*=\s*["']([^"']+)""")
+                .find(generatedDoc.html())
+                ?.groupValues
+                ?.getOrNull(1)
+
+            if (
+                !workerId.isNullOrBlank() &&
+                !serverHandler.isNullOrBlank()
+            ) {
+
+                runCatching {
+
+                    val workerJson = JSONObject(
+                        app.post(
+                            url = serverHandler,
+                            requestBody = """
+                                {
+                                    "server":"worker",
+                                    "random_id":"$workerId"
+                                }
+                            """.trimIndent().toRequestBody(),
+                            headers = mapOf(
+                                "X-Requested-With" to "XMLHttpRequest",
+                                "Content-Type" to "application/json",
+                                "Origin" to generatedUrl.substringBefore("/dl/"),
+                                "Referer" to generatedUrl
+                            )
+                        ).text
+                    )
+
+                    workerJson.optString("url")
+                        .ifBlank {
+                            workerJson.optString("download")
+                        }
+                        .takeIf { it.isNotBlank() }
+                        ?.let {
+                            results += ZinkLink(
+                                name = "WORKER",
+                                url = it,
+                                title = title,
+                            )
+                        }
+
+                }
+            }
+        }
+
+        results.distinctBy { it.url }
+
+    }.getOrElse {
+        emptyList()
+    }
+}
+
+
+suspend fun getZinkLinks(
+    source: String,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+) {
+    generateZinkLinks(source).safeAmap { link ->
+
+        val simplifiedTitle = getSimplifiedTitle(link.title)
+
+        if (link.name.contains("worker", true)) {
+            callback(
+                newExtractorLink(
+                    source = "Zinkmovies Worker",
+                    name = "Zinkmovies Worker $simplifiedTitle",
+                    url = link.url
+                ) {
+                    this.quality = getIndexQuality(link.title)
+                }
+            )
+        } else {
+            loadSourceNameExtractor(
+                "Zinkmovies",
+                link.url,
+                "",
+                subtitleCallback,
+                callback
+            )
+        }
+    }
+}
+
+//Showbox
+
+val SHOWBOX_HEADERS = mapOf(
+    "Accept"          to "application/json, text/html, */*",
+    "Accept-Language" to "en",
+    "User-Agent"      to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+)
+
+suspend fun searchSuperstream(imdbId: String): Int? {
+    repeat(7) { attempt ->
+        val result = runCatching {
+            val searchHtml = app.get(
+                "$showboxAPI/search?keyword=$imdbId",
+                headers = SHOWBOX_HEADERS
+            ).text
+            val detailUrl  = parseSearchHref(searchHtml) ?: return@runCatching null
+            val detailHtml = app.get(detailUrl, headers = SHOWBOX_HEADERS).text
+            parseHeadingId(detailHtml)
+        }.getOrNull()
+
+        if (result != null) return result
+        Log.d("Showbox", "searchSuperstream attempt ${attempt + 1} failed")
+        delay(100)
+    }
+    return null
+}
+
+fun parseHeadingId(html: String): Int? {
+    return Regex("""class="heading-name[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)\"""")
+        .find(html)
+        ?.groupValues?.get(1)
+        ?.split("/")
+        ?.lastOrNull()
+        ?.toIntOrNull()
+}
+
+fun parseSearchHref(html: String): String? {
+    return (Regex("""class="film-name[^"]*"[^>]*>\s*<a[^>]+href="([^"]+)\"""").find(html)
+        ?: Regex("""<a[^>]+href="([^"]+)"[^>]*class="[^"]*film-name[^"]*\"""").find(html))
+        ?.groupValues?.get(1)
+        ?.let { "$showboxAPI$it" }
+}
+
+suspend fun getShareKey(mediaId: Int, type: Int): String? {
+
+    return runCatching {
+        app.get(
+            "$showboxAPI/index/share_link?id=$mediaId&type=$type",
+            headers = SHOWBOX_HEADERS
+        ).parsedSafe<ShareLinkResponse>()
+            ?.data?.link
+            ?.split("/")
+            ?.lastOrNull()
+    }.getOrNull()
+}
+
+suspend fun getFileList(shareKey: String, parentId: Long? = null, page: Int = 1): FileListData? {
+
+    return runCatching {
+        val url = buildString {
+            append("$febboxAPI/file/file_share_list?share_key=$shareKey")
+            if (parentId != null) append("&parent_id=$parentId&page=$page")
+        }
+        app.get(url, headers = SHOWBOX_HEADERS).parsedSafe<FileListResponse>()?.data
+    }.getOrNull()
+}
+
+suspend fun getVideoQualities(fid: Long, shareKey: String, febboxToken: String): List<VideoQuality> {
+    return runCatching {
+        val html = app.get(
+            "$febboxAPI/console/video_quality_list?fid=$fid&share_key=$shareKey",
+            headers = SHOWBOX_HEADERS + mapOf("Cookie" to normalizeToken(febboxToken))
+        ).parsedSafe<VideoQualityResponse>()?.html ?: return emptyList()
+        parseQualityDivs(html)
+    }.getOrElse { emptyList() }
+}
+
+fun normalizeToken(token: String): String = when {
+    token.startsWith("eyJ") -> "ui=$token"
+    token.startsWith("ui=") -> token
+    else                    -> "ui=$token"
+}
+
+fun parseQualityDivs(html: String): List<VideoQuality> {
+    return Regex("""<div[^>]*class="[^"]*file_quality[^"]*"[^>]*>""")
+        .findAll(html)
+        .mapNotNull { match ->
+            val tag     = match.value
+            val url     = Regex("""data-url="([^"]+)\"""").find(tag)?.groupValues?.get(1) ?: return@mapNotNull null
+            val quality = Regex("""data-quality="([^"]+)\"""").find(tag)?.groupValues?.get(1) ?: return@mapNotNull null
+            VideoQuality(url = url.replace("\\/", "/"), quality = quality)
+        }.toList()
+}
+
+//Castle
+
+val castleHeaders = mapOf(
+    "User-Agent" to "okhttp/4.9.3",
+    "Accept" to "application/json",
+    "Accept-Language" to "en-US,en;q=0.9",
+    "Connection" to "Keep-Alive",
+    "Referer" to "$castleAPI/"
+)
+
+fun decryptCastle(cipherText: String, base64Key: String): String {
+    val pepperWords = "T!BgJB".toByteArray(Charsets.UTF_8)
+
+    val keyWords = base64DecodeArray(base64Key)
+    val combined = keyWords + pepperWords
+
+    val keyMaterial = ByteArray(16)
+    System.arraycopy(combined, 0, keyMaterial, 0, min(combined.size, 16))
+
+    val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+    val secretKeySpec = SecretKeySpec(keyMaterial, "AES")
+    val ivParameterSpec = IvParameterSpec(keyMaterial)
+
+    cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec)
+
+    val cipherBytes = base64DecodeArray(cipherText)
+
+    return String(cipher.doFinal(cipherBytes), Charsets.UTF_8)
+}
+
+suspend fun getCastleSecurityKey(url: String): String {
+    val response = app.get(url, headers = castleHeaders).text
+    val json = JSONObject(response)
+    return json.optString("data")
+}
+
+suspend fun makeCastleApiRequest(
+    url: String,
+    securityKey: String,
+    method: String = "GET",
+    jsonBody: Any? = null
+): JSONObject {
+    val response = if (method == "POST" && jsonBody != null) {
+        app.post(url, headers = castleHeaders, json = jsonBody).text
+    } else {
+        app.get(url, headers = castleHeaders).text
+    }.trim()
+
+    val cipherText = try {
+        val tempJson = JSONObject(response)
+        if (tempJson.has("data") && tempJson.get("data") is String) {
+            tempJson.getString("data")
+        } else {
+            response
+        }
+    } catch (e: Exception) {
+        response
+    }
+
+    val decryptedStr = decryptCastle(cipherText, securityKey)
+
+    val finalJson = JSONObject(decryptedStr)
+    return finalJson.optJSONObject("data") ?: finalJson
+}
+
+//MovieBlast
+
+fun generateSignedUrl(url: String): String? {
+    return try {
+        val uri = URI(url)
+
+        val path = uri.rawPath
+
+        val timestamp = (System.currentTimeMillis() / 1000).toString()
+
+        val mac = Mac.getInstance("HmacSHA256")
+        val secretKeySpec = SecretKeySpec(MOVIEBLAST_KEY.toByteArray(Charsets.UTF_8), "HmacSHA256")
+        mac.init(secretKeySpec)
+
+        val hmacData = mac.doFinal((path + timestamp).toByteArray(Charsets.UTF_8))
+
+        val signature = base64Encode(hmacData)
+        val encodedSignature = URLEncoder.encode(signature, "UTF-8")
+
+        "$url?verify=$timestamp-$encodedSignature"
+    } catch (e: Exception) {
+        null
+    }
+}
+
+//Fibwatch
+
+val fibwatchHeaders = mapOf(
+    "User-Agent" to USER_AGENT,
+    "Referer" to "$fibwatchBaseUrl/"
+)
+
+val fibwatchPlaybackHeaders = mapOf(
+    "User-Agent" to USER_AGENT,
+    "Referer" to "https://urlshortlink.top/",
+    "Origin" to "https://urlshortlink.top"
+)
+
+fun extractFibwatchQuality(raw: String?): String {
+    val lower = raw?.lowercase() ?: ""
+    return when {
+        lower.contains("2160") || lower.contains("4k") -> "4K"
+        lower.contains("1080") -> "1080p"
+        lower.contains("720") -> "720p"
+        lower.contains("480") -> "480p"
+        lower.contains("360") -> "360p"
+        else -> "Unknown"
+    }
+}
+
+suspend fun resolveFibwatchStream(initialUrl: String, fallbackQuality: String): Pair<String, String>? {
+    var currentUrl = initialUrl
+    var html = runCatching { app.get(currentUrl, headers = fibwatchHeaders).text }.getOrNull() ?: return null
+
+    val doc1 = Jsoup.parse(html)
+
+    val genericMediaRegex = Regex("""https?://[a-zA-Z0-9-.]+(?:/[^\s"'`<>]*)?\.(?:mp4|mkv|m3u8)""", RegexOption.IGNORE_CASE)
+    val fibwatchCdnRegex = Regex("""https?://[a-zA-Z0-9-]+\.b-cdn\.net/[^\s"'`<>]+\.(?:mkv|mp4|m3u8)""", RegexOption.IGNORE_CASE)
+
+    var nextPath = doc1.selectFirst("a.hidden-button.buttonDownloadnew")?.attr("href")
+    if (nextPath.isNullOrBlank()) {
+        nextPath = doc1.select("a").firstOrNull { it.attr("href").contains("watch2=1") }?.attr("href")
+    }
+
+    if (!nextPath.isNullOrBlank()) {
+        var targetUrl = nextPath
+        if (nextPath.contains("url=http")) {
+            val encoded = nextPath.substringAfter("url=").substringBefore("&").trim()
+            targetUrl = runCatching { URLDecoder.decode(encoded, "UTF-8") }.getOrDefault(encoded)
+            if (genericMediaRegex.containsMatchIn(targetUrl) || fibwatchCdnRegex.containsMatchIn(targetUrl)) {
+                return targetUrl to fallbackQuality
+            }
+        }
+
+        currentUrl = URI(currentUrl).resolve(targetUrl).toString()
+        html = runCatching { app.get(currentUrl, headers = fibwatchHeaders).text }.getOrNull() ?: return null
+    }
+
+    val doc2 = Jsoup.parse(html)
+    var streamUrl = fibwatchCdnRegex.find(html)?.value
+
+    if (streamUrl == null) {
+        val iframeSrc = doc2.select("iframe").map { it.attr("src") }
+            .firstOrNull { it.isNotBlank() && !it.contains("youtube") && !it.contains("google") }
+
+        if (iframeSrc != null) {
+            val absoluteIframeUrl = URI(currentUrl).resolve(iframeSrc).toString()
+            val iframeHtml = runCatching { app.get(absoluteIframeUrl, headers = fibwatchPlaybackHeaders).text }.getOrNull()
+            if (iframeHtml != null) {
+                streamUrl = fibwatchCdnRegex.find(iframeHtml)?.value ?: genericMediaRegex.find(iframeHtml)?.value
+            }
+        }
+    }
+
+    if (streamUrl == null) {
+        streamUrl = genericMediaRegex.find(html)?.value
+    }
+
+    if (streamUrl != null) {
+        if (streamUrl.contains("url=http", ignoreCase = true)) {
+            val encoded = streamUrl.substringAfter("url=").substringBefore("&").trim()
+            streamUrl = runCatching { URLDecoder.decode(encoded, "UTF-8") }.getOrDefault(encoded)
+        }
+
+        val realQuality = extractFibwatchQuality(streamUrl)
+        val finalQuality = if (realQuality != "Unknown") realQuality else fallbackQuality
+        return streamUrl to finalQuality
+    }
+
+    return null
+}
+
+//Cinejoy
+
+fun decodeBase64UrlSafe(data: String): ByteArray {
+    val padding = when (data.length % 4) {
+        2 -> "=="
+        3 -> "="
+        else -> ""
+    }
+    return Base64.getUrlDecoder().decode(data + padding)
+}
+
+fun encodeBase64UrlSafeNoPadding(data: ByteArray): String {
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(data)
+}
+
+//Hdhub4u
+
+suspend fun getHdhub4uStreams(
+    url: String,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit,
+) {
+    if(url.contains("greenmountmotors") || url.contains("hubcdn")) {
+        val source = getRedirectLinks(url)
+
+        Log.d("Hdhub4u", "source: $source")
+
+        loadSourceNameExtractor(
+            "Hdhub4u",
+            source,
+            "",
+            subtitleCallback,
+            callback
+        )
+
+    } else {
+        loadSourceNameExtractor(
+            "Hdhub4u",
+            url,
+            "",
+            subtitleCallback,
+            callback
+        )
+    }
+}
