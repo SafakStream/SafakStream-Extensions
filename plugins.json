@@ -1,0 +1,22 @@
+[
+    {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "YouTube",
+        "internalName": "YouTube",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "YouTube eklentisi - SafakStream taraf\u0131ndan uyarland\u0131.",
+        "fileSize": 17299,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Others"
+        ],
+        "iconUrl": "https://www.google.com/s2/favicons?domain=youtube.com&sz=%size%",
+        "apiVersion": 1,
+        "fileHash": "sha256-719d3dd0dee1853425302b780342677bbe42103990f1782366059d123de35404"
+    }
+]
