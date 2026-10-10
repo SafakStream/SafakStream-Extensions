@@ -1,11 +1,8 @@
 // CineStream/build.gradle.kts
 version = 1
 
-// NOT: Orijinal kod local.properties'ten API anahtarı okuyordu.
-// Biz bu anahtarları geçici olarak boş bırakıyoruz.
 android {
     defaultConfig {
-        // BU SATIRI EKLEYİN:
         android.buildFeatures.buildConfig = true
         
         buildConfigField("String", "SIMKL_API", "\"\"")
@@ -30,4 +27,19 @@ cloudstream {
         "Torrent"
     )
     iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CineStream.png"
+}
+
+dependencies {
+    // Kotlin Coroutines kütüphanesi (async, awaitAll, supervisorScope vb. için)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    
+    // Jackson (JSON parse için)
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
+    
+    // Jsoup (HTML parse için)
+    implementation("org.jsoup:jsoup:1.18.1")
+    
+    // OkHttp (NiceHttp tarafından kullanılıyor)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
