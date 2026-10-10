@@ -38,29 +38,38 @@ class DizipalProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}/page/$page"
         val document = app.get(url, headers = HEADERS).document
-        val items = document.select("a[data-dizipal-pageloader]").mapNotNull { it.toSearchResult() }
+        val items = document.select("a[data-dizipal-pageloader]")
+            .filter { it.selectFirst("img.lazyload, img[data-src]") != null }
+            .mapNotNull { it.toSearchResult() }
+            .distinctBy { it.url }
         return newHomePageResponse(request.name, items)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-        // Kart: <a data-dizipal-pageloader="true" href="..." title="...">
         val href = this.attr("href").takeIf { it.isNotBlank() } ?: return null
         
-        // Başlık: önce title attribute'u, sonra img alt'ı, sonra slug'dan türet
-        val title = this.attr("title").removeSuffix(" izle").trim().takeIf { it.isNotBlank() }
-            ?: this.selectFirst("img[alt]")?.attr("alt")?.removeSuffix(" izle")?.trim()?.takeIf { it.isNotBlank() }
-            ?: href.substringAfterLast("/").replace("-", " ").split(" ").joinToString(" ") { 
-                it.replaceFirstChar { c -> c.uppercase() } 
-            }
+        // Başlık: title > img[alt] > slug
+        val titleFromAttr = this.attr("title").removeSuffix(" izle").trim()
+        val titleFromAlt = this.selectFirst("img[alt]")?.attr("alt")?.removeSuffix(" izle")?.trim()
+        val titleFromSlug = href.substringAfterLast("/")
+            .replace("-", " ")
+            .split(" ")
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
         
-        // Poster: img.lazyload[data-src] veya img[data-src]
-        val poster = this.selectFirst("img.lazyload[data-src]")?.attr("data-src")
+        val title = titleFromAttr.takeIf { it.isNotBlank() && !it.contains("Dizipal", ignoreCase = true) }
+            ?: titleFromAlt?.takeIf { it.isNotBlank() && !it.contains("Dizipal", ignoreCase = true) }
+            ?: titleFromSlug
+        
+        // Poster
+        val poster = this.selectFirst("img[data-src]")?.attr("data-src")
             ?.takeIf { it.isNotBlank() && !it.startsWith("data:") }
-            ?: this.selectFirst("img[data-src]")?.attr("data-src")
-                ?.takeIf { it.isNotBlank() && !it.startsWith("data:") }
         
-        // Tür: URL'de /movies/ geçiyorsa Movie, /series/ geçiyorsa TvSeries
-        val type = if (href.contains("/movies/")) TvType.Movie else TvType.TvSeries
+        val type = when {
+            href.contains("/movies/") -> TvType.Movie
+            href.contains("/anime/") -> TvType.Anime
+            else -> TvType.TvSeries
+        }
         
         return newMovieSearchResponse(title, fixUrl(href), type) {
             this.posterUrl = poster
@@ -70,7 +79,10 @@ class DizipalProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/?s=${query.replace(" ", "+")}"
         val document = app.get(url, headers = HEADERS).document
-        return document.select("a[data-dizipal-pageloader]").mapNotNull { it.toSearchResult() }
+        return document.select("a[data-dizipal-pageloader]")
+            .filter { it.selectFirst("img.lazyload, img[data-src]") != null }
+            .mapNotNull { it.toSearchResult() }
+            .distinctBy { it.url }
     }
 
     override suspend fun load(url: String): LoadResponse? {
@@ -140,8 +152,6 @@ class DizipalProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data, headers = HEADERS).document
-
-        // iframe'i bul (JS çalıştırmayanlar için fallback)
         val iframeSrc = document.selectFirst("iframe[src]")?.attr("src")
 
         if (!iframeSrc.isNullOrBlank()) {
@@ -149,7 +159,6 @@ class DizipalProvider : MainAPI() {
             return true
         }
 
-        // TODO: Şifreli video için WebViewResolver eklenmeli
         return false
     }
 }
