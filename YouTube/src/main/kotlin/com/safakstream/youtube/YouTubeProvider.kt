@@ -26,20 +26,20 @@ open class YouTubeProvider(
     override var mainUrl = "https://www.youtube.com"
     override var name = "YouTube"
     override val supportedTypes = setOf(TvType.Others)
-    override var lang = "it"
+    override var lang = "tr" // Varsayılan dil Türkçe
     override val hasMainPage = true
-    override var sequentialMainPage = true // 'var' yapıldı
+    override var sequentialMainPage = true
 
-    var country: String = "IT"
-    open val SEARCH_CONTENT_FILTER = "videos" // 'open' yapıldı
+    var country: String = "TR" // Varsayılan ülke Türkiye
+    open val SEARCH_CONTENT_FILTER = "videos"
 
     val service = ServiceList.YouTube
 
     init {
-        val language = sharedPrefs?.getString("language", "it") ?: "it"
-        country = sharedPrefs?.getString("country", "IT") ?: "IT"
-        lang = if (language.isBlank()) "it" else language
-        if (country.isBlank()) country = "IT"
+        val language = sharedPrefs?.getString("language", "tr") ?: "tr"
+        country = sharedPrefs?.getString("country", "TR") ?: "TR"
+        lang = if (language.isBlank()) "tr" else language
+        if (country.isBlank()) country = "TR"
 
         NewPipe.setupLocalization(Localization(lang), ContentCountry(country))
     }
