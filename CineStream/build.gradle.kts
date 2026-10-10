@@ -30,16 +30,19 @@ cloudstream {
 }
 
 dependencies {
-    // Kotlin Coroutines kütüphanesi (async, awaitAll, supervisorScope vb. için)
+    // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     
-    // Jackson (JSON parse için)
+    // Kotlin Serialization (CineStreamParser.kt'deki @Serializable için)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    
+    // Jackson
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     
-    // Jsoup (HTML parse için)
+    // Jsoup
     implementation("org.jsoup:jsoup:1.18.1")
     
-    // OkHttp (NiceHttp tarafından kullanılıyor)
+    // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
