@@ -1,6 +1,7 @@
 package com.safakstream.cinestream.settings
 
 import android.content.Context
+import androidx.appcompat.app.AlertDialog
 import com.safakstream.cinestream.ProviderRegistry
 
 /**
@@ -90,8 +91,29 @@ object Settings {
     fun getGramCinemaToken(): String? = null
     fun clearGramCinemaToken() {}
 
-    // ── Entry point (Devre Dışı) ─────────────────────────────
+    // ── Entry point (Bilgi Penceresi) ────────────────────────
     fun showSettingsDialog(context: Context, onSave: () -> Unit) {
-        // Ayarlar menüsü olmadığı için hiçbir şey yapmıyor.
+        AlertDialog.Builder(context)
+            .setTitle("🎬 CineStream Ayarları")
+            .setMessage(
+                """
+                Sürüm: v1
+                Geliştirici: SafakStream
+                
+                Film, Dizi, Anime, Asya Dizileri
+                ve Torrentler için tek adres çözümü.
+                
+                Bu sürümde gelişmiş ayarlar
+                devre dışıdır. Tüm sağlayıcılar
+                varsayılan olarak etkindir.
+                
+                İyi seyirler! 🍿
+                """.trimIndent()
+            )
+            .setPositiveButton("Tamam") { dialog, _ ->
+                dialog.dismiss()
+                onSave()
+            }
+            .show()
     }
 }
