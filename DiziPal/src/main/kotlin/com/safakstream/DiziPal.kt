@@ -217,17 +217,39 @@ class DiziPal : MainAPI() {
         ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
         ?: document.selectFirst("img[itemprop=image]")?.attr("src")
 
-    // --- YENİ: BÜYÜK POSTER (Backdrop) ÇEKİMİ ---
-    // Sayfanın üst kısmındaki geniş görseli çekmeye çalışıyoruz.
-    // Önce doğrudan bir img etiketi, sonra style içindeki background-image aranır.
-    val backgroundPoster = document.selectFirst("div.page-top img")?.attr("src")
-        ?: document.selectFirst("div.backdrop img")?.attr("src")
-        ?: document.selectFirst("div[style*=background-image]")?.let { element ->
-            // style="background-image: url('...')" içinden URL'yi çekme
-            val style = element.attr("style")
-            Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
-        }
-        ?: document.selectFirst("meta[property=og:image]")?.attr("content") // Bulamazsa og:image kullan
+    // --- YENİ: BÜYÜK POSTER (Backdrop) ÇEKİMİ (Agresif Fallback'li) ---
+    val backgroundPoster = run {
+        // 1. Doğrudan sayfa üstü görselleri (dizilerde çalışıyor)
+        document.selectFirst("div.page-top img")?.attr("src")
+            ?: document.selectFirst("div.page-top img")?.attr("data-src")
+            
+        // 2. Film sayfalarında sık kullanılan "movie-poster" veya "film-poster" benzeri class'lar
+            ?: document.selectFirst("div.movie-poster img")?.attr("src")
+            ?: document.selectFirst("div.film-poster img")?.attr("src")
+            ?: document.selectFirst("div.poster img")?.attr("src")
+            
+        // 3. Film sayfalarındaki geniş görsel genellikle "cover", "hero", "banner", "backdrop" class'larından birini taşır
+            ?: document.selectFirst("div.cover img")?.attr("src")
+            ?: document.selectFirst("div.hero img")?.attr("src")
+            ?: document.selectFirst("div.banner img")?.attr("src")
+            ?: document.selectFirst("div.backdrop img")?.attr("src")
+            
+        // 4. style="background-image: url(...)" içinde gizliyse (Çok yaygın bir yöntem)
+            ?: document.selectFirst("div[style*=background-image]")?.let { element ->
+                val style = element.attr("style")
+                Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
+            }
+            
+        // 5. Eğer hiçbiri yoksa, sayfadaki EN BÜYÜK boyutlu görseli bul (width veya height en büyük olan)
+            ?: document.select("img").maxByOrNull { img ->
+                val w = img.attr("width").toIntOrNull() ?: 0
+                val h = img.attr("height").toIntOrNull() ?: 0
+                w * h // Alan hesabı
+            }?.attr("src")
+            
+        // 6. Hala yoksa og:image'a düş
+            ?: document.selectFirst("meta[property=og:image]")?.attr("content")
+    }
 
     // Yıl, Süre, Etiketler
     val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
