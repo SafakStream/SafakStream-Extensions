@@ -202,33 +202,39 @@ class DiziPal : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
     val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
-    // --- ORTAK BİLGİLER (Hem film hem dizi için) ---
-    val poster      = document.selectFirst("div.page-top img[alt]")?.attr("src")
-        ?: document.selectFirst("meta[property=og:image]")?.attr("content")
-        
-    val year        = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
-    
-    val description = document.selectFirst("div.summary p")?.text()?.trim()
-        ?: document.selectFirst("meta[property=og:description]")?.attr("content")
-        ?: document.selectFirst("meta[name=description]")?.attr("content")
-        
-    val tags        = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
+    // --- 1. ORTAK BİLGİLER (Meta etiketleri en güvenilir kaynaktır) ---
+    // Başlık: Önce sayfa başlığı, sonra og:title
+    val title = document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()
+        ?: document.selectFirst("h1")?.text()?.trim()
+        ?: document.selectFirst("title")?.text()?.trim()
+        ?: "Bilinmeyen İçerik"
+
+    // Açıklama: Önce og:description, sonra meta description
+    val description = document.selectFirst("meta[property=og:description]")?.attr("content")?.trim()
+        ?: document.selectFirst("meta[name=description]")?.attr("content")?.trim()
+        ?: document.selectFirst("div.summary p")?.text()?.trim()
+
+    // Afiş: Önce og:image, sonra sayfa içi
+    val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
+        ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
+        ?: document.selectFirst("img[itemprop=image]")?.attr("src")
+
+    // Yıl, Süre, Etiketler (Bunlar genelde sabit kalır)
+    val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
+    val duration = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
+    val tags = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
         .split(" ").map { it.trim() }.filter { it.isNotEmpty() }
-        
-    val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
 
-    // --- DİZİ Mİ FİLM Mİ? ---
-    // URL'de /series/ varsa veya sayfada bölüm listesi varsa dizi kabul et
-    val isSeries = url.contains("/series/") || document.selectFirst("a[data-dizipal-pageloader]") != null
+    // --- 2. BÖLÜM LİSTESİ KONTROLÜ ---
+    // Sayfada gerçekten bölüm elementi var mı? (Hem class ile hem de genel a etiketi ile bakıyoruz)
+    val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
+    val hasEpisodes = episodeElements.isNotEmpty() || 
+                      document.selectFirst("a[data-dizipal-pageloader]") != null ||
+                      document.selectFirst("div.episode") != null
 
-    if (isSeries) {
+    // --- 3. DİZİ Mİ FİLM Mİ? ---
+    if (hasEpisodes && episodeElements.isNotEmpty()) {
         // --- DİZİ YÜKLEME ---
-        val title = document.selectFirst("div.flex h2")?.text()
-            ?: document.selectFirst("h1")?.text()
-            ?: document.selectFirst("meta[property=og:title]")?.attr("content")
-            ?: "Bilinmeyen Dizi"
-
-        val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
         val episodes = episodeElements.mapNotNull { element ->
             val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
             val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
@@ -253,15 +259,7 @@ class DiziPal : MainAPI() {
         }
 
     } else {
-        // --- FİLM YÜKLEME (Daha sağlam seçiciler) ---
-        // Sırayla birçok farklı yerden başlığı çekmeyi dener
-        val title = document.selectFirst("h1.g-title")?.text()?.trim()
-            ?: document.selectFirst("div.g-title")?.text()?.trim()
-            ?: document.selectFirst("h1")?.text()?.trim()
-            ?: document.selectFirst("meta[property=og:title]")?.attr("content")
-            ?: document.selectFirst("title")?.text()?.trim()
-            ?: "Bilinmeyen Film"
-
+        // --- FİLM YÜKLEME (Bölüm yoksa veya url /series/ içermiyorsa) ---
         return newMovieLoadResponse(title, url, TvType.Movie, url) {
             this.posterUrl = poster
             this.year      = year
