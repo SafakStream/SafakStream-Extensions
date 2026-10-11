@@ -200,14 +200,13 @@ class DizipalProvider : MainAPI() {
     private fun decryptDizipal(encryptedJson: String): String? {
         return try {
             val json = JSONObject(encryptedJson)
-            val ciphertextHex = json.getString("ciphertext")
+val ciphertextB64 = json.getString("ciphertext")
             val ivHex = json.getString("iv")
             val saltHex = json.getString("salt")
 
             val salt = hexToBytes(saltHex)
             val iv = hexToBytes(ivHex)
-            val ciphertext = hexToBytes(ciphertextHex)
-
+val ciphertext = android.util.Base64.decode(ciphertextB64, android.util.Base64.DEFAULT)
             val keySpec = PBEKeySpec(PASSPHRASE.toCharArray(), salt, 999, 256)
             val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
             val secretKey = keyFactory.generateSecret(keySpec)
