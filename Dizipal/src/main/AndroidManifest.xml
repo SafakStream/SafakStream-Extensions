@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Cloudstream eklentisi olduğu için özel bir izin veya activity tanımına gerek yoktur. -->
-    <!-- Ana tanımlama build.gradle.kts ve @CloudstreamPlugin anotasyonu ile yapılır. -->
-</manifest>
