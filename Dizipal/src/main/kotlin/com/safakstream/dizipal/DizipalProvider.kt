@@ -147,7 +147,7 @@ override suspend fun search(query: String): List<SearchResponse> {
         }
     }
 
-        override suspend fun loadLinks(
+    override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -168,12 +168,9 @@ override suspend fun search(query: String): List<SearchResponse> {
         // Yöntem 2: WebViewResolver (şifreli video için)
         return try {
             val webViewResolver = com.lagradost.cloudstream3.network.WebViewResolver(
-                interceptUrl = Regex("""(m3u8|master\.m3u8|\.mp4|dplayer|source)"""),
+                interceptUrl = Regex("""\.m3u8(\?.*)?$"""),
                 additionalUrls = listOf(
-                    Regex("""m3u8"""),
-                    Regex("""\.mp4"""),
-                    Regex("""dplayer"""),
-                    Regex("""source\d*\.php""")
+                    Regex("""\.m3u8(\?.*)?$""")
                 ),
                 userAgent = null,
                 useOkhttp = false,
@@ -186,8 +183,7 @@ override suspend fun search(query: String): List<SearchResponse> {
                 method = "GET",
                 requestCallBack = { request ->
                     val url = request.url.toString()
-                    url.contains("m3u8") || url.contains(".mp4") ||
-                        url.contains("dplayer") || url.contains("source")
+                    url.contains(".m3u8") || url.contains("master")
                 }
             )
 
@@ -195,24 +191,25 @@ override suspend fun search(query: String): List<SearchResponse> {
 
             // Ana istek (m3u8) bulunduysa
             mainRequest?.url?.toString()?.let { url ->
-                callback.invoke(
-                    com.lagradost.cloudstream3.utils.newExtractorLink(
-                        source = this.name,
-                        name = "Dizipal",
-                        url = url,
-                        type = com.lagradost.cloudstream3.utils.ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = data
-                    }
-                )
-                found = true
+                if (url.contains(".m3u8") || url.contains("master")) {
+                    callback.invoke(
+                        com.lagradost.cloudstream3.utils.newExtractorLink(
+                            source = this.name,
+                            name = "Dizipal",
+                            url = url,
+                            type = com.lagradost.cloudstream3.utils.ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = data
+                        }
+                    )
+                    found = true
+                }
             }
 
-            // Ek istekler (dplayer/source/m3u8)
+            // Ek istekler (sadece m3u8)
             additionalRequests.forEach { req ->
                 val url = req.url.toString()
-                if (url.contains("m3u8") || url.contains(".mp4") ||
-                    url.contains("dplayer") || url.contains("source")) {
+                if (url.contains(".m3u8") || url.contains("master")) {
                     callback.invoke(
                         com.lagradost.cloudstream3.utils.newExtractorLink(
                             source = this.name,
