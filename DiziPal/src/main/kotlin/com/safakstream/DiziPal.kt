@@ -202,31 +202,40 @@ class DiziPal : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
     val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
-    // --- 1. ORTAK BİLGİLER (Meta etiketleri en güvenilir kaynaktır) ---
-    // Başlık: Önce sayfa başlığı, sonra og:title
+    // --- 1. ORTAK BİLGİLER ---
     val title = document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()
         ?: document.selectFirst("h1")?.text()?.trim()
         ?: document.selectFirst("title")?.text()?.trim()
         ?: "Bilinmeyen İçerik"
 
-    // Açıklama: Önce og:description, sonra meta description
     val description = document.selectFirst("meta[property=og:description]")?.attr("content")?.trim()
         ?: document.selectFirst("meta[name=description]")?.attr("content")?.trim()
         ?: document.selectFirst("div.summary p")?.text()?.trim()
 
-    // Afiş: Önce og:image, sonra sayfa içi
+    // Küçük Poster (Afiş)
     val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
         ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
         ?: document.selectFirst("img[itemprop=image]")?.attr("src")
 
-    // Yıl, Süre, Etiketler (Bunlar genelde sabit kalır)
+    // --- YENİ: BÜYÜK POSTER (Backdrop) ÇEKİMİ ---
+    // Sayfanın üst kısmındaki geniş görseli çekmeye çalışıyoruz.
+    // Önce doğrudan bir img etiketi, sonra style içindeki background-image aranır.
+    val backgroundPoster = document.selectFirst("div.page-top img")?.attr("src")
+        ?: document.selectFirst("div.backdrop img")?.attr("src")
+        ?: document.selectFirst("div[style*=background-image]")?.let { element ->
+            // style="background-image: url('...')" içinden URL'yi çekme
+            val style = element.attr("style")
+            Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
+        }
+        ?: document.selectFirst("meta[property=og:image]")?.attr("content") // Bulamazsa og:image kullan
+
+    // Yıl, Süre, Etiketler
     val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
     val duration = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
     val tags = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
         .split(" ").map { it.trim() }.filter { it.isNotEmpty() }
 
     // --- 2. BÖLÜM LİSTESİ KONTROLÜ ---
-    // Sayfada gerçekten bölüm elementi var mı? (Hem class ile hem de genel a etiketi ile bakıyoruz)
     val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
     val hasEpisodes = episodeElements.isNotEmpty() || 
                       document.selectFirst("a[data-dizipal-pageloader]") != null ||
@@ -252,6 +261,7 @@ class DiziPal : MainAPI() {
 
         return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
             this.posterUrl = poster
+            this.backgroundPosterUrl = backgroundPoster // <-- BÜYÜK POSTER BURADA
             this.year      = year
             this.plot      = description
             this.tags      = tags
@@ -259,9 +269,10 @@ class DiziPal : MainAPI() {
         }
 
     } else {
-        // --- FİLM YÜKLEME (Bölüm yoksa veya url /series/ içermiyorsa) ---
+        // --- FİLM YÜKLEME ---
         return newMovieLoadResponse(title, url, TvType.Movie, url) {
             this.posterUrl = poster
+            this.backgroundPosterUrl = backgroundPoster // <-- BÜYÜK POSTER BURADA
             this.year      = year
             this.plot      = description
             this.tags      = tags
