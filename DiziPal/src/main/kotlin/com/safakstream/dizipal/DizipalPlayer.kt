@@ -2,12 +2,11 @@ package com.safakstream.dizipal
 
 import android.util.Log
 import com.lagradost.cloudstream3.SubtitleFile
-import com.lagradost.cloudstream3.MainActivity.Companion.app
+import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import okhttp3.Interceptor
 
 class DizipalPlayer : ExtractorApi() {
     override var name = "DizipalPlayer"
@@ -39,7 +38,7 @@ class DizipalPlayer : ExtractorApi() {
 
                 if (subUrls.add(subUrl)) {
                     subtitleCallback.invoke(
-                        newSubtitleFile(subLang, fixUrl(subUrl))
+                        SubtitleFile(subLang, fixUrl(subUrl))
                     )
                 }
             }
