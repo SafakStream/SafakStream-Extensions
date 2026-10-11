@@ -40,7 +40,7 @@
             "TvSeries",
             "Movie"
         ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/DiziPal/icon.png",
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziPal.png",
         "apiVersion": 1,
         "fileHash": "sha256-10d161942505b769fbaaf3e46e3f1b9bf88ee85c5b7aa7651030c37612632000"
     },
