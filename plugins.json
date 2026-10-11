@@ -24,27 +24,6 @@
         "fileHash": "sha256-8c20c03e73c8ebba6e057b82b613711ed727c31d7d385111ef298f7b763a647b"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziPal.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "DiziPal",
-        "internalName": "DiziPal",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "DiziPal eklentisi - SafakStream taraf\u0131ndan uyarland\u0131.",
-        "fileSize": 28133,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://www.google.com/s2/favicons?domain=dizipal1588.com&sz=%size%",
-        "apiVersion": 1,
-        "fileHash": "sha256-101a2d8db76a9db1bd69e3f0dcc71af5be0e8ebf0bdc478282e2f655d1625c2e"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
         "status": 1,
         "version": 1,
