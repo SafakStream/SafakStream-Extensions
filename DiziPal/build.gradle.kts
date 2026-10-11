@@ -7,5 +7,5 @@ cloudstream {
 
     tvTypes = listOf("TvSeries", "Movie")
     
-    iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/DiziPal/icon.png"
+    iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziPal.png"
 }
