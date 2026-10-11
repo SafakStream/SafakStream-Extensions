@@ -200,51 +200,77 @@ class DiziPal : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
+    val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
-        val poster      = document.selectFirst("div.page-top img[alt]")?.attr("src")
-        val year        = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
-        val description = document.selectFirst("div.summary p")?.text()?.trim()
-        val tags        = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim().split(" ").map { it.trim() }
-        val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
+    // --- ORTAK BİLGİLER (Hem film hem dizi için) ---
+    val poster      = document.selectFirst("div.page-top img[alt]")?.attr("src")
+        ?: document.selectFirst("meta[property=og:image]")?.attr("content")
+        
+    val year        = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
+    
+    val description = document.selectFirst("div.summary p")?.text()?.trim()
+        ?: document.selectFirst("meta[property=og:description]")?.attr("content")
+        ?: document.selectFirst("meta[name=description]")?.attr("content")
+        
+    val tags        = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
+        .split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        
+    val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
 
-        if (url.contains("/series/")) {
-            val title       = document.selectFirst("div.flex h2")?.text() ?: return null
-            val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
-            val episodes = episodeElements.mapNotNull { element ->
-                val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
-                val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
-                val epName = linkElement.selectFirst("h2")?.text()?.trim() ?: "Bölüm"
-                val infoText = linkElement.selectFirst("div.text-white.text-sm.opacity-80")?.text()?.trim() ?: ""
-                val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
-                val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+    // --- DİZİ Mİ FİLM Mİ? ---
+    // URL'de /series/ varsa veya sayfada bölüm listesi varsa dizi kabul et
+    val isSeries = url.contains("/series/") || document.selectFirst("a[data-dizipal-pageloader]") != null
 
-                newEpisode(epHref) {
-                    this.name    = epName
-                    this.episode = epEpisode
-                    this.season  = epSeason
-                }
-            }
+    if (isSeries) {
+        // --- DİZİ YÜKLEME ---
+        val title = document.selectFirst("div.flex h2")?.text()
+            ?: document.selectFirst("h1")?.text()
+            ?: document.selectFirst("meta[property=og:title]")?.attr("content")
+            ?: "Bilinmeyen Dizi"
 
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.year      = year
-                this.plot      = description
-                this.tags      = tags
-                this.duration  = duration
-            }
-        } else { 
-            val title = document.selectXpath("//div[@class='g-title'][2]/div").text().trim()
+        val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
+        val episodes = episodeElements.mapNotNull { element ->
+            val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
+            val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
+            val epName = linkElement.selectFirst("h2")?.text()?.trim() ?: "Bölüm"
+            val infoText = linkElement.selectFirst("div.text-white.text-sm.opacity-80")?.text()?.trim() ?: ""
+            val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+            val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
 
-            return newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.year      = year
-                this.plot      = description
-                this.tags      = tags
-                this.duration  = duration
+            newEpisode(epHref) {
+                this.name    = epName
+                this.episode = epEpisode
+                this.season  = epSeason
             }
         }
+
+        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+            this.posterUrl = poster
+            this.year      = year
+            this.plot      = description
+            this.tags      = tags
+            this.duration  = duration
+        }
+
+    } else {
+        // --- FİLM YÜKLEME (Daha sağlam seçiciler) ---
+        // Sırayla birçok farklı yerden başlığı çekmeyi dener
+        val title = document.selectFirst("h1.g-title")?.text()?.trim()
+            ?: document.selectFirst("div.g-title")?.text()?.trim()
+            ?: document.selectFirst("h1")?.text()?.trim()
+            ?: document.selectFirst("meta[property=og:title]")?.attr("content")
+            ?: document.selectFirst("title")?.text()?.trim()
+            ?: "Bilinmeyen Film"
+
+        return newMovieLoadResponse(title, url, TvType.Movie, url) {
+            this.posterUrl = poster
+            this.year      = year
+            this.plot      = description
+            this.tags      = tags
+            this.duration  = duration
+        }
     }
+}
 
     override suspend fun loadLinks(
         data: String,
