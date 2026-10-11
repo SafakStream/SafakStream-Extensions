@@ -208,7 +208,7 @@ val ciphertextB64 = json.getString("ciphertext")
             val iv = hexToBytes(ivHex)
 val ciphertext = android.util.Base64.decode(ciphertextB64, android.util.Base64.DEFAULT)
             val keySpec = PBEKeySpec(PASSPHRASE.toCharArray(), salt, 999, 256)
-            val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+            val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
             val secretKey = keyFactory.generateSecret(keySpec)
             val aesKey = SecretKeySpec(secretKey.encoded, "AES")
 
