@@ -18,6 +18,5 @@ rootProject.name = "SafakStream-Extensions"
 
 include(
     "YouTube",
-    "CineStream",
-    "Dizipal"
+    "CineStream"
 )
