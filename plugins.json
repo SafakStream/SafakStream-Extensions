@@ -33,7 +33,7 @@
             "SafakStream"
         ],
         "description": "DiziPal eklentisi - SafakStream taraf\u0131ndan uyarland\u0131.",
-        "fileSize": 26966,
+        "fileSize": 28133,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -42,7 +42,7 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=dizipal1588.com&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-248612a0b3fffab5c887c89585e0f385ca43f0cfbd8ca9a0979ee713af8a2054"
+        "fileHash": "sha256-101a2d8db76a9db1bd69e3f0dcc71af5be0e8ebf0bdc478282e2f655d1625c2e"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
