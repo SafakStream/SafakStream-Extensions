@@ -7,10 +7,11 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import org.json.JSONObject
 
 class DizipalPlayer : ExtractorApi() {
     override var name = "DizipalPlayer"
-    override var mainUrl = "dplayer82.site"
+    override var mainUrl = "four.dplayer82.site"
     override val requiresReferer = true
 
     override suspend fun getUrl(
@@ -20,79 +21,97 @@ class DizipalPlayer : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         try {
-            val response = app.get(url, referer = referer).text
+            Log.d("DiziPal", "DizipalPlayer.getUrl çağrıldı: $url")
 
-            val openPlayerRegex = Regex("""window\.openPlayer\s*\(\s*['"]([^'"]+)['"]""")
-            val subUrls = mutableSetOf<String>()
-            val fileRegex = Regex(""""file":"((?:\\\"|[^"])+)","label":"((?:\\\"|[^"])+)"""")
+            // 1) iframe.php sayfasını çek
+            val iframeResponse = app.get(url, referer = referer).text
 
-            fileRegex.findAll(response).forEach { matchResult ->
-                val subUrlExt = matchResult.groupValues[1]
-                val subLangExt = matchResult.groupValues[2]
+            // 2) window.openPlayer('PLAYLIST_B64', ...) ara
+            val openPlayerRegex = Regex("""window\.openPlayer\(\s*['"]([^'"]+)['"]""")
+            val playlistB64 = openPlayerRegex.find(iframeResponse)?.groupValues?.get(1)
+            if (playlistB64 == null) {
+                Log.e("DiziPal", "openPlayer playlist bulunamadı")
+                return
+            }
+            Log.d("DiziPal", "playlistB64 bulundu (ilk 80): ${playlistB64.take(80)}")
 
-                val subUrl = subUrlExt.replace("\\/", "/").replace("\\u0026", "&").replace("\\", "")
-                val subLang = subLangExt
-                    .replace("\\u0131", "ı").replace("\\u0130", "İ")
-                    .replace("\\u00fc", "ü").replace("\\u00e7", "ç")
-                    .replace("\\u011f", "ğ").replace("\\u015f", "ş")
+            // 3) Domain tespit et (iframe URL'inden)
+            val domainRegex = Regex("https?://[^/]+")
+            val domain = domainRegex.find(url)?.value ?: "https://four.dplayer82.site"
 
-                if (subUrls.add(subUrl)) {
-                    subtitleCallback.invoke(
-                        SubtitleFile(subLang, fixUrl(subUrl))
-                    )
-                }
+            // 4) source2.php çağır
+            val apiUrl = "$domain/source2.php?v=$playlistB64"
+            val apiResponse = app.get(
+                apiUrl,
+                referer = url,
+                headers = mapOf(
+                    "X-Requested-With" to "XMLHttpRequest",
+                    "Accept" to "application/json, text/javascript, */*; q=0.01"
+                )
+            ).text
+            Log.d("DiziPal", "source2 response (ilk 200): ${apiResponse.take(200)}")
+
+            // 5) JSON parse
+            val json = JSONObject(apiResponse)
+            if (!json.optBoolean("state", false)) {
+                Log.e("DiziPal", "source2 state=false veya expired")
+                return
             }
 
-            val playlistId = openPlayerRegex.find(response)?.groupValues?.get(1) ?: return
-            Log.d("DiziPal", "playlistId: $playlistId")
+            val playlist = json.optJSONArray("playlist") ?: return
+            if (playlist.length() == 0) {
+                Log.e("DiziPal", "playlist boş")
+                return
+            }
 
-            val domainRegex = Regex("https?://[^/]+")
-            val domain = domainRegex.find(url)?.value ?: "https://dplayer82.site"
+            val firstItem = playlist.getJSONObject(0)
+            val sources = firstItem.optJSONArray("sources") ?: return
 
-            val apiUrl = "$domain/source2.php?v=$playlistId"
-            Log.d("DiziPal", "apiUrl: $apiUrl")
+            for (i in 0 until sources.length()) {
+                val src = sources.getJSONObject(i)
+                val file = src.optString("file")
+                val title = src.optString("title", "DizipalPlayer")
+                val type = src.optString("type", "hls")
 
-            val apiResponse = app.get(apiUrl, referer = url).text
+                if (file.isNullOrEmpty()) continue
 
-            val fileRegex2 = Regex(""""file"\s*:\s*"([^"]+)"""")
-            fileRegex2.findAll(apiResponse).forEach { matchResult ->
-                var fileUrl = matchResult.groupValues[1].replace("\\/", "/")
-
-                fileUrl = when {
-                    fileUrl.startsWith("//") -> "https:$fileUrl"
-                    !fileUrl.startsWith("http") -> "https://$fileUrl"
-                    else -> fileUrl
-                }
-
-                if (fileUrl.contains("m.php")) {
-                    fileUrl = fileUrl.replace("m.php", "master.m3u8")
-                }
-
-                Log.d("DiziPal", "fileUrl: $fileUrl")
+                Log.d("DiziPal", "video kaynağı[$i] ($title): $file")
 
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
-                        name = "DPlayer (Auto)",
-                        url = fileUrl,
-                        type = ExtractorLinkType.M3U8
+                        name = "DPlayer ($title)",
+                        url = file,
+                        type = if (type == "hls") ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
                     ) {
-                        this.referer = url
+                        this.referer = "$domain/"
                         this.quality = 0
                     }
                 )
             }
-        } catch (e: Exception) {
-            Log.e("DiziPal", "DPlayer Extractor Hata: ${e.message}")
-            e.printStackTrace()
-        }
-    }
 
-    private fun fixUrl(url: String): String {
-        return when {
-            url.startsWith("http") -> url
-            url.startsWith("//") -> "https:$url"
-            else -> "https://$url"
+            // 6) Altyazıları da çek (m3u8 EXT-X-MEDIA'dan)
+            // m.php içeriğini çekip altyazı URI'lerini bulalım
+            try {
+                val firstSourceUrl = sources.getJSONObject(0).optString("file")
+                if (!firstSourceUrl.isNullOrEmpty()) {
+                    val m3u8Content = app.get(firstSourceUrl, referer = "$domain/").text
+                    val subtitleRegex = Regex("""#EXT-X-MEDIA:[^\n]*NAME="([^"]+)"[^\n]*URI="([^"]+)"""")
+                    subtitleRegex.findAll(m3u8Content).forEach { match ->
+                        val subName = match.groupValues[1]
+                        var subUrl = match.groupValues[2]
+                        if (subUrl.startsWith("//")) subUrl = "https:$subUrl"
+                        else if (!subUrl.startsWith("http")) subUrl = "$domain/$subUrl"
+                        Log.d("DiziPal", "altyazı: $subName -> $subUrl")
+                        subtitleCallback.invoke(SubtitleFile(subName, subUrl))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DiziPal", "Altyazı parse hatası: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.e("DiziPal", "DizipalPlayer Hata: ${e.message}")
+            e.printStackTrace()
         }
     }
 }
