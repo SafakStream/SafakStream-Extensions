@@ -68,14 +68,14 @@
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
         "status": 3,
-        "version": -1,
+        "version": 1,
         "name": "SelcukFlix",
         "internalName": "SelcukFlix",
         "authors": [
             "SafakStream"
         ],
         "description": "SelcukFlix - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 28837,
+        "fileSize": 28836,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -84,7 +84,7 @@
         ],
         "iconUrl": "https://selcukflix.app/assets/favicon/apple-touch-icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-b03a27846bfe50ed2dddcc7307771e0e45e04a3ee1b661f27050448fc52fccfb"
+        "fileHash": "sha256-5354cdfbc6c7b53a918bde144f18c76f439dd78406f2eca14083617284e3fbcf"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
