@@ -56,6 +56,7 @@ subprojects {
             language = "tr"
             tvTypes = listOf("TvSeries", "Movie")
             iconUrl = "https://selcukflix.app/assets/favicon/apple-touch-icon.png"
+            version = 1
         }
     }
 
