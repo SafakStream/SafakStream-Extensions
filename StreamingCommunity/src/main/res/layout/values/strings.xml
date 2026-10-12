@@ -1,0 +1,11 @@
+<resources>
+    <string name="it">Italiano</string>
+    <string name="en">English</string>
+    <string name="tr">Türkçe</string>
+    <string name="header_tw">Streaming Community</string>
+    <string name="lang_label">Language</string>
+    <string name="upcoming_label">Show upcoming</string>
+    <string name="server_address_label">Host / URL</string>
+    <string name="server_address_hint">Lascia vuoto per usare quello predefinito</string>
+    <string name="save_icon">Kaydet</string>
+</resources>
