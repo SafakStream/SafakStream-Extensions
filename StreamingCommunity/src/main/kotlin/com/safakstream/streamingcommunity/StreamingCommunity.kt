@@ -18,7 +18,7 @@ class StreamingCommunity(
 
     companion object {
         const val TAG = "SCommunity"
-        const val DEFAULT_BASE_URL = "https://streamingunity.vip/"
+        const val DEFAULT_BASE_URL = "https://streamingunity.fun/"
 
         @PublishedApi
         internal val mapper = jacksonObjectMapper()
