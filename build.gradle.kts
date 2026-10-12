@@ -49,6 +49,14 @@ subprojects {
     cloudstream {
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/SafakStream/SafakStream-Extensions")
         authors = listOf("SafakStream")
+
+        // SelcukFlix özel metadata
+        if (project.name == "SelcukFlix") {
+            description = "SelcukFlix - Türkçe dizi ve film izleme platformu"
+            language = "tr"
+            tvTypes = listOf("TvSeries", "Movie")
+            iconUrl = "https://selcukflix.app/assets/favicon/apple-touch-icon.png"
+        }
     }
 
     android {
