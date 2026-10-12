@@ -1,6 +1,5 @@
 plugins {
     id("com.android.library")
-    // "org.jetbrains.kotlin.android" satırı KALDIRILDI
 }
 
 android {
@@ -9,18 +8,21 @@ android {
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 34
+        // targetSdk artık burada değil
     }
+
+    // targetSdk AGP 9.0+ ile android bloğunun içine taşındı
+    targetSdk = 34
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
 
-    // Kotlin ayarları artık burada
-    kotlin {
-        jvmToolchain(17)
-    }
+// Kotlin ayarları (AGP 9.0+ için)
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
