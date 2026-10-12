@@ -79,3 +79,75 @@ class Settings(
 
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     @RequiresApi(Build.VERSION_CODES.M)
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?
+    ) {
+        super.onViewCreated(view, savedInstanceState)
+        var showUpcoming = sharedPref?.getBoolean(StreamingCommunityPlugin.PREF_SHOW_UPCOMING, true) ?: true
+
+        val headerTw: TextView? = view.findViewByName("header_tw")
+        headerTw?.text = getString("header_tw")
+        val labelTw: TextView? = view.findViewByName("lang_label")
+        labelTw?.text = getString("lang_label")
+
+        val upcomingSw: Switch? = view.findViewByName("upcoming_switch")
+        upcomingSw?.makeTvCompatible()
+        upcomingSw?.text = getString("upcoming_label")
+        upcomingSw?.isChecked = showUpcoming
+        upcomingSw?.setOnCheckedChangeListener { button, isChecked -> showUpcoming = !showUpcoming }
+
+        val serverAddressLabelTw: TextView? = view.findViewByName("server_address_label")
+        serverAddressLabelTw?.text = getString("server_address_label")
+        val serverAddressInput: EditText? = view.findViewByName("server_address_input")
+        serverAddressInput?.hint = getString("server_address_hint")
+        serverAddressInput?.setText(currentBaseUrl)
+
+        val langsDropdown: Spinner? = view.findViewByName("lang_spinner")
+        val langs = arrayOf("it", "en")
+        val langsMap = langs.map { it to getString(it) }
+        langsDropdown?.adapter = ArrayAdapter(
+            requireContext(), android.R.layout.simple_spinner_dropdown_item, langsMap.map { it.second }
+        )
+        langsDropdown?.setSelection(currentLangPosition)
+
+        langsDropdown?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                currentLang = langs[position]
+            }
+
+            override fun onNothingSelected(p0: AdapterView<*>?) {
+            }
+        }
+
+        val saveBtn: ImageButton? = view.findViewByName("save_btn")
+        saveBtn?.makeTvCompatible()
+        saveBtn?.setImageDrawable(getDrawable("save_icon"))
+
+        saveBtn?.setOnClickListener {
+            val rawBaseUrl = serverAddressInput?.text?.toString()?.trim().orEmpty()
+            val normalizedBaseUrl = StreamingCommunity.normalizeBaseUrl(rawBaseUrl)
+
+            sharedPref?.edit {
+                this.putInt(StreamingCommunityPlugin.PREF_LANG_POSITION, langs.indexOf(currentLang))
+                this.putString(StreamingCommunityPlugin.PREF_LANG, currentLang)
+                this.putBoolean(StreamingCommunityPlugin.PREF_SHOW_UPCOMING, showUpcoming)
+                if (normalizedBaseUrl.isNullOrBlank()) {
+                    this.remove(StreamingCommunityPlugin.PREF_BASE_URL)
+                } else {
+                    this.putString(StreamingCommunityPlugin.PREF_BASE_URL, normalizedBaseUrl)
+                }
+            }
+            currentBaseUrl = normalizedBaseUrl.orEmpty()
+            showToast(
+                getString("settings_saved") ?: "Saved. Restart the app to apply the settings"
+            )
+            dismiss()
+        }
+    }
+}
