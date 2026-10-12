@@ -2,6 +2,7 @@ package com.safakstream.streamingcommunity
 
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -24,7 +25,7 @@ class Settings(
         sharedPref?.let { pref ->
             currentLang = pref.getString(StreamingCommunityPlugin.PREF_LANG, "it") ?: "it"
             currentLangPosition = pref.getInt(StreamingCommunityPlugin.PREF_LANG_POSITION, 0)
-            currentBaseUrl = StreamingCommunity.Companion.normalizeBaseUrl(
+            currentBaseUrl = StreamingCommunity.normalizeBaseUrl(
                 pref.getString(StreamingCommunityPlugin.PREF_BASE_URL, "")
             ) ?: ""
         }
@@ -35,14 +36,13 @@ class Settings(
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Layout dosyasını yükle
         val layoutId = resources.getIdentifier("settings", "layout", requireContext().packageName)
         return if (layoutId != 0) {
             inflater.inflate(layoutId, container, false)
         } else super.onCreateView(inflater, container, savedInstanceState)
     }
 
-    @RequiresApi(23)
+    @RequiresApi(Build.VERSION_CODES.M)
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -50,11 +50,12 @@ class Settings(
         // 1. Başlık ve Etiketler
         view.findViewById<TextView>(R.id.header_tw)?.text = getStringRes("header_tw")
         view.findViewById<TextView>(R.id.lang_label)?.text = getStringRes("lang_label")
-        
-        // 2. Dil Seçimi (Spinner)
+        view.findViewById<TextView>(R.id.server_address_label)?.text = getStringRes("server_address_label")
+
+        // 2. Dil Seçimi
         val langsDropdown = view.findViewById<Spinner>(R.id.lang_spinner)
-        val langs = arrayOf("it", "en", "tr") // Diller
-        val langsMap = langs.map { it to getStringRes(it) } // Görünen isimler
+        val langs = arrayOf("it", "en")
+        val langsMap = langs.map { it to getStringRes(it) }
         
         langsDropdown?.adapter = ArrayAdapter(
             requireContext(),
@@ -69,16 +70,13 @@ class Settings(
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        // 3. Yaklaşanları Göster (Switch)
+        // 3. Yaklaşanları Göster
         val upcomingSwitch = view.findViewById<Switch>(R.id.upcoming_switch)
         val showUpcoming = sharedPref?.getBoolean(StreamingCommunityPlugin.PREF_SHOW_UPCOMING, true) ?: true
         upcomingSwitch?.isChecked = showUpcoming
         upcomingSwitch?.text = getStringRes("upcoming_label")
-        upcomingSwitch?.setOnCheckedChangeListener { _, isChecked ->
-            // Switch durumu kaydedilecek
-        }
 
-        // 4. Sunucu Adresi (Host / URL)
+        // 4. Sunucu Adresi
         val serverAddressInput = view.findViewById<EditText>(R.id.server_address_input)
         serverAddressInput?.hint = getStringRes("server_address_hint")
         serverAddressInput?.setText(currentBaseUrl)
@@ -87,7 +85,7 @@ class Settings(
         val saveBtn = view.findViewById<ImageButton>(R.id.save_btn)
         saveBtn?.setOnClickListener {
             val rawUrl = serverAddressInput?.text?.toString()?.trim() ?: ""
-            val normalizedUrl = StreamingCommunity.Companion.normalizeBaseUrl(rawUrl) ?: ""
+            val normalizedUrl = StreamingCommunity.normalizeBaseUrl(rawUrl) ?: ""
 
             sharedPref?.edit()?.apply {
                 putInt(StreamingCommunityPlugin.PREF_LANG_POSITION, langs.indexOf(currentLang))
