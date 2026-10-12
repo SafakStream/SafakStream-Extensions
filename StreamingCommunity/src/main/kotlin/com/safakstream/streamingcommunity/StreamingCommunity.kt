@@ -1,8 +1,9 @@
 package com.safakstream.streamingcommunity
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.jsoup.Jsoup
@@ -19,6 +20,10 @@ class StreamingCommunity(
         const val TAG = "SCommunity"
         const val DEFAULT_BASE_URL = "https://streamingunity.vip/"
         private var name: String = "StreamingCommunity"
+        private val mapper = jacksonObjectMapper()
+
+        inline fun <reified T> T.toJson(): String = mapper.writeValueAsString(this)
+        inline fun <reified T> String.fromJson(): T = mapper.readValue(this)
 
         fun resolveBaseUrl(customBaseUrl: String?): String {
             return if (customBaseUrl.isNullOrBlank()) DEFAULT_BASE_URL else customBaseUrl
@@ -41,7 +46,7 @@ class StreamingCommunity(
     private val siteRootUrl: String = resolveBaseUrl(customBaseUrl).let {
         if (it.endsWith("/")) it else "$it/"
     }
-    private val siteHost: String = siteRootUrl.toHttpUrlOrNull()?.host() ?: ""
+    private val siteHost: String = siteRootUrl.toHttpUrlOrNull()?.host ?: ""
     private val cdnHost: String = resolveCdnHost(siteHost)
     private var inertiaVersion: String = ""
     private var decodedXsrfToken: String = ""
@@ -64,24 +69,24 @@ class StreamingCommunity(
     )
 
     override val mainPage = mainPageOf(
-        AppUtils.toJson(SliderFetchRequestSlider("top10")) to "Slider",
-        AppUtils.toJson(SliderFetchRequestSlider("trending")) to "Slider",
-        AppUtils.toJson(SliderFetchRequestSlider("latest")) to "Slider",
-        AppUtils.toJson(SliderFetchRequestSlider("upcoming")) to "Slider",
-        AppUtils.toJson(GenreRequest("Animazione", "Animation", 0x13)) to "Genre",
-        AppUtils.toJson(GenreRequest("Avventura", "Adventure", 0xb)) to "Genre",
-        AppUtils.toJson(GenreRequest("Azione", "Action", 0x4)) to "Genre",
-        AppUtils.toJson(GenreRequest("Commedia", "Comedy", 0xc)) to "Genre",
-        AppUtils.toJson(GenreRequest("Crime", "Crime", 0x2)) to "Genre",
-        AppUtils.toJson(GenreRequest("Documentario", "Documentary", 0x18)) to "Genre",
-        AppUtils.toJson(GenreRequest("Dramma", "Drama", 0x1)) to "Genre",
-        AppUtils.toJson(GenreRequest("Famiglia", "Family", 0x10)) to "Genre",
-        AppUtils.toJson(GenreRequest("Fantascienza", "Science Fiction", 0xa)) to "Genre",
-        AppUtils.toJson(GenreRequest("Fantasy", "Fantasy", 0x8)) to "Genre",
-        AppUtils.toJson(GenreRequest("Horror", "Horror", 0x7)) to "Genre",
-        AppUtils.toJson(GenreRequest("Reality", "Reality", 0x12)) to "Genre",
-        AppUtils.toJson(GenreRequest("Romance", "Romance", 0xf)) to "Genre",
-        AppUtils.toJson(GenreRequest("Thriller", "Thriller", 0x5)) to "Genre"
+        SliderFetchRequestSlider("top10").toJson() to "Slider",
+        SliderFetchRequestSlider("trending").toJson() to "Slider",
+        SliderFetchRequestSlider("latest").toJson() to "Slider",
+        SliderFetchRequestSlider("upcoming").toJson() to "Slider",
+        GenreRequest("Animazione", "Animation", 0x13).toJson() to "Genre",
+        GenreRequest("Avventura", "Adventure", 0xb).toJson() to "Genre",
+        GenreRequest("Azione", "Action", 0x4).toJson() to "Genre",
+        GenreRequest("Commedia", "Comedy", 0xc).toJson() to "Genre",
+        GenreRequest("Crime", "Crime", 0x2).toJson() to "Genre",
+        GenreRequest("Documentario", "Documentary", 0x18).toJson() to "Genre",
+        GenreRequest("Dramma", "Drama", 0x1).toJson() to "Genre",
+        GenreRequest("Famiglia", "Family", 0x10).toJson() to "Genre",
+        GenreRequest("Fantascienza", "Science Fiction", 0xa).toJson() to "Genre",
+        GenreRequest("Fantasy", "Fantasy", 0x8).toJson() to "Genre",
+        GenreRequest("Horror", "Horror", 0x7).toJson() to "Genre",
+        GenreRequest("Reality", "Reality", 0x12).toJson() to "Genre",
+        GenreRequest("Romance", "Romance", 0xf).toJson() to "Genre",
+        GenreRequest("Thriller", "Thriller", 0x5).toJson() to "Genre"
     )
 
     private fun isHtmlPayload(payload: String): Boolean {
@@ -105,7 +110,7 @@ class StreamingCommunity(
             return null
         }
         return try {
-            AppUtils.parseJson<InertiaResponse>(payload)
+            payload.fromJson<InertiaResponse>()
         } catch (e: Exception) {
             Log.e(TAG, "$logContext: invalid JSON payload - ${e.message}")
             null
@@ -135,7 +140,7 @@ class StreamingCommunity(
             return null
         }
         return try {
-            val sliders = AppUtils.parseJson<List<Slider>>(payload)
+            val sliders = payload.fromJson<List<Slider>>()
             val slider = sliders.firstOrNull() ?: return null
             val items = searchResponseBuilder(slider.titles)
             if (items.isEmpty()) return null
@@ -189,7 +194,7 @@ class StreamingCommunity(
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-        if (!showUpcoming && request.data == AppUtils.toJson(SliderFetchRequestSlider("upcoming"))) {
+        if (!showUpcoming && request.data == SliderFetchRequestSlider("upcoming").toJson()) {
             return null
         }
         if (headers["Cookie"].isNullOrEmpty()) {
@@ -198,8 +203,8 @@ class StreamingCommunity(
         val hasNext = page < 0x11
         return when (request.name) {
             "Slider" -> {
-                val slider = AppUtils.parseJson<SliderFetchRequestSlider>(request.data)
-                val body = "{\"sliders\":[${AppUtils.toJson(slider)}]}"
+                val slider = request.data.fromJson<SliderFetchRequestSlider>()
+                val body = "{\"sliders\":[${slider.toJson()}]}"
                 val response = app.post(
                     "$siteRootUrl/api/sliders/fetch?lang=$lang",
                     headers = getSliderFetchHeaders(),
@@ -210,7 +215,7 @@ class StreamingCommunity(
                 newHomePageResponse(r, false)
             }
             "Genre" -> {
-                val genre = AppUtils.parseJson<GenreRequest>(request.data)
+                val genre = request.data.fromJson<GenreRequest>()
                 val response = app.get(
                     "$siteRootUrl$lang/archive",
                     headers = getSliderFetchHeaders(),
@@ -221,7 +226,7 @@ class StreamingCommunity(
                     )
                 )
                 val payload = response.text
-                val data = AppUtils.tryParseJson<SearchResponse>(payload)?.data ?: return null
+                val data = payload.fromJson<GenreSearchResponse>().data ?: return null
                 val name = if (lang == "en") genre.nameEN else genre.nameIT
                 val homePageList = HomePageList(
                     name,
@@ -234,24 +239,14 @@ class StreamingCommunity(
         }
     }
 
-    override suspend fun search(query: String): List<SearchResponse> {
+    override suspend fun search(query: String): List<com.lagradost.cloudstream3.SearchResponse>? {
         val url = "$mainUrl/search"
         val response = app.get(url, params = mapOf("q" to query)).text
         val titles = parseBrowseTitles(response, "Search")
         return searchResponseBuilder(titles)
     }
 
-    override suspend fun search(query: String, page: Int): SearchResponseList? {
-        val params = mutableMapOf("q" to query)
-        if (page > 1) params["page"] = page.toString()
-        val response = app.get("$mainUrl/search", params = params).text
-        val titles = parseBrowseTitles(response, "Search page=$page")
-        val items = searchResponseBuilder(titles)
-        val hasNext = items.isNotEmpty() && items.size >= 60
-        return newSearchResponseList(items, hasNext)
-    }
-
-    private fun searchResponseBuilder(listJson: List<Title>): List<SearchResponse> {
+    private fun searchResponseBuilder(listJson: List<Title>): List<com.lagradost.cloudstream3.SearchResponse> {
         return listJson
             .filter { it.type == "movie" || it.type == "tv" }
             .map { title ->
@@ -271,11 +266,11 @@ class StreamingCommunity(
     private fun getActualUrl(url: String): String {
         if (url.contains(mainUrl)) return url
         val replacingValue = if (url.contains("/it/") || url.contains("/en/")) {
-            mainUrl.toHttpUrlOrNull()?.host() ?: ""
+            mainUrl.toHttpUrlOrNull()?.host ?: ""
         } else {
-            "${mainUrl.toHttpUrlOrNull()?.host() ?: ""}/$lang"
+            "${mainUrl.toHttpUrlOrNull()?.host ?: ""}/$lang"
         }
-        val currentHost = url.toHttpUrlOrNull()?.host() ?: ""
+        val currentHost = url.toHttpUrlOrNull()?.host ?: ""
         return url.replace(currentHost, replacingValue)
     }
 
@@ -293,18 +288,18 @@ class StreamingCommunity(
         }
     }
 
-    private suspend fun getEpisodes(props: Props): List<Episode> {
-        val episodeList = mutableListOf<Episode>()
+    private suspend fun getEpisodes(props: Props): List<com.lagradost.cloudstream3.Episode> {
+        val episodeList = mutableListOf<com.lagradost.cloudstream3.Episode>()
         val title = props.title ?: return emptyList()
         title.seasons?.forEach { season ->
-            val responseEpisodes = mutableListOf<Episode>()
+            val responseEpisodes = mutableListOf<EpisodeDto>()
             if (season.id == props.loadedSeason?.id) {
                 responseEpisodes.addAll(props.loadedSeason?.episodes ?: emptyList())
             } else {
                 if (inertiaVersion.isEmpty()) setupHeaders()
                 val url = "$mainUrl/titles/${title.id}-${title.slug}/season-${season.number}"
                 val response = app.get(url, headers = headers)
-                val obj = AppUtils.parseJson<InertiaResponse>(response.text)
+                val obj = response.text.fromJson<InertiaResponse>()
                 responseEpisodes.addAll(obj.props.loadedSeason?.episodes ?: emptyList())
             }
             responseEpisodes.forEach { ep ->
@@ -315,7 +310,7 @@ class StreamingCommunity(
                     seasonNumber = season.number,
                     episodeNumber = ep.number
                 )
-                episodeList.add(newEpisode(AppUtils.toJson(loadData)) {
+                episodeList.add(newEpisode(loadData.toJson()) {
                     this.name = ep.name
                     this.posterUrl = "${props.cdnUrl}/images/${ep.cover}"
                     this.description = ep.plot
@@ -333,9 +328,9 @@ class StreamingCommunity(
         if (headers["Cookie"].isNullOrEmpty()) setupHeaders()
         val response = app.get(actualUrl, headers = headers)
         val responseBody = response.text
-        val props = AppUtils.parseJson<InertiaResponse>(responseBody).props
+        val props = responseBody.fromJson<InertiaResponse>().props
         val title = props.title ?: return null
-        val genres = title.genres.map { APIHolder.capitalize(it.name) }
+        val genres = title.genres.map { it.name.replaceFirstChar { c -> c.uppercase() } }
         val year = title.releaseDate?.substringBefore("-")?.toIntOrNull()
         val related = props.sliders?.getOrNull(0)
         val trailers = title.trailers?.mapNotNull { it.youtubeUrl }
@@ -358,7 +353,7 @@ class StreamingCommunity(
                 type = "movie",
                 tmdbId = title.tmdbId
             )
-            newMovieLoadResponse(title.name, actualUrl, TvType.Movie, AppUtils.toJson(data)) {
+            newMovieLoadResponse(title.name, actualUrl, TvType.Movie, data.toJson()) {
                 this.posterUrl = poster
                 this.year = year
                 this.plot = title.plot
@@ -377,7 +372,7 @@ class StreamingCommunity(
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         if (data.isEmpty()) return false
-        val loadData = AppUtils.parseJson<LoadData>(data)
+        val loadData = data.fromJson<LoadData>()
         val response = app.get(loadData.url).document
         val iframeSrc = response.select("iframe").attr("src")
 
