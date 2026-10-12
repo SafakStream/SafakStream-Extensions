@@ -19,11 +19,11 @@ class SinewixProvider : MainAPI() {
 
     private val apiToken = "9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA"
 
-    // hash256 kaldırıldı. Sadece gerekli header'lar kaldı.
     private val sineHeaders = mapOf(
-        "User-Agent" to "EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)",
-        "Accept" to "application/json"
-    )
+    "hash256" to "711bff4afeb47f07ab08a0b07e85d3835e739295e8a6361db77eebd93d96306b", // Geri eklendi
+    "User-Agent" to "EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)",
+    "Accept" to "application/json"
+)
 
     // ApiInterface'daki doğru endpoint'ler
     override val mainPage = mainPageOf(
