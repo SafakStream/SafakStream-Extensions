@@ -20,6 +20,6 @@ include(
     "YouTube",
     "CineStream",
     "DiziPal",
-    "HDFilmCehennemi"
+    "HDFilmCehennemi",
     "Sinewix"
 )
