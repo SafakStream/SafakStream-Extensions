@@ -134,16 +134,16 @@ class SelcukFlix : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         return try {
+            // searchterm URL'de query olarak gidiyor (body BOŞ)
+            val searchUrl = "${mainUrl}/api/bg/searchContent?searchterm=" + java.net.URLEncoder.encode(query, "UTF-8")
+
             val resp = app.post(
-                "${mainUrl}/api/bg/searchContent",
+                searchUrl,
                 headers = headers + mapOf(
                     "Accept" to "application/json, text/plain, */*",
-                    "Content-Type" to "application/json",
-                    "X-Requested-With" to "XMLHttpRequest",
                     "Origin" to mainUrl,
-                    "Referer" to "$mainUrl/"
-                ),
-                data = mapOf("searchterm" to query)
+                    "Referer" to "$mainUrl/mobil-arama"
+                )
             ).text
 
             val decoded = SelcukFlixDecryptor.decryptResponse(resp)
@@ -152,16 +152,26 @@ class SelcukFlix : MainAPI() {
             val results = root.get("result") ?: return emptyList()
 
             results.mapNotNull { node ->
-                val slug  = node.get("used_slug")?.asText() ?: return@mapNotNull null
-                val title = node.get("used_title")?.asText()?.ifBlank { null }
+                val slug = node.get("used_slug")?.asText()?.ifBlank { null }
+                    ?: return@mapNotNull null
+
+                // Arama sonuçları: object_name, used_type, object_poster_url
+                val title = node.get("object_name")?.asText()?.ifBlank { null }
+                    ?: node.get("object_alternative_name")?.asText()?.ifBlank { null }
+                    ?: node.get("used_title")?.asText()?.ifBlank { null }
                     ?: node.get("original_title")?.asText()?.ifBlank { null }
                     ?: node.get("culture_title")?.asText()?.ifBlank { null }
-                    ?: return@mapNotNull null
-                val poster = node.get("poster_url")?.asText()?.ifBlank { null }
-                    ?: node.get("object_poster_url")?.asText()?.ifBlank { null }
-                val typeId = node.get("type_id")?.asInt() ?: 1
+                    ?: slug.substringAfterLast("/").replace("-", " ")
+
+                val poster = node.get("object_poster_url")?.asText()?.ifBlank { null }
+                    ?: node.get("object_face_url")?.asText()?.ifBlank { null }
+                    ?: node.get("poster_url")?.asText()?.ifBlank { null }
+                    ?: node.get("face_url")?.asText()?.ifBlank { null }
+
+                val usedType = node.get("used_type")?.asText()?.lowercase() ?: ""
+                val typeId = node.get("type_id")?.asInt() ?: 0
                 val url = fixUrl(slug)
-                val isMovie = slug.startsWith("film/") || typeId == 2
+                val isMovie = slug.startsWith("film/") || usedType.contains("movie") || typeId == 2
 
                 if (isMovie) {
                     newMovieSearchResponse(title, url, TvType.Movie) { this.posterUrl = poster }
