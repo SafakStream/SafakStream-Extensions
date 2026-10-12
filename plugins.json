@@ -75,16 +75,18 @@
             "SafakStream"
         ],
         "description": "StreamingCommunity | Film e Serie TV",
-        "fileSize": 48913,
+        "fileSize": 60976,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "it",
         "tvTypes": [
+            "TvSeries",
             "Movie",
-            "TvSeries"
+            "Documentary",
+            "Cartoon"
         ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/StreamingCommunity/icon.png",
+        "iconUrl": "https://streamingunity.dog/apple-touch-icon.png?v=2",
         "apiVersion": 1,
-        "fileHash": "sha256-3440b6824d1da86877507eecd83020b6dd19d6a7ce0037440f9f3210be570fa9"
+        "fileHash": "sha256-5038119e1a8fff251d3a7dd808d79a37d3ecb661a3eac332f82abde45df337b0"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
