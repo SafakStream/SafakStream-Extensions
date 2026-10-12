@@ -199,7 +199,7 @@ class DiziPal : MainAPI() {
     
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
-    override suspend fun load(url: String): LoadResponse? {
+        override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
         // --- 1. ORTAK BİLGİLER ---
@@ -217,39 +217,22 @@ class DiziPal : MainAPI() {
             ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
             ?: document.selectFirst("img[itemprop=image]")?.attr("src")
 
-        // --- 2. BÜYÜK POSTER (Backdrop) ÇEKİMİ ---
-        val backgroundPoster = run {
-            val directPoster = document.selectFirst("div.page-top img")?.attr("data-src")
-                ?: document.selectFirst("div.page-top img")?.attr("src")
-                ?: document.selectFirst("div.cover img")?.attr("data-src")
-                ?: document.selectFirst("div.cover img")?.attr("src")
-                ?: document.selectFirst("div.hero img")?.attr("data-src")
-                ?: document.selectFirst("div.hero img")?.attr("src")
-                ?: document.selectFirst("div.backdrop img")?.attr("data-src")
-                ?: document.selectFirst("div.backdrop img")?.attr("src")
+        // Büyük poster = Küçük poster (Aynı görseli kullan)
+        val backgroundPoster = poster
 
-            val cssPoster = document.selectFirst("div[style*=background-image]")?.let { element ->
-                val style = element.attr("style")
-                Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
-            }
-
-            // Eğer gerçek bir backdrop bulunamadıysa, küçük afişi büyük poster olarak kullan.
-            directPoster ?: cssPoster ?: poster
-        }
-
-        // --- 3. YIL, SÜRE, ETİKETLER ---
+        // --- 2. YIL, SÜRE, ETİKETLER ---
         val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
         val duration = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
         val tags = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
             .split(" ").map { it.trim() }.filter { it.isNotEmpty() }
 
-        // --- 4. BÖLÜM LİSTESİ KONTROLÜ ---
+        // --- 3. BÖLÜM LİSTESİ KONTROLÜ ---
         val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
         val hasEpisodes = episodeElements.isNotEmpty() || 
                           document.selectFirst("a[data-dizipal-pageloader]") != null ||
                           document.selectFirst("div.episode") != null
 
-        // --- 5. DİZİ Mİ FİLM Mİ? ---
+        // --- 4. DİZİ Mİ FİLM Mİ? ---
         if (hasEpisodes && episodeElements.isNotEmpty()) {
             // --- DİZİ YÜKLEME ---
             val episodes = episodeElements.mapNotNull { element ->
