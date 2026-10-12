@@ -20,6 +20,5 @@ include(
     "YouTube",
     "CineStream",
     "DiziPal",
-    "HDFilmCehennemi",
-    "Sinewix"
+    "HDFilmCehennemi"
 )
