@@ -2,7 +2,6 @@ package com.safakstream.streamingcommunity
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.appcompat.app.AppCompatActivity
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
@@ -28,10 +27,5 @@ class StreamingCommunityPlugin : Plugin() {
         registerMainAPI(StreamingCommunity(lang, baseUrl, showUpcoming))
         registerExtractorAPI(VixCloudExtractor())
         registerExtractorAPI(VixSrcExtractor())
-    }
-
-    override fun openSettings(context: Context) {
-        val activity = context as? AppCompatActivity ?: return
-        Settings(this, sharedPref).show(activity.supportFragmentManager, "Settings")
     }
 }
