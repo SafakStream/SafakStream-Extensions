@@ -37,12 +37,19 @@ class SelcukFlix : MainAPI() {
     override var sequentialMainPageScrollDelay = 150L
 
     override val mainPage = mainPageOf(
-        "${mainUrl}/dizi-izle"              to "Yeni Diziler",
-        "${mainUrl}/film-izle"              to "Yeni Filmler",
-        "${mainUrl}/trend"                  to "Trend",
-        "${mainUrl}/kesfet"                 to "Keşfet",
-        "${mainUrl}/seri-filmler"           to "Seri Filmler",
-        "${mainUrl}/yabanci-dizi-izle"      to "Yabancı Diziler"
+        "${mainUrl}/dizi-izle"                  to "Yeni Diziler",
+        "${mainUrl}/film-izle"                  to "Yeni Filmler",
+        "${mainUrl}/trend"                      to "Trend",
+        "${mainUrl}/kesfet"                     to "Keşfet",
+        "${mainUrl}/anime-izle"                 to "Animeler",
+        "${mainUrl}/asya-dizileri-izle"         to "Asya Dizileri",
+        "${mainUrl}/kdrama-izle"                to "K-Drama",
+        "${mainUrl}/turkce-dublaj-dizi-izle"    to "Türkçe Dublaj Diziler",
+        "${mainUrl}/turkce-altyazili-dizi-izle" to "Türkçe Altyazılı Diziler",
+        "${mainUrl}/aksiyon-dizileri"           to "Aksiyon Dizileri",
+        "${mainUrl}/drama-dizileri"             to "Drama Dizileri",
+        "${mainUrl}/gerilim-dizileri"           to "Gerilim Dizileri",
+        "${mainUrl}/yabanci-film-izle"          to "Yabancı Filmler"
     )
 
     private val headers = mapOf(
@@ -54,7 +61,47 @@ class SelcukFlix : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page > 1) "${request.data}?sayfa=$page" else request.data
         val document = app.get(url, headers = headers, referer = mainUrl).document
+        val html = document.html()
 
+        // 1) Önce __NEXT_DATA__ içindeki initialSeries'i dene (kategori sayfaları için)
+        val nextDataMatch = Regex("""<script id="__NEXT_DATA__"[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL).find(html)
+        if (nextDataMatch != null) {
+            val json = nextDataMatch.groupValues[1]
+            val initialMatch = Regex(""""initialSeries"\s*:\s*"([^"]+)"""").find(json)
+            if (initialMatch != null) {
+                val decoded = SelcukFlixDecryptor.decryptSecureData(initialMatch.groupValues[1])
+                if (decoded.isNotEmpty() && decoded.startsWith("[")) {
+                    val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
+                    try {
+                        val array = mapper.readTree(decoded)
+                        val home = array.mapNotNull { node ->
+                            val slug = node.get("used_slug")?.asText() ?: return@mapNotNull null
+                            val title = node.get("original_title")?.asText()?.ifBlank { null }
+                                ?: node.get("culture_title")?.asText()?.ifBlank { null }
+                                ?: return@mapNotNull null
+                            val poster = node.get("poster_url")?.asText()?.ifBlank { null }
+                                ?: node.get("face_url")?.asText()?.ifBlank { null }
+                            val typeId = node.get("type_id")?.asInt() ?: 0
+                            val itemUrl = fixUrl(slug)
+                            val isMovie = slug.startsWith("film/") || typeId == 1
+                            if (isMovie) {
+                                newMovieSearchResponse(title, itemUrl, TvType.Movie) { this.posterUrl = poster }
+                            } else {
+                                newTvSeriesSearchResponse(title, itemUrl, TvType.TvSeries) { this.posterUrl = poster }
+                            }
+                        }
+                        if (home.isNotEmpty()) {
+                            Log.d("SelcukFlix", "initialSeries'ten ${home.size} sonuç (${request.name})")
+                            return newHomePageResponse(request.name, home, hasNext = home.size > 20)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SelcukFlix", "initialSeries parse hatası: ${e.message}")
+                    }
+                }
+            }
+        }
+
+        // 2) Fallback: HTML kartları
         val home = document.select("a[href^='dizi/'], a[href^='/dizi/'], a[href^='film/'], a[href^='/film/']")
             .mapNotNull { it.toSearchResult() }
             .distinctBy { it.url }
