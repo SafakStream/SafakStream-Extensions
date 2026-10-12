@@ -199,35 +199,15 @@ class DiziPal : MainAPI() {
     
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
-    override suspend fun load(url: String): LoadResponse? {
-    val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
-
-    // --- 1. ORTAK BİLGİLER ---
-    val title = document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()
-        ?: document.selectFirst("h1")?.text()?.trim()
-        ?: document.selectFirst("title")?.text()?.trim()
-        ?: "Bilinmeyen İçerik"
-
-    val description = document.selectFirst("meta[property=og:description]")?.attr("content")?.trim()
-        ?: document.selectFirst("meta[name=description]")?.attr("content")?.trim()
-        ?: document.selectFirst("div.summary p")?.text()?.trim()
-
-    // Küçük Poster (Afiş)
-    val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
-        ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
-        ?: document.selectFirst("img[itemprop=image]")?.attr("src")
-
-            // --- YENİ: BÜYÜK POSTER (Backdrop) ÇEKİMİ (Kesin Çözüm) ---
+            // --- BÜYÜK POSTER (Backdrop) ÇEKİMİ (Kesin Çözüm) ---
         val backgroundPoster = run {
-            // 1. Önce bilinen ve çalışan seçicileri dene
+            // 1. Önce bilinen ve güvenilir seçicileri dene (dizilerde çalışıyor)
             val directPoster = document.selectFirst("div.page-top img")?.attr("data-src")
                 ?: document.selectFirst("div.page-top img")?.attr("src")
                 ?: document.selectFirst("div.cover img")?.attr("data-src")
                 ?: document.selectFirst("div.cover img")?.attr("src")
                 ?: document.selectFirst("div.hero img")?.attr("data-src")
                 ?: document.selectFirst("div.hero img")?.attr("src")
-                ?: document.selectFirst("div.banner img")?.attr("data-src")
-                ?: document.selectFirst("div.banner img")?.attr("src")
                 ?: document.selectFirst("div.backdrop img")?.attr("data-src")
                 ?: document.selectFirst("div.backdrop img")?.attr("src")
 
@@ -237,32 +217,9 @@ class DiziPal : MainAPI() {
                 Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
             }
 
-            // 3. Eğer yukarıdakiler boşsa, sayfadaki TÜM resimleri tara
-            //    ve "film şeridi" gibi placeholder'ları eleyerek EN BÜYÜK olanı seç.
-            val bestImg = document.select("img").filter { img ->
-                val src = img.attr("src").ifEmpty { img.attr("data-src") }
-                // Placeholder, logo, ikon, reklam vb. resimleri filtrele
-                src.isNotEmpty() &&
-                !src.contains("placeholder", ignoreCase = true) &&
-                !src.contains("film-strip", ignoreCase = true) &&
-                !src.contains("no-image", ignoreCase = true) &&
-                !src.contains("logo", ignoreCase = true) &&
-                !src.contains("icon", ignoreCase = true) &&
-                !src.contains("ads", ignoreCase = true) &&
-                !src.contains("banner", ignoreCase = true) &&
-                !src.contains("default", ignoreCase = true) &&
-                (src.endsWith(".jpg") || src.endsWith(".jpeg") || src.endsWith(".png") || src.endsWith(".webp"))
-            }.maxByOrNull { img ->
-                // Genişlik x Yükseklik değerine göre en büyüğünü bul (yoksa 0)
-                val w = img.attr("width").toIntOrNull() ?: 0
-                val h = img.attr("height").toIntOrNull() ?: 0
-                w * h
-            }?.let { img ->
-                img.attr("src").ifEmpty { img.attr("data-src") }
-            }
-
-            // 4. Sırayla en iyisini seç: Direkt seçici -> CSS -> En büyük resim -> og:image
-            directPoster ?: cssPoster ?: bestImg ?: document.selectFirst("meta[property=og:image]")?.attr("content")
+            // 3. Kesin Çözüm: Eğer gerçek bir backdrop bulunamadıysa, küçük afişi (poster) büyük poster olarak kullan.
+            //    Böylece o saçma reklam görselleri veya siyah ekran gelmez.
+            directPoster ?: cssPoster ?: poster
         }
         
     // Yıl, Süre, Etiketler
