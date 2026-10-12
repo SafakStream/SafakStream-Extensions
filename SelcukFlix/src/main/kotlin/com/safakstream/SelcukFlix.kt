@@ -222,12 +222,23 @@ class SelcukFlix : MainAPI() {
             return false
         }
 
-        // iframe URL'lerini bul
-        val iframes = Regex("""<iframe[^>]*src="([^"]+)"""").findAll(decoded)
-            .map { it.groupValues[1] }
+        // iframe URL'lerini bul — src hem " hem \" olabilir
+        val iframeRegexes = listOf(
+            Regex("""<iframe[^>]*src="([^"]+)""""),
+            Regex("""<iframe[^>]*src=\\?"([^"\\]+)""""),
+            Regex("""src=\\?"(//[^"\\]+)""""),
+            Regex("""src=\\?"(https?://[^"\\]+)""")
+        )
+
+        val iframes = iframeRegexes
+            .flatMap { regex -> regex.findAll(decoded).map { it.groupValues[1] } }
+            .map { it.replace("\\", "") }
             .map { if (it.startsWith("//")) "https:$it" else if (it.startsWith("/")) "$mainUrl$it" else it }
+            .filter { it.contains("pichive") || it.contains("iframe.php") }
             .distinct()
             .toList()
+
+        Log.d("SelcukFlix", "Bulunan iframe sayısı: ${iframes.size}")
 
         Log.d("SelcukFlix", "Bulunan iframe sayısı: ${iframes.size}")
 
