@@ -74,10 +74,10 @@
         "authors": [
             "SafakStream"
         ],
-        "fileSize": 23493,
+        "fileSize": 23545,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "apiVersion": 1,
-        "fileHash": "sha256-8425356a33995d7235b182e89671c7422174cc254b9673838b3950d61c36f716"
+        "fileHash": "sha256-4a0f7688d2f0283b3d803cdde029f8be580023c00d34ddb7583507a7d62a0c16"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
