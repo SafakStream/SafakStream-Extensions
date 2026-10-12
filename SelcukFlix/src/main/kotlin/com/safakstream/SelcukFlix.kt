@@ -96,10 +96,10 @@ class SelcukFlix : MainAPI() {
                     "Accept" to "application/json, text/plain, */*",
                     "Content-Type" to "application/json",
                     "X-Requested-With" to "XMLHttpRequest",
-                    "Origin" to mainUrl
+                    "Origin" to mainUrl,
+                    "Referer" to "$mainUrl/"
                 ),
-                referer = "$mainUrl/",
-                data = """{"searchterm":"$query"}"""
+                data = mapOf("searchterm" to query)
             ).text
 
             val decoded = SelcukFlixDecryptor.decryptResponse(resp)
