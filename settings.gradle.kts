@@ -21,5 +21,6 @@ include(
     "CineStream",
     "DiziPal",
     "HDFilmCehennemi",
-    "StreamingCommunity"
+    "StreamingCommunity",
+    "SelcukFlix"
 )
