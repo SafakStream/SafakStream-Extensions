@@ -23,6 +23,5 @@ include(
     "HDFilmCehennemi",
     "StreamingCommunity",
     "SelcukFlix",
-    "NetMirror",
     "NetMirror"
 )
