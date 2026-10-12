@@ -69,7 +69,7 @@ class PichiveExtractor : ExtractorApi() {
                 if (subUrl.startsWith("//")) subUrl = "https:$subUrl"
                 if (subUrl.isBlank() || seen.contains(subUrl)) return@forEach
                 seen.add(subUrl)
-                val label = m.groupValues[2].ifBlank { "Altyazı" }
+                val label = unescapeUnicode(m.groupValues[2]).ifBlank { "Altyazı" }
                 Log.d("PichiveExtractor", "Altyazı: $label -> $subUrl")
                 try {
                     subtitleCallback.invoke(
@@ -174,5 +174,29 @@ class PichiveExtractor : ExtractorApi() {
         } catch (e: Exception) {
             Log.e("PichiveExtractor", "JSON parse hatası: ${e.message}")
         }
+    }
+
+    /**
+     * JSON'daki \uXXXX escape'lerini gerçek Unicode karakterlere çevirir.
+     * Örn: "T\u00fcrk\u00e7e" -> "Türkçe"
+     */
+    private fun unescapeUnicode(s: String): String {
+        if (!s.contains("\\u")) return s
+        val sb = StringBuilder()
+        var i = 0
+        while (i < s.length) {
+            if (i + 5 < s.length && s[i] == '\\' && s[i + 1] == 'u') {
+                val hex = s.substring(i + 2, i + 6)
+                val code = hex.toIntOrNull(16)
+                if (code != null) {
+                    sb.append(code.toChar())
+                    i += 6
+                    continue
+                }
+            }
+            sb.append(s[i])
+            i++
+        }
+        return sb.toString()
     }
 }
