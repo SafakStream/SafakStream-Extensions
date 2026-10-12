@@ -8,10 +8,7 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import org.jsoup.Jsoup
 
 class VixCloudExtractor : ExtractorApi() {
     override val mainUrl: String = "vixcloud.co"
@@ -83,8 +80,6 @@ class VixCloudExtractor : ExtractorApi() {
             headers = h,
             interceptor = CloudflareKiller()
         ).document
-
-        Log.d(TAG, document.toString())
 
         val script = document.select("script")
             .firstOrNull { it.data().contains("masterPlaylist") }
