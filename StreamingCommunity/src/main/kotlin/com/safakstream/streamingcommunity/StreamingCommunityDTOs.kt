@@ -87,6 +87,7 @@ data class Props(
     @JsonProperty("titles") val titles: List<Title>?
 )
 
+
 data class Season(
     @JsonProperty("id") val id: Int,
     @JsonProperty("number") val number: Int,
@@ -94,10 +95,11 @@ data class Season(
     @JsonProperty("plot") val plot: String?,
     @JsonProperty("release_date") val releaseDate: String?,
     @JsonProperty("title_id") val titleId: Int,
-    @JsonProperty("episodes") val episodes: List<Episode>?
+    @JsonProperty("episodes") val episodes: List<EpisodeDto>?  // ← EpisodeDto olarak değişti
 )
 
-data class Episode(
+// ↓↓↓ Sınıf adı Episode → EpisodeDto olarak değişti ↓↓↓
+data class EpisodeDto(
     @JsonProperty("id") val id: Int,
     @JsonProperty("number") val number: Int,
     @JsonProperty("name") val name: String,
@@ -116,6 +118,7 @@ data class Episode(
         return null
     }
 }
+
 
 data class Slider(
     @JsonProperty("name") val name: String,
