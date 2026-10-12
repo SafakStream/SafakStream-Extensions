@@ -18,14 +18,13 @@ class SinewixProvider : MainAPI() {
     )
 
     private val apiToken = "9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA"
+    private val hash256 = "711bff4afeb47f07ab08a0b07e85d3835e739295e8a6361db77eebd93d96306b" // Eski hash, deneme amaçlı
 
     private val sineHeaders = mapOf(
-    "hash256" to "711bff4afeb47f07ab08a0b07e85d3835e739295e8a6361db77eebd93d96306b", // Geri eklendi
-    "User-Agent" to "EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)",
-    "Accept" to "application/json"
-)
+        "User-Agent" to "EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)",
+        "Accept" to "application/json"
+    )
 
-    // ApiInterface'daki doğru endpoint'ler
     override val mainPage = mainPageOf(
         "$mainUrl/public/api/movies/latestadded/$apiToken" to "Son Eklenen Filmler",
         "$mainUrl/public/api/series/latestadded/$apiToken" to "Son Eklenen Diziler",
@@ -40,34 +39,38 @@ class SinewixProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        // Sayfalama için doğru parametre yapısı: ?page=X
         val url = "${request.data}?page=$page"
 
-        val items = if (request.name == "Yeni Bölümler") {
-            // Yeni bölümler için farklı bir response yapısı olabilir, şimdilik aynı bırakıyoruz.
-            val data = app.get(url, headers = sineHeaders).parsedSafe<SinewixYeniBolumResponse>()
-            data?.data?.mapNotNull { it.toSearchResponse() } ?: emptyList()
-        } else {
-            val data = app.get(url, headers = sineHeaders).parsedSafe<SinewixResponse>()
-            data?.data?.mapNotNull { it.toSearchResponse(request.name) } ?: emptyList()
-        }
+        // POST isteği ile hash256'yı body'de gönderiyoruz
+        val response = app.post(
+            url,
+            headers = sineHeaders,
+            data = mapOf("hash256" to hash256)
+        ).parsedSafe<SinewixResponse>()
 
+        val items = response?.data?.mapNotNull { it.toSearchResponse(request.name) } ?: emptyList()
         return newHomePageResponse(request.name, items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        // ApiInterface'a göre arama endpoint'i: search/{id}/{code}
-        // Burada id=query, code=apiToken olarak kullanılıyor gibi görünüyor.
         val url = "$mainUrl/public/api/search/$query/$apiToken"
-        val response = app.get(url, headers = sineHeaders).parsedSafe<SinewixResponse>()
+        val response = app.post(
+            url,
+            headers = sineHeaders,
+            data = mapOf("hash256" to hash256)
+        ).parsedSafe<SinewixResponse>()
 
-        // API "search" alanına sonuçları koyuyor
         val items = response?.searchResponse ?: response?.data ?: emptyList()
         return items.mapNotNull { it.toSearchResponse(null) }
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val data = app.get(url, headers = sineHeaders).parsedSafe<SinewixItem>() ?: return null
+        // Load işlemi için de POST deneyelim
+        val data = app.post(
+            url,
+            headers = sineHeaders,
+            data = mapOf("hash256" to hash256)
+        ).parsedSafe<SinewixItem>() ?: return null
 
         val title = data.name ?: data.title ?: return null
         val poster = data.posterPath ?: data.backdropPath ?: data.backdropPathTv ?: ""
