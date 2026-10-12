@@ -11,7 +11,7 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 class StreamingCommunity(
-    private var lang: String = "it",
+    private val prefLang: String = "it",
     customBaseUrl: String? = null,
     private val showUpcoming: Boolean = true
 ) : MainAPI() {
@@ -19,11 +19,15 @@ class StreamingCommunity(
     companion object {
         const val TAG = "SCommunity"
         const val DEFAULT_BASE_URL = "https://streamingunity.vip/"
-        private var name: String = "StreamingCommunity"
-        private val mapper = jacksonObjectMapper()
 
-        inline fun <reified T> T.toJson(): String = mapper.writeValueAsString(this)
-        inline fun <reified T> String.fromJson(): T = mapper.readValue(this)
+        @PublishedApi
+        internal val mapper = jacksonObjectMapper()
+
+        @PublishedApi
+        internal inline fun <reified T> T.toJson(): String = mapper.writeValueAsString(this)
+
+        @PublishedApi
+        internal inline fun <reified T> String.fromJson(): T = mapper.readValue(this)
 
         fun resolveBaseUrl(customBaseUrl: String?): String {
             return if (customBaseUrl.isNullOrBlank()) DEFAULT_BASE_URL else customBaseUrl
@@ -58,7 +62,7 @@ class StreamingCommunity(
         "X-Requested-With" to "XMLHttpRequest"
     )
 
-    override var mainUrl: String = "$siteRootUrl$lang"
+    override var mainUrl: String = "$siteRootUrl$prefLang"
     override var name: String = "StreamingCommunity"
     override val hasMainPage: Boolean = true
     override val supportedTypes: Set<TvType> = setOf(
@@ -148,7 +152,6 @@ class StreamingCommunity(
             HomePageList(name, items, false)
         } catch (e: Exception) {
             Log.e(TAG, "Sliders fetch: invalid JSON payload - ${e.message}")
-            Log.e(TAG, payload)
             null
         }
     }
@@ -206,7 +209,7 @@ class StreamingCommunity(
                 val slider = request.data.fromJson<SliderFetchRequestSlider>()
                 val body = "{\"sliders\":[${slider.toJson()}]}"
                 val response = app.post(
-                    "$siteRootUrl/api/sliders/fetch?lang=$lang",
+                    "$siteRootUrl/api/sliders/fetch?lang=$prefLang",
                     headers = getSliderFetchHeaders(),
                     json = body
                 )
@@ -217,17 +220,17 @@ class StreamingCommunity(
             "Genre" -> {
                 val genre = request.data.fromJson<GenreRequest>()
                 val response = app.get(
-                    "$siteRootUrl$lang/archive",
+                    "$siteRootUrl$prefLang/archive",
                     headers = getSliderFetchHeaders(),
                     params = mapOf(
                         "page" to page.toString(),
-                        "lang" to lang,
+                        "lang" to prefLang,
                         "genre[]" to genre.id.toString()
                     )
                 )
                 val payload = response.text
                 val data = payload.fromJson<GenreSearchResponse>().data ?: return null
-                val name = if (lang == "en") genre.nameEN else genre.nameIT
+                val name = if (prefLang == "en") genre.nameEN else genre.nameIT
                 val homePageList = HomePageList(
                     name,
                     searchResponseBuilder(data),
@@ -268,7 +271,7 @@ class StreamingCommunity(
         val replacingValue = if (url.contains("/it/") || url.contains("/en/")) {
             mainUrl.toHttpUrlOrNull()?.host ?: ""
         } else {
-            "${mainUrl.toHttpUrlOrNull()?.host ?: ""}/$lang"
+            "${mainUrl.toHttpUrlOrNull()?.host ?: ""}/$prefLang"
         }
         val currentHost = url.toHttpUrlOrNull()?.host ?: ""
         return url.replace(currentHost, replacingValue)
@@ -333,7 +336,6 @@ class StreamingCommunity(
         val genres = title.genres.map { it.name.replaceFirstChar { c -> c.uppercase() } }
         val year = title.releaseDate?.substringBefore("-")?.toIntOrNull()
         val related = props.sliders?.getOrNull(0)
-        val trailers = title.trailers?.mapNotNull { it.youtubeUrl }
         val poster = getPoster(title)
 
         return if (title.type == "tv") {
@@ -345,7 +347,6 @@ class StreamingCommunity(
                 this.tags = genres
                 this.comingSoon = false
                 this.recommendations = related?.titles?.let { searchResponseBuilder(it) }
-                this.trailers = trailers
             }
         } else {
             val data = LoadData(
@@ -360,7 +361,6 @@ class StreamingCommunity(
                 this.tags = genres
                 this.comingSoon = false
                 this.recommendations = related?.titles?.let { searchResponseBuilder(it) }
-                this.trailers = trailers
             }
         }
     }
