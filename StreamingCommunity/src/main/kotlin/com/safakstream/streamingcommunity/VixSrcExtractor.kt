@@ -36,7 +36,7 @@ class VixSrcExtractor : ExtractorApi() {
             playlistUrl,
             ExtractorLinkType.M3U8
         ) {
-            this.referer = referer ?: ""
+            this.referer = this@VixSrcExtractor.referer ?: ""
             this.quality = com.lagradost.cloudstream3.utils.Qualities.Unknown.value
         }.let(callback)
     }
@@ -69,7 +69,7 @@ class VixSrcExtractor : ExtractorApi() {
     private suspend fun getScript(url: String): JSONObject {
         Log.d(TAG, "Item url: $url")
 
-        val host = url.toHttpUrlOrNull()?.host() ?: ""
+        val host = url.toHttpUrlOrNull()?.host ?: ""
         val headers = mutableMapOf(
             "Accept" to "*/*",
             "Alt-Used" to host,
