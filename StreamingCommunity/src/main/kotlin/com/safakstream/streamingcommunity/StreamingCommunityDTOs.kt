@@ -1,8 +1,10 @@
 package com.safakstream.streamingcommunity
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 
 // --- InertiaResponse ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class InertiaResponse(
     @JsonProperty("props") val props: Props,
     @JsonProperty("url") val url: String,
@@ -10,6 +12,7 @@ data class InertiaResponse(
 )
 
 // --- Props ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Props(
     @JsonProperty("scws_url") val scwsUrl: String,
     @JsonProperty("cdn_url") val cdnUrl: String,
@@ -23,6 +26,7 @@ data class Props(
 )
 
 // --- Title ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Title(
     @JsonProperty("id") val id: Int,
     @JsonProperty("name") val name: String,
@@ -35,6 +39,7 @@ data class Title(
 }
 
 // --- TitleProp ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class TitleProp(
     @JsonProperty("id") val id: Int,
     @JsonProperty("name") val name: String,
@@ -64,18 +69,23 @@ data class TitleProp(
         get() = images.firstOrNull { it.type == "poster" }?.filename
 }
 
-// --- Diğer DTO'lar ---
+// --- PosterImage (KRİTİK DÜZELTME) ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class PosterImage(
     @JsonProperty("type") val type: String,
     @JsonProperty("filename") val filename: String
 )
 
+// --- Season ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Season(
     @JsonProperty("id") val id: Int,
     @JsonProperty("number") val number: Int,
     @JsonProperty("episodes") val episodes: List<EpisodeDto>?
 )
 
+// --- EpisodeDto ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class EpisodeDto(
     @JsonProperty("id") val id: Int,
     @JsonProperty("number") val number: Int,
@@ -85,24 +95,34 @@ data class EpisodeDto(
     @JsonProperty("duration") val duration: Int?
 )
 
+// --- Slider ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Slider(
     @JsonProperty("name") val name: String,
     @JsonProperty("label") val label: String,
     @JsonProperty("titles") val titles: List<Title>
 )
 
+// --- Genre ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Genre(
     @JsonProperty("name") val name: String
 )
 
+// --- Trailer ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class Trailer(
     @JsonProperty("youtube_url") val youtubeUrl: String?
 )
 
+// --- MainActor ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class MainActor(
     @JsonProperty("name") val name: String
 )
 
+// --- LoadData ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class LoadData(
     @JsonProperty("url") val url: String,
     @JsonProperty("type") val type: String,
@@ -111,16 +131,22 @@ data class LoadData(
     @JsonProperty("episode_number") val episodeNumber: Int? = null
 )
 
+// --- GenreSearchResponse ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class GenreSearchResponse(
     @JsonProperty("data") val data: List<Title>?
 )
 
+// --- GenreRequest ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class GenreRequest(
     @JsonProperty("nameIT") val nameIT: String,
     @JsonProperty("nameEN") val nameEN: String,
     @JsonProperty("id") val id: Int
 )
 
+// --- SliderFetchRequestSlider ---
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class SliderFetchRequestSlider(
     @JsonProperty("name") val name: String,
     @JsonProperty("label") val label: String? = null
