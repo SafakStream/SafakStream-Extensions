@@ -37,19 +37,14 @@ class SelcukFlix : MainAPI() {
     override var sequentialMainPageScrollDelay = 150L
 
     override val mainPage = mainPageOf(
-        "${mainUrl}/dizi-izle"                  to "Yeni Diziler",
-        "${mainUrl}/film-izle"                  to "Yeni Filmler",
-        "${mainUrl}/trend"                      to "Trend",
-        "${mainUrl}/kesfet"                     to "Keşfet",
-        "${mainUrl}/anime-izle"                 to "Animeler",
-        "${mainUrl}/asya-dizileri-izle"         to "Asya Dizileri",
-        "${mainUrl}/kdrama-izle"                to "K-Drama",
-        "${mainUrl}/turkce-dublaj-dizi-izle"    to "Türkçe Dublaj Diziler",
-        "${mainUrl}/turkce-altyazili-dizi-izle" to "Türkçe Altyazılı Diziler",
-        "${mainUrl}/aksiyon-dizileri"           to "Aksiyon Dizileri",
-        "${mainUrl}/drama-dizileri"             to "Drama Dizileri",
-        "${mainUrl}/gerilim-dizileri"           to "Gerilim Dizileri",
-        "${mainUrl}/yabanci-film-izle"          to "Yabancı Filmler"
+        "${mainUrl}/dizi-izle"          to "Yeni Diziler",
+        "${mainUrl}/film-izle"          to "Yeni Filmler",
+        "${mainUrl}/trend"              to "Trend",
+        "${mainUrl}/kesfet"             to "Keşfet",
+        "${mainUrl}/anime-izle"         to "Animeler",
+        "${mainUrl}/aksiyon-dizileri"   to "Aksiyon Dizileri",
+        "${mainUrl}/drama-dizileri"     to "Drama Dizileri",
+        "${mainUrl}/gerilim-dizileri"   to "Gerilim Dizileri"
     )
 
     private val headers = mapOf(
