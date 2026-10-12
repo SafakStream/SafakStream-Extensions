@@ -73,10 +73,10 @@ data class PosterImage(
 data class Season(
     @JsonProperty("id") val id: Int,
     @JsonProperty("number") val number: Int,
-    @JsonProperty("episodes") val episodes: List<Episode>?
+    @JsonProperty("episodes") val episodes: List<EpisodeDto>?
 )
 
-data class Episode(
+data class EpisodeDto(
     @JsonProperty("id") val id: Int,
     @JsonProperty("number") val number: Int,
     @JsonProperty("name") val name: String,
@@ -111,7 +111,7 @@ data class LoadData(
     @JsonProperty("episode_number") val episodeNumber: Int? = null
 )
 
-data class SearchResponse(
+data class GenreSearchResponse(
     @JsonProperty("data") val data: List<Title>?
 )
 
