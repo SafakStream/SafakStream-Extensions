@@ -3,6 +3,7 @@ package com.safakstream
 import android.util.Log
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
@@ -202,22 +203,56 @@ class SelcukFlix : MainAPI() {
             ?: document.selectFirst("a[href^='/yil/']")?.text()?.toIntOrNull()
 
         // Bölüm listesi
-        val episodeElements = document.select("a[href*='/sezon-'][href*='/bolum-']")
+        val seasonLinks = document.select("a[href*='/sezon-']")
             .mapNotNull { el ->
-                val epHref = fixUrlNull(el.attr("href")) ?: return@mapNotNull null
-                // Sezon ve bölüm numaralarını URL'den çıkar
-                val m = Regex("""/sezon-(\d+)/bolum-(\d+)""").find(epHref) ?: return@mapNotNull null
-                val season = m.groupValues[1].toIntOrNull() ?: 1
-                val episode = m.groupValues[2].toIntOrNull() ?: return@mapNotNull null
-                val epName = el.selectFirst("h2, h3, span")?.text()?.trim()
-                    ?: "$season. Sezon $episode. Bölüm"
-                newEpisode(epHref) {
-                    this.name = epName
-                    this.season = season
-                    this.episode = episode
+                val href = fixUrlNull(el.attr("href")) ?: return@mapNotNull null
+                if (!Regex("/sezon-\\d+$").containsMatchIn(href)) return@mapNotNull null
+                href
+            }
+            .distinct()
+
+        Log.d("SelcukFlix", "Bulunan sezon sayısı: ${seasonLinks.size}")
+
+        val allEpisodes = mutableListOf<com.lagradost.cloudstream3.Episode>()
+        val episodeUrls = mutableSetOf<String>()
+
+        if (seasonLinks.isNotEmpty()) {
+            seasonLinks.forEach { seasonUrl ->
+                try {
+                    val seasonDoc = app.get(seasonUrl, headers = headers, referer = url).document
+                    val seasonEpisodes = seasonDoc.select("a[href*='/sezon-'][href*='/bolum-']")
+                    Log.d("SelcukFlix", "$seasonUrl -> ${seasonEpisodes.size} bölüm")
+
+                    seasonEpisodes.forEach { el ->
+                        val epHref = fixUrlNull(el.attr("href")) ?: return@forEach
+                        if (episodeUrls.contains(epHref)) return@forEach
+                        episodeUrls.add(epHref)
+
+                        val m = Regex("/sezon-(\\d+)/bolum-(\\d+)").find(epHref) ?: return@forEach
+                        val season = m.groupValues[1].toIntOrNull() ?: 1
+                        val episode = m.groupValues[2].toIntOrNull() ?: return@forEach
+
+                        val epName = el.selectFirst("h2, h3, span")?.text()?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                            ?: "$season. Sezon $episode. Bölüm"
+
+                        allEpisodes.add(
+                            newEpisode(epHref) {
+                                this.name = epName
+                                this.season = season
+                                this.episode = episode
+                            }
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("SelcukFlix", "Sezon hatası ($seasonUrl): ${e.message}")
                 }
             }
-            .distinctBy { it.data }
+        }
+
+        val episodeElements = allEpisodes
+        Log.d("SelcukFlix", "Toplam bölüm: ${episodeElements.size}")
+
 
         return if (episodeElements.isNotEmpty()) {
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodeElements) {
