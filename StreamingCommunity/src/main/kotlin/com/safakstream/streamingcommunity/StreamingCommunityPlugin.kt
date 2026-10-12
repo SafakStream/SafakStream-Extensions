@@ -2,6 +2,7 @@ package com.safakstream.streamingcommunity
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.appcompat.app.AppCompatActivity
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
@@ -18,26 +19,19 @@ class StreamingCommunityPlugin : Plugin() {
     private var sharedPref: SharedPreferences? = null
 
     override fun load(context: Context) {
-        // Ayarları yükle
         sharedPref = CommonActivity.activity?.getSharedPreferences("StreamingCommunity", Context.MODE_PRIVATE)
-        
+
         val lang = sharedPref?.getString(PREF_LANG, "it") ?: "it"
         val baseUrl = sharedPref?.getString(PREF_BASE_URL, null)
         val showUpcoming = sharedPref?.getBoolean(PREF_SHOW_UPCOMING, true) ?: true
 
-        // Ana API'yi kaydet (StreamingCommunity sınıfınızı burada çağırıyoruz)
         registerMainAPI(StreamingCommunity(lang, baseUrl, showUpcoming))
-
-        // Extractor'ları kaydet
         registerExtractorAPI(VixCloudExtractor())
         registerExtractorAPI(VixSrcExtractor())
+    }
 
-        // Ayarlar butonuna tıklandığında Settings fragment'ını aç
-        setOpenSettings {
-            val activity = CommonActivity.activity as? androidx.appcompat.app.AppCompatActivity
-            activity?.supportFragmentManager?.let { fm ->
-                Settings(this, sharedPref).show(fm, "Settings")
-            }
-        }
+    override fun openSettings(context: Context) {
+        val activity = context as? AppCompatActivity ?: return
+        Settings(this, sharedPref).show(activity.supportFragmentManager, "Settings")
     }
 }
