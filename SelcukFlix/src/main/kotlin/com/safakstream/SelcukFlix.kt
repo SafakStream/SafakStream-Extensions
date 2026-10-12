@@ -40,11 +40,7 @@ class SelcukFlix : MainAPI() {
         "${mainUrl}/dizi-izle"          to "Yeni Diziler",
         "${mainUrl}/film-izle"          to "Yeni Filmler",
         "${mainUrl}/trend"              to "Trend",
-        "${mainUrl}/kesfet"             to "Keşfet",
-        "${mainUrl}/anime-izle"         to "Animeler",
-        "${mainUrl}/aksiyon-dizileri"   to "Aksiyon Dizileri",
-        "${mainUrl}/drama-dizileri"     to "Drama Dizileri",
-        "${mainUrl}/gerilim-dizileri"   to "Gerilim Dizileri"
+        "${mainUrl}/kesfet"             to "Keşfet"
     )
 
     private val headers = mapOf(
