@@ -55,16 +55,22 @@ class SelcukFlix : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page > 1) "${request.data}?sayfa=$page" else request.data
+        Log.d("SelcukFlix", "getMainPage çağrıldı: ${request.name} -> $url")
         val document = app.get(url, headers = headers, referer = mainUrl).document
         val html = document.html()
+        Log.d("SelcukFlix", "getMainPage HTML uzunluk: ${html.length}")
 
         // 1) Önce __NEXT_DATA__ içindeki initialSeries'i dene (kategori sayfaları için)
         val nextDataMatch = Regex("""<script id="__NEXT_DATA__"[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL).find(html)
         if (nextDataMatch != null) {
             val json = nextDataMatch.groupValues[1]
+            Log.d("SelcukFlix", "initialSeries aranıyor...")
             val initialMatch = Regex(""""initialSeries"\s*:\s*"([^"]+)"""").find(json)
+            Log.d("SelcukFlix", "initialMatch: ${initialMatch != null}")
             if (initialMatch != null) {
+                Log.d("SelcukFlix", "initialSeries uzunluk: ${initialMatch.groupValues[1].length}")
                 val decoded = SelcukFlixDecryptor.decryptSecureData(initialMatch.groupValues[1])
+                Log.d("SelcukFlix", "decoded uzunluk: ${decoded.length}, ilk 50: ${decoded.take(50)}")
                 if (decoded.isNotEmpty() && decoded.startsWith("[")) {
                     val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
                     try {
@@ -85,8 +91,8 @@ class SelcukFlix : MainAPI() {
                                 newTvSeriesSearchResponse(title, itemUrl, TvType.TvSeries) { this.posterUrl = poster }
                             }
                         }
+                        Log.d("SelcukFlix", "Parse sonucu: ${home.size} dizi")
                         if (home.isNotEmpty()) {
-                            Log.d("SelcukFlix", "initialSeries'ten ${home.size} sonuç (${request.name})")
                             return newHomePageResponse(request.name, home, hasNext = home.size > 20)
                         }
                     } catch (e: Exception) {
