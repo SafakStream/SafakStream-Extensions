@@ -21,4 +21,5 @@ include(
     "CineStream",
     "DiziPal",
     "HDFilmCehennemi"
+    "Sinewix"
 )
