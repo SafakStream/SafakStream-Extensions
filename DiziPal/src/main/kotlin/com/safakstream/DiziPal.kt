@@ -199,9 +199,26 @@ class DiziPal : MainAPI() {
     
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
-            // --- BÜYÜK POSTER (Backdrop) ÇEKİMİ (Kesin Çözüm) ---
+    override suspend fun load(url: String): LoadResponse? {
+        val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
+
+        // --- 1. ORTAK BİLGİLER ---
+        val title = document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()
+            ?: document.selectFirst("h1")?.text()?.trim()
+            ?: document.selectFirst("title")?.text()?.trim()
+            ?: "Bilinmeyen İçerik"
+
+        val description = document.selectFirst("meta[property=og:description]")?.attr("content")?.trim()
+            ?: document.selectFirst("meta[name=description]")?.attr("content")?.trim()
+            ?: document.selectFirst("div.summary p")?.text()?.trim()
+
+        // Küçük Poster (Afiş)
+        val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
+            ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
+            ?: document.selectFirst("img[itemprop=image]")?.attr("src")
+
+        // --- 2. BÜYÜK POSTER (Backdrop) ÇEKİMİ ---
         val backgroundPoster = run {
-            // 1. Önce bilinen ve güvenilir seçicileri dene (dizilerde çalışıyor)
             val directPoster = document.selectFirst("div.page-top img")?.attr("data-src")
                 ?: document.selectFirst("div.page-top img")?.attr("src")
                 ?: document.selectFirst("div.cover img")?.attr("data-src")
@@ -211,68 +228,66 @@ class DiziPal : MainAPI() {
                 ?: document.selectFirst("div.backdrop img")?.attr("data-src")
                 ?: document.selectFirst("div.backdrop img")?.attr("src")
 
-            // 2. CSS background-image içinde gizliyse
             val cssPoster = document.selectFirst("div[style*=background-image]")?.let { element ->
                 val style = element.attr("style")
                 Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
             }
 
-            // 3. Kesin Çözüm: Eğer gerçek bir backdrop bulunamadıysa, küçük afişi (poster) büyük poster olarak kullan.
-            //    Böylece o saçma reklam görselleri veya siyah ekran gelmez.
+            // Eğer gerçek bir backdrop bulunamadıysa, küçük afişi büyük poster olarak kullan.
             directPoster ?: cssPoster ?: poster
         }
-        
-    // Yıl, Süre, Etiketler
-    val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
-    val duration = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
-    val tags = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
-        .split(" ").map { it.trim() }.filter { it.isNotEmpty() }
 
-    // --- 2. BÖLÜM LİSTESİ KONTROLÜ ---
-    val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
-    val hasEpisodes = episodeElements.isNotEmpty() || 
-                      document.selectFirst("a[data-dizipal-pageloader]") != null ||
-                      document.selectFirst("div.episode") != null
+        // --- 3. YIL, SÜRE, ETİKETLER ---
+        val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
+        val duration = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
+        val tags = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim()
+            .split(" ").map { it.trim() }.filter { it.isNotEmpty() }
 
-    // --- 3. DİZİ Mİ FİLM Mİ? ---
-    if (hasEpisodes && episodeElements.isNotEmpty()) {
-        // --- DİZİ YÜKLEME ---
-        val episodes = episodeElements.mapNotNull { element ->
-            val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
-            val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
-            val epName = linkElement.selectFirst("h2")?.text()?.trim() ?: "Bölüm"
-            val infoText = linkElement.selectFirst("div.text-white.text-sm.opacity-80")?.text()?.trim() ?: ""
-            val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
-            val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+        // --- 4. BÖLÜM LİSTESİ KONTROLÜ ---
+        val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
+        val hasEpisodes = episodeElements.isNotEmpty() || 
+                          document.selectFirst("a[data-dizipal-pageloader]") != null ||
+                          document.selectFirst("div.episode") != null
 
-            newEpisode(epHref) {
-                this.name    = epName
-                this.episode = epEpisode
-                this.season  = epSeason
+        // --- 5. DİZİ Mİ FİLM Mİ? ---
+        if (hasEpisodes && episodeElements.isNotEmpty()) {
+            // --- DİZİ YÜKLEME ---
+            val episodes = episodeElements.mapNotNull { element ->
+                val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
+                val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
+                val epName = linkElement.selectFirst("h2")?.text()?.trim() ?: "Bölüm"
+                val infoText = linkElement.selectFirst("div.text-white.text-sm.opacity-80")?.text()?.trim() ?: ""
+                val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+                val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+
+                newEpisode(epHref) {
+                    this.name    = epName
+                    this.episode = epEpisode
+                    this.season  = epSeason
+                }
+            }
+
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.backgroundPosterUrl = backgroundPoster
+                this.year      = year
+                this.plot      = description
+                this.tags      = tags
+                this.duration  = duration
+            }
+
+        } else {
+            // --- FİLM YÜKLEME ---
+            return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.backgroundPosterUrl = backgroundPoster
+                this.year      = year
+                this.plot      = description
+                this.tags      = tags
+                this.duration  = duration
             }
         }
-
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.backgroundPosterUrl = backgroundPoster // <-- BÜYÜK POSTER BURADA
-            this.year      = year
-            this.plot      = description
-            this.tags      = tags
-            this.duration  = duration
-        }
-
-    } else {
-        // --- FİLM YÜKLEME ---
-        return newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.backgroundPosterUrl = backgroundPoster // <-- BÜYÜK POSTER BURADA
-            this.year      = year
-            this.plot      = description
-            this.tags      = tags
-            this.duration  = duration
-        }
     }
-}
 
     override suspend fun loadLinks(
         data: String,
