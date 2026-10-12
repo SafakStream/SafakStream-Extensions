@@ -186,9 +186,15 @@ class SelcukFlix : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("SelcukFlix", "loadLinks: $data")
-        val document = app.get(data, headers = headers, referer = mainUrl).document
+        Log.d("SelcukFlix", "loadLinks çağrıldı: $data")
+        val document = try {
+            app.get(data, headers = headers, referer = mainUrl).document
+        } catch (e: Exception) {
+            Log.e("SelcukFlix", "Sayfa yükleme hatası: ${e.message}")
+            return false
+        }
         val html = document.html()
+        Log.d("SelcukFlix", "HTML uzunluk: ${html.length}")
 
         // __NEXT_DATA__ içinden secureData'yı çek
         val nextDataMatch = Regex("""<script id="__NEXT_DATA__"[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL).find(html)
@@ -198,11 +204,17 @@ class SelcukFlix : MainAPI() {
         }
 
         val json = nextDataMatch.groupValues[1]
+        Log.d("SelcukFlix", "__NEXT_DATA__ uzunluk: ${json.length}")
+
+        // secureData'ı ara (iki farklı format olabilir)
         val secureMatch = Regex(""""secureData"\s*:\s*"([^"]+)"""").find(json)
+            ?: Regex("""secureData\s*=\s*"([^"]+)"""").find(json)
+
         if (secureMatch == null) {
-            Log.e("SelcukFlix", "secureData bulunamadı")
+            Log.e("SelcukFlix", "secureData bulunamadı! JSON içinde 'secureData' geçiyor mu: ${json.contains("secureData")}")
             return false
         }
+        Log.d("SelcukFlix", "secureData bulundu, uzunluk: ${secureMatch.groupValues[1].length}")
 
         val decoded = SelcukFlixDecryptor.decryptSecureData(secureMatch.groupValues[1])
         if (decoded.isEmpty()) {
@@ -219,12 +231,18 @@ class SelcukFlix : MainAPI() {
 
         Log.d("SelcukFlix", "Bulunan iframe sayısı: ${iframes.size}")
 
+        if (iframes.isEmpty()) {
+            Log.e("SelcukFlix", "Hiç iframe bulunamadı! Decoded içerik ilk 500: ${decoded.take(500)}")
+            return false
+        }
+
         iframes.forEach { iframeUrl ->
-            Log.d("SelcukFlix", "İşleniyor: $iframeUrl")
+            Log.d("SelcukFlix", "İşleniyor iframe: $iframeUrl")
             try {
                 PichiveExtractor().getUrl(iframeUrl, data, subtitleCallback, callback)
+                Log.d("SelcukFlix", "Extractor tamamlandı: $iframeUrl")
             } catch (e: Exception) {
-                Log.e("SelcukFlix", "Extractor hatası: ${e.message}")
+                Log.e("SelcukFlix", "Extractor hatası: ${e.message}", e)
             }
         }
 
