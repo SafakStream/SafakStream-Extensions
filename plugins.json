@@ -75,7 +75,7 @@
             "SafakStream"
         ],
         "description": "Sinewix i\u00e7erik sa\u011flay\u0131c\u0131s\u0131 - film, dizi, anime ve daha fazlas\u0131",
-        "fileSize": 20747,
+        "fileSize": 20368,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "tvTypes": [
             "Movie",
@@ -86,10 +86,10 @@
         ],
         "iconUrl": "https://sinewix.com/favicon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-d13dc1547cd212d336a1b6a200ab3823ab02545de0c12b1ee429be757f68ff16",
-        "jarFileSize": 86867,
+        "fileHash": "sha256-76f4de131a07bc573470a659f42121de7029a4ccc38c040655dd2c86074dabf2",
+        "jarFileSize": 85583,
         "jarUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Sinewix.jar",
-        "jarHash": "sha256-ae9f2b301682e738ab6d4540ddf00b133fab4c1bc5266ddee1897268911acff5"
+        "jarHash": "sha256-57708d4901fc5ff064aaa19b8e9b573b006809343b53b5857a7fb004e0bc0e0d"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
