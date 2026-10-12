@@ -4,16 +4,8 @@ import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.loadExtractor
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -33,7 +25,6 @@ class StreamingCommunity(
         }
 
         fun resolveCdnHost(host: String): String {
-            // Örnek: streamingunity.vip -> cdn.streamingunity.vip
             return "cdn.$host"
         }
 
@@ -101,7 +92,7 @@ class StreamingCommunity(
     private fun extractInertiaPageJson(html: String): String? {
         val doc = Jsoup.parse(html)
         val dataPage = doc.selectFirst("#app")?.attr("data-page") ?: return null
-        return if (dataPage.isBlank()) null else Jsoup.parse(dataPage).text() // Jsoup unescape
+        return if (dataPage.isBlank()) null else Jsoup.parse(dataPage).text()
     }
 
     private fun parseInertiaPayload(payload: String, logContext: String): InertiaResponse? {
@@ -129,7 +120,7 @@ class StreamingCommunity(
             payload
         }
         val result = parseInertiaPayload(jsonPayload, logContext) ?: return emptyList()
-        return result.props?.titles ?: emptyList()
+        return result.props.titles ?: emptyList()
     }
 
     private fun parseSliderFetchSections(payload: String): HomePageList? {
@@ -314,7 +305,7 @@ class StreamingCommunity(
                 val url = "$mainUrl/titles/${title.id}-${title.slug}/season-${season.number}"
                 val response = app.get(url, headers = headers)
                 val obj = AppUtils.parseJson<InertiaResponse>(response.text)
-                responseEpisodes.addAll(obj.props?.loadedSeason?.episodes ?: emptyList())
+                responseEpisodes.addAll(obj.props.loadedSeason?.episodes ?: emptyList())
             }
             responseEpisodes.forEach { ep ->
                 val loadData = LoadData(
@@ -342,9 +333,9 @@ class StreamingCommunity(
         if (headers["Cookie"].isNullOrEmpty()) setupHeaders()
         val response = app.get(actualUrl, headers = headers)
         val responseBody = response.text
-        val props = AppUtils.parseJson<InertiaResponse>(responseBody).props ?: return null
+        val props = AppUtils.parseJson<InertiaResponse>(responseBody).props
         val title = props.title ?: return null
-        val genres = title.genres?.map { APIHolder.capitalize(it.name) }
+        val genres = title.genres.map { APIHolder.capitalize(it.name) }
         val year = title.releaseDate?.substringBefore("-")?.toIntOrNull()
         val related = props.sliders?.getOrNull(0)
         val trailers = title.trailers?.mapNotNull { it.youtubeUrl }
