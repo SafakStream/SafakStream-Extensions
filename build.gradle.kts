@@ -47,13 +47,13 @@ subprojects {
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
-        // GitHub Actions otomatik olarak repo adını çeker
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/SafakStream/SafakStream-Extensions")
         authors = listOf("SafakStream")
     }
 
     android {
-        namespace = "com.safakstream.youtube"   // ← KENDİ PAKETİN
+        // ↓↓↓ DEĞİŞTİRİLDİ: Dinamik namespace ↓↓↓
+        namespace = "com.safakstream.${project.name.lowercase()}"
         compileSdk = 36
 
         defaultConfig {
@@ -94,6 +94,12 @@ subprojects {
         implementation("org.jsoup:jsoup:1.18.1")
         implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.16.0")
+
+        // ↓↓↓ YENİ EKLENENLER ↓↓↓
+        implementation("androidx.appcompat:appcompat:1.6.1")
+        implementation("androidx.core:core-ktx:1.12.0")
+        implementation("com.google.android.material:material:1.11.0")
+        implementation("androidx.fragment:fragment-ktx:1.6.2")
     }
 }
 
