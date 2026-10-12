@@ -217,32 +217,54 @@ class DiziPal : MainAPI() {
         ?: document.selectFirst("div.page-top img[alt]")?.attr("src")
         ?: document.selectFirst("img[itemprop=image]")?.attr("src")
 
-    // --- YENİ: BÜYÜK POSTER (Backdrop) ÇEKİMİ (Placeholder'ları Atlar) ---
-val backgroundPoster = run {
-    // 1. Öncelikle sayfa üstü img'lerin data-src'sine bak (Gerçek görsel burada olabilir)
-    document.selectFirst("div.page-top img")?.attr("data-src")
-        ?: document.selectFirst("div.page-top img")?.attr("src")
+            // --- YENİ: BÜYÜK POSTER (Backdrop) ÇEKİMİ (Kesin Çözüm) ---
+        val backgroundPoster = run {
+            // 1. Önce bilinen ve çalışan seçicileri dene
+            val directPoster = document.selectFirst("div.page-top img")?.attr("data-src")
+                ?: document.selectFirst("div.page-top img")?.attr("src")
+                ?: document.selectFirst("div.cover img")?.attr("data-src")
+                ?: document.selectFirst("div.cover img")?.attr("src")
+                ?: document.selectFirst("div.hero img")?.attr("data-src")
+                ?: document.selectFirst("div.hero img")?.attr("src")
+                ?: document.selectFirst("div.banner img")?.attr("data-src")
+                ?: document.selectFirst("div.banner img")?.attr("src")
+                ?: document.selectFirst("div.backdrop img")?.attr("data-src")
+                ?: document.selectFirst("div.backdrop img")?.attr("src")
 
-    // 2. Film sayfalarında arka plan resmi CSS ile verilmişse (Çok yaygın)
-        ?: document.selectFirst("div[style*=background-image]")?.let { element ->
-            val style = element.attr("style")
-            Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
+            // 2. CSS background-image içinde gizliyse
+            val cssPoster = document.selectFirst("div[style*=background-image]")?.let { element ->
+                val style = element.attr("style")
+                Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
+            }
+
+            // 3. Eğer yukarıdakiler boşsa, sayfadaki TÜM resimleri tara
+            //    ve "film şeridi" gibi placeholder'ları eleyerek EN BÜYÜK olanı seç.
+            val bestImg = document.select("img").filter { img ->
+                val src = img.attr("src").ifEmpty { img.attr("data-src") }
+                // Placeholder, logo, ikon, reklam vb. resimleri filtrele
+                src.isNotEmpty() &&
+                !src.contains("placeholder", ignoreCase = true) &&
+                !src.contains("film-strip", ignoreCase = true) &&
+                !src.contains("no-image", ignoreCase = true) &&
+                !src.contains("logo", ignoreCase = true) &&
+                !src.contains("icon", ignoreCase = true) &&
+                !src.contains("ads", ignoreCase = true) &&
+                !src.contains("banner", ignoreCase = true) &&
+                !src.contains("default", ignoreCase = true) &&
+                (src.endsWith(".jpg") || src.endsWith(".jpeg") || src.endsWith(".png") || src.endsWith(".webp"))
+            }.maxByOrNull { img ->
+                // Genişlik x Yükseklik değerine göre en büyüğünü bul (yoksa 0)
+                val w = img.attr("width").toIntOrNull() ?: 0
+                val h = img.attr("height").toIntOrNull() ?: 0
+                w * h
+            }?.let { img ->
+                img.attr("src").ifEmpty { img.attr("data-src") }
+            }
+
+            // 4. Sırayla en iyisini seç: Direkt seçici -> CSS -> En büyük resim -> og:image
+            directPoster ?: cssPoster ?: bestImg ?: document.selectFirst("meta[property=og:image]")?.attr("content")
         }
         
-    // 3. "cover", "hero", "banner", "backdrop" class'ları içindeki img'ler
-        ?: document.selectFirst("div.cover img")?.attr("data-src")
-        ?: document.selectFirst("div.cover img")?.attr("src")
-        ?: document.selectFirst("div.hero img")?.attr("data-src")
-        ?: document.selectFirst("div.hero img")?.attr("src")
-        ?: document.selectFirst("div.banner img")?.attr("data-src")
-        ?: document.selectFirst("div.banner img")?.attr("src")
-        ?: document.selectFirst("div.backdrop img")?.attr("data-src")
-        ?: document.selectFirst("div.backdrop img")?.attr("src")
-
-    // 4. Eğer hala bulunamadıysa og:image'ı kullan (placeholder yerine gerçek afiş gelir)
-        ?: document.selectFirst("meta[property=og:image]")?.attr("content")
-}
-
     // Yıl, Süre, Etiketler
     val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
     val duration = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
