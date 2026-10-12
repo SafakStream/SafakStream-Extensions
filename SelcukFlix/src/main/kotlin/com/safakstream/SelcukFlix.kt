@@ -27,7 +27,6 @@ import org.jsoup.nodes.Element
 class SelcukFlix : MainAPI() {
     override var mainUrl              = "https://selcukflix.app"
     override var name                 = "SelcukFlix"
-    override var description          = "SelcukFlix - Türkçe dizi, film ve anime izleme platformu"
     override val hasMainPage          = true
     override var lang                 = "tr"
     override val hasQuickSearch       = true
