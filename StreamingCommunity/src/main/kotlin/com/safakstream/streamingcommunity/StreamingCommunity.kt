@@ -295,7 +295,7 @@ class StreamingCommunity(
                     headers = getSliderFetchHeaders(),
                 )
                 val payload = response.body.string()
-                val data = tryParseJson<SearchResponse>(payload)?.data ?: return null
+                val data = tryParseJson<GenreSearchResponse>(payload)?.data ?: return null
                 val name = if (lang == "en") genre.nameEN else genre.nameIT
                 return newHomePageResponse(
                     HomePageList(
@@ -437,7 +437,7 @@ class StreamingCommunity(
         val title = props.title
 
         title?.seasons?.forEach { season ->
-            val responseEpisodes = emptyList<Episode>().toMutableList()
+            val responseEpisodes = mutableListOf<EpisodeDto>()
             if (season.id == props.loadedSeason!!.id) {
                 responseEpisodes.addAll(props.loadedSeason.episodes!!)
             } else {
