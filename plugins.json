@@ -33,7 +33,7 @@
             "SafakStream"
         ],
         "description": "DiziPal - SafakStream",
-        "fileSize": 31542,
+        "fileSize": 30316,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -42,7 +42,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziPal.png",
         "apiVersion": 1,
-        "fileHash": "sha256-ea76a5d0933a422d696ccdf6c38fa5b623343a4810b832283e133f9e671c03bc"
+        "fileHash": "sha256-5207afa465e8f0fd92cea6ff85945ca29276a27bab7706c39a7e49f369d906f9"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
