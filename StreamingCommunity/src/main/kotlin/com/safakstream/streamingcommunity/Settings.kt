@@ -9,13 +9,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.annotation.RequiresApi
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.fragment.app.Fragment
 import com.lagradost.cloudstream3.CommonActivity
 
 class Settings(
     private val plugin: StreamingCommunityPlugin,
     private val sharedPref: SharedPreferences?
-) : BottomSheetDialogFragment() {
+) : Fragment() {
 
     private var currentLang: String = "it"
     private var currentLangPosition: Int = 0
@@ -56,7 +56,7 @@ class Settings(
         val langsDropdown = view.findViewById<Spinner>(R.id.lang_spinner)
         val langs = arrayOf("it", "en")
         val langsMap = langs.map { it to getStringRes(it) }
-        
+
         langsDropdown?.adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
@@ -98,9 +98,9 @@ class Settings(
                 }
                 apply()
             }
-            
+
             CommonActivity.showToast("Saved. Restart the app to apply the settings")
-            dismiss()
+            activity?.onBackPressedDispatcher?.onBackPressed()
         }
     }
 
