@@ -187,6 +187,7 @@ class SelcukFlix : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         Log.d("SelcukFlix", "loadLinks çağrıldı: $data")
+
         val document = try {
             app.get(data, headers = headers, referer = mainUrl).document
         } catch (e: Exception) {
@@ -196,7 +197,7 @@ class SelcukFlix : MainAPI() {
         val html = document.html()
         Log.d("SelcukFlix", "HTML uzunluk: ${html.length}")
 
-        // __NEXT_DATA__ içinden secureData'yı çek
+        // __NEXT_DATA__ bul
         val nextDataMatch = Regex("""<script id="__NEXT_DATA__"[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL).find(html)
         if (nextDataMatch == null) {
             Log.e("SelcukFlix", "__NEXT_DATA__ bulunamadı")
@@ -206,44 +207,57 @@ class SelcukFlix : MainAPI() {
         val json = nextDataMatch.groupValues[1]
         Log.d("SelcukFlix", "__NEXT_DATA__ uzunluk: ${json.length}")
 
-        // secureData'ı ara (iki farklı format olabilir)
+        // secureData'yı çek
         val secureMatch = Regex(""""secureData"\s*:\s*"([^"]+)"""").find(json)
-            ?: Regex("""secureData\s*=\s*"([^"]+)"""").find(json)
-
         if (secureMatch == null) {
-            Log.e("SelcukFlix", "secureData bulunamadı! JSON içinde 'secureData' geçiyor mu: ${json.contains("secureData")}")
+            Log.e("SelcukFlix", "secureData bulunamadı")
             return false
         }
-        Log.d("SelcukFlix", "secureData bulundu, uzunluk: ${secureMatch.groupValues[1].length}")
+        val secureLen = secureMatch.groupValues[1].length
+        Log.d("SelcukFlix", "secureData bulundu, uzunluk: $secureLen")
 
+        // Decode et
         val decoded = SelcukFlixDecryptor.decryptSecureData(secureMatch.groupValues[1])
         if (decoded.isEmpty()) {
             Log.e("SelcukFlix", "secureData decode başarısız")
             return false
         }
+        Log.d("SelcukFlix", "Decoded uzunluk: ${decoded.length}")
 
-        // iframe URL'lerini bul — src hem " hem \" olabilir
-        val iframeRegexes = listOf(
-            Regex("""<iframe[^>]*src="([^"]+)""""),
-            Regex("""<iframe[^>]*src=\\?"([^"\\]+)""""),
-            Regex("""src=\\?"(//[^"\\]+)""""),
-            Regex("""src=\\?"(https?://[^"\\]+)""")
-        )
+        // iframe src'lerini bul — hem " hem \" hem de escape'siz varyantlar
+        val iframeUrls = mutableSetOf<String>()
 
-        val iframes = iframeRegexes
-            .flatMap { regex -> regex.findAll(decoded).map { it.groupValues[1] } }
+        // 1) Doğrudan src="..." (escape'siz)
+        Regex("""<iframe[^>]*src="([^"]+)"""").findAll(decoded).forEach {
+            iframeUrls.add(it.groupValues[1])
+        }
+
+        // 2) src=\"...\" (escape'li) — Kotlin raw string'de \ = iki backslash
+        Regex("""src=\\?"([^"\\]+)"""").findAll(decoded).forEach {
+            iframeUrls.add(it.groupValues[1])
+        }
+
+        // 3) pichive.online geçen tüm URL'leri direkt bul (en garantili yol!)
+        Regex("""(//[a-z0-9.-]*pichive\.online/iframe\.php\?v=[a-f0-9]+)""").findAll(decoded).forEach {
+            iframeUrls.add(it.groupValues[1])
+        }
+
+        // 4) Generic iframe.php?v= de yakala
+        Regex("""(//[a-z0-9.-]+/iframe\.php\?v=[a-zA-Z0-9]+)""").findAll(decoded).forEach {
+            iframeUrls.add(it.groupValues[1])
+        }
+
+        val iframes = iframeUrls
             .map { it.replace("\\", "") }
             .map { if (it.startsWith("//")) "https:$it" else if (it.startsWith("/")) "$mainUrl$it" else it }
-            .filter { it.contains("pichive") || it.contains("iframe.php") }
+            .filter { it.contains("iframe.php") }
             .distinct()
-            .toList()
 
         Log.d("SelcukFlix", "Bulunan iframe sayısı: ${iframes.size}")
-
-        Log.d("SelcukFlix", "Bulunan iframe sayısı: ${iframes.size}")
+        iframes.forEach { Log.d("SelcukFlix", "  iframe: $it") }
 
         if (iframes.isEmpty()) {
-            Log.e("SelcukFlix", "Hiç iframe bulunamadı! Decoded içerik ilk 500: ${decoded.take(500)}")
+            Log.e("SelcukFlix", "Hiç iframe bulunamadı!")
             return false
         }
 
@@ -259,4 +273,3 @@ class SelcukFlix : MainAPI() {
 
         return iframes.isNotEmpty()
     }
-}
