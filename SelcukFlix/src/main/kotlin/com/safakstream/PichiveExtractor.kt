@@ -8,6 +8,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.newSubtitleFile
 import org.json.JSONObject
 
 /**
@@ -57,6 +58,33 @@ class PichiveExtractor : ExtractorApi() {
         }
 
         Log.d("PichiveExtractor", "iframe HTML uzunluk: ${iframeHtml.length}")
+
+        // === ALTYAZILARI ÇIKAR ===
+        try {
+            // .vtt içeren JSON objelerini bul: {"file":"...vtt...","label":"...","kind":"captions","lang":"tr",...}
+            val subtitleRegex = Regex("""\{"file":"([^"]+\.vtt[^"]*)"[^}]*"label":"([^"]*)"[^}]*(?:"lang":"([^"]*)")?[^}]*\}""")
+            val seen = mutableSetOf<String>()
+            subtitleRegex.findAll(iframeHtml).forEach { m ->
+                var subUrl = m.groupValues[1].replace("\\/", "/").replace("\\", "")
+                if (subUrl.startsWith("//")) subUrl = "https:$subUrl"
+                if (subUrl.isBlank() || seen.contains(subUrl)) return@forEach
+                seen.add(subUrl)
+                val label = m.groupValues[2].ifBlank { "Altyazı" }
+                Log.d("PichiveExtractor", "Altyazı: $label -> $subUrl")
+                try {
+                    subtitleCallback.invoke(
+                        newSubtitleFile(label, subUrl) {
+                            this.headers = browserHeaders + mapOf("Referer" to url)
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e("PichiveExtractor", "Altyazı ekleme hatası: ${e.message}")
+                }
+            }
+            Log.d("PichiveExtractor", "Toplam ${seen.size} altyazı eklendi")
+        } catch (e: Exception) {
+            Log.e("PichiveExtractor", "Altyazı parse hatası: ${e.message}")
+        }
 
         // 2) openPlayer('LONG_TOKEN') token'ını bul
         val tokenMatch = Regex("""openPlayer\('([^']+)'""").find(iframeHtml)
