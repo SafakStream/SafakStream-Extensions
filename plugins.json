@@ -74,10 +74,10 @@
         "authors": [
             "SafakStream"
         ],
-        "fileSize": 48916,
+        "fileSize": 48914,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "apiVersion": 1,
-        "fileHash": "sha256-d0ec02fde580f51f94e1c9b4ba994c1865d6adffde0d806cb8424f38692416a4"
+        "fileHash": "sha256-61e63cf409d36084aab51138df628fb19d7cedfd8ea31a00baf17478fc07752f"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
