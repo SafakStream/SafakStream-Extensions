@@ -3,25 +3,9 @@ package com.safakstream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.fasterxml.jackson.annotation.JsonProperty
-
-data class NetMirrorPlaylistResponse(
-    @JsonProperty("sources") val sources: List<NetMirrorSource>?,
-    @JsonProperty("tracks") val tracks: List<NetMirrorTrack>?
-)
-
-data class NetMirrorSource(
-    @JsonProperty("file") val file: String?,
-    @JsonProperty("label") val label: String?,
-    @JsonProperty("type") val type: String?
-)
-
-data class NetMirrorTrack(
-    @JsonProperty("file") val file: String?,
-    @JsonProperty("label") val label: String?,
-    @JsonProperty("kind") val kind: String?,
-    @JsonProperty("language") val language: String?
-)
+import com.safakstream.entities.*
+import okhttp3.FormBody
+import java.util.UUID
 
 class NetMirrorAPI : MainAPI() {
     override var mainUrl = "https://net52.cc"
@@ -30,115 +14,211 @@ class NetMirrorAPI : MainAPI() {
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
+    private var cookieValue: String = ""
+
+    private val headers = mapOf(
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language" to "en-IN,en-US;q=0.9,en;q=0.8",
+        "Cache-Control" to "max-age=0",
+        "Connection" to "keep-alive",
+        "User-Agent" to "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/144.0.7559.132 Safari/537.36 /OS.Gatu v3.0",
+        "X-Requested-With" to "XMLHttpRequest"
+    )
+
+    private val newTvBaseHeaders = mapOf(
+        "Cache-Control" to "no-cache, no-store, must-revalidate",
+        "Pragma" to "no-cache",
+        "Expires" to "0",
+        "X-Requested-With" to "NetmirrorNewTV v1.0",
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0 /OS.GatuNewTV v1.0",
+        "Accept" to "application/json, text/plain, */*"
+    )
+
+    private val newTvDomains = listOf(
+        "aHR0cHM6Ly9tb2JpbGVkZXRlY3RzLmNvbQ==", "aHR0cHM6Ly9tb2JpbGVkZXRlY3QuYXBw", "aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA==",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0LmNj", "aHR0cHM6Ly9tb2JpZGV0ZWN0LmNsaWNr", "aHR0cHM6Ly9tb2JpZGV0ZWN0Lmluaw==",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0LmxpdmU=", "aHR0cHM6Ly9tb2JpZGV0ZWN0LnBybw==", "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNob3A=",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNpdGU=", "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNwYWNl", "aHR0cHM6Ly9tb2JpZGV0ZWN0LnN0b3Jl",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0LnZpcA==", "aHR0cHM6Ly9tb2JpZGV0ZWN0Lndpa2k=", "aHR0cHM6Ly9tb2JpZGV0ZWN0Lnh5eg==",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5hcnQ=", "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5jYw==", "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbmZv",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbms=", "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5saXZl", "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5wcm8=",
+        "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5zdG9yZQ==", "aHR0cHM6Ly9tb2JpZGV0ZWN0cy50b3A=", "aHR0cHM6Ly9tb2JpZGV0ZWN0cy54eXo="
+    )
+
+    private suspend fun bypass(): String {
+        if (cookieValue.isNotEmpty()) return cookieValue
+        
+        val saved = NetMirrorStorage.getCookie()
+        if (saved.first != null && System.currentTimeMillis() - saved.second < 54000000) {
+            cookieValue = saved.first!!
+            return cookieValue
+        }
+
+        try {
+            val reqHeaders = mapOf(
+                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Origin" to "https://net22.cc",
+                "Referer" to "https://net22.cc/verify2",
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+            )
+            val body = FormBody.Builder().add("g-recaptcha-response", UUID.randomUUID().toString()).build()
+            val response = app.post("https://net52.cc/verify.php", requestBody = body, headers = reqHeaders)
+            val setCookie = response.headers["Set-Cookie"] ?: ""
+            val match = Regex("t_hash_t=([^;]+)").find(setCookie)
+            cookieValue = match?.groupValues?.get(1) ?: ""
+            if (cookieValue.isNotEmpty()) NetMirrorStorage.saveCookie(cookieValue)
+            return cookieValue
+        } catch (e: Exception) {
+            return ""
+        }
+    }
+
+    private fun decodeBase64(value: String): String {
+        return String(android.util.Base64.decode(value, android.util.Base64.DEFAULT))
+    }
+
+    private suspend fun resolveApiUrl(): String {
+        val saved = NetMirrorStorage.getApiBase()
+        if (saved.first != null && System.currentTimeMillis() - saved.second < 86400000) {
+            return saved.first!!
+        }
+        for (domain in newTvDomains) {
+            try {
+                val base = decodeBase64(domain).trimEnd('/')
+                val url = "$base/checknewtv.php"
+                val response = app.get(url, headers = newTvBaseHeaders)
+                if (response.code == 200) {
+                    NetMirrorStorage.saveApiBase(base)
+                    return base
+                }
+            } catch (e: Exception) { continue }
+        }
+        return ""
+    }
+
+    private suspend fun getNewTvUserToken(apiBase: String, ott: String): String {
+        val saved = NetMirrorStorage.getUserToken(ott)
+        if (saved.first != null && System.currentTimeMillis() - saved.second < 3600000) {
+            return saved.first!!
+        }
+        try {
+            val otpHeaders = mapOf(
+                "accept" to "application/json, text/plain, */*",
+                "cache-control" to "no-cache, no-store, must-revalidate",
+                "Connection" to "Keep-Alive",
+                "expires" to "0",
+                "otp" to "111111",
+                "pragma" to "no-cache",
+                "user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0 /OS.Gatu v1.0"
+            )
+            val response = app.get("$apiBase/newtv/otp.php", headers = otpHeaders)
+            val otpResponse = tryParseJson<NewTvOtpResponse>(response.text)
+            val token = otpResponse?.usertoken ?: ""
+            if (token.isNotEmpty()) NetMirrorStorage.saveUserToken(ott, token)
+            return token
+        } catch (e: Exception) {
+            return ""
+        }
+    }
+
+    private fun buildNewTvHeaders(ott: String, extra: Map<String, String>): Map<String, String> {
+        val map = newTvBaseHeaders.toMutableMap()
+        map["Ott"] = ott
+        map.putAll(extra)
+        return map
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-        println("NetMirror DEBUG: getMainPage basladi")
-
-        val headers = mapOf(
-            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language" to "en-IN,en-US;q=0.9,en;q=0.8",
-            "Cache-Control" to "max-age=0",
-            "Connection" to "keep-alive",
-            "Sec-Fetch-Dest" to "document",
-            "Sec-Fetch-Mode" to "navigate",
-            "Sec-Fetch-Site" to "same-origin",
-            "Sec-Fetch-User" to "?1",
-            "Upgrade-Insecure-Requests" to "1",
-            "User-Agent" to "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/144.0.7559.132 Safari/537.36 /OS.Gatu v3.0",
-            "X-Requested-With" to "XMLHttpRequest"
-        )
-
-        // net52.cc'ye istek at, yönlendirmeyi takip et
-        val response = app.get(mainUrl, headers = headers, allowRedirects = true)
-        println("NetMirror DEBUG: Status Code = ${response.code}")
-        println("NetMirror DEBUG: Final URL = ${response.url}")
-
+        val cookie = bypass()
+        val cookies = mapOf("t_hash_t" to cookie, "ott" to "nf", "hd" to "on")
+        val response = app.get("$mainUrl/mobile/home?app=1", headers = headers, cookies = cookies)
         val document = response.document
-        val items = document.select("div.slider-item")
-        println("NetMirror DEBUG: Bulunan slider-item sayisi = ${items.size}")
-
-        val homePageLists = mutableListOf<HomePageList>()
-
-        if (items.isNotEmpty()) {
-            val movies = items.mapNotNull { element ->
-                val id = element.attr("data-post")
-                val title = element.selectFirst("a[aria-label]")?.attr("aria-label")
-                    ?: return@mapNotNull null
-                val posterUrl = element.selectFirst("img")?.attr("src")
-                    ?: element.selectFirst("img")?.attr("data-src")
-
-                newMovieSearchResponse(title, id, TvType.Movie) {
-                    this.posterUrl = posterUrl
+        val trays = document.select(".tray-container, #top10")
+        val lists = mutableListOf<HomePageList>()
+        for (tray in trays) {
+            val name = tray.select("h2, span").text()
+            val items = tray.select("article, .top10-post").mapNotNull { el ->
+                val id = el.selectFirst("a")?.attr("data-post") ?: el.attr("data-post")
+                if (id.isNullOrEmpty()) return@mapNotNull null
+                newMovieSearchResponse(name.ifEmpty { "NetMirror" }, id, TvType.Movie) {
+                    this.posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
                     this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
                 }
             }
-            println("NetMirror DEBUG: Olusturulan film sayisi = ${movies.size}")
-
-            if (movies.isNotEmpty()) {
-                homePageLists.add(HomePageList("NetMirror", movies))
-            }
+            if (items.isNotEmpty()) lists.add(HomePageList(name.ifEmpty { "NetMirror" }, items))
         }
-
-        return newHomePageResponse(homePageLists)
+        return newHomePageResponse(lists)
     }
 
     override suspend fun search(query: String): List<SearchResponse>? {
-        return null
+        val cookie = bypass()
+        val cookies = mapOf("t_hash_t" to cookie, "hd" to "on", "ott" to "nf")
+        val url = "$mainUrl/mobile/search.php?s=$query&t=${System.currentTimeMillis() / 1000}"
+        val response = app.get(url, headers = headers, cookies = cookies, referer = "$mainUrl/home")
+        val data = tryParseJson<SearchData>(response.text) ?: return null
+        return data.searchResult?.mapNotNull { result ->
+            val id = result.id ?: return@mapNotNull null
+            newMovieSearchResponse(result.t ?: "", id, TvType.Movie) {
+                this.posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+                this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            }
+        }
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val id = url
-        return newMovieLoadResponse(
-            "NetMirror Movie",
-            id,
-            TvType.Movie,
-            id
-        ) {
+        val cookie = bypass()
+        val cookies = mapOf("t_hash_t" to cookie, "hd" to "on", "ott" to "nf")
+        val id = tryParseJson<Map<String, String>>(url)?.get("id") ?: url
+        val apiUrl = "$mainUrl/mobile/post.php?id=$id&t=${System.currentTimeMillis() / 1000}"
+        val response = app.get(apiUrl, headers = headers, cookies = cookies, referer = "$mainUrl/home")
+        val data = tryParseJson<PostData>(response.text) ?: return null
+
+        val isSeries = !data.episodes.isNullOrEmpty()
+        val type = if (isSeries) TvType.TvSeries else TvType.Movie
+        val title = data.title ?: ""
+
+        return newTvSeriesLoadResponse(title, url, type, emptyList()) {
             this.posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            this.backgroundPosterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
             this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            this.plot = data.desc
+            this.year = data.year?.toIntOrNull()
+            this.tags = data.genre?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+            this.actors = data.cast?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.map { ActorData(Actor(it)) }
+            this.score = data.match?.replace("IMDb ", "")?.toDoubleOrNull()?.let { Score.from10(it) }
+            this.duration = data.runtime?.replace("m", "")?.trim()?.toIntOrNull()
+            this.contentRating = data.ua
+            this.recommendations = data.suggest?.map { sug ->
+                newMovieSearchResponse("", AppUtils.toJson(sug), TvType.Movie) {}
+            }
+            this.episodes = data.episodes?.map { ep ->
+                newEpisode(LoadData(title, ep.id ?: "")) {
+                    this.name = ep.t
+                    this.episode = ep.ep?.replace("E", "")?.toIntOrNull()
+                    this.season = ep.s?.replace("S", "")?.toIntOrNull()
+                    this.posterUrl = "https://imgcdn.kim/nf/v/200/${ep.id}.jpg"
+                    this.runTime = ep.time?.replace("m", "")?.trim()?.toIntOrNull()
+                }
+            }
         }
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        val id = data
-        val playlistUrl = "https://net52.cc/playlist.php?id=$id"
-        val response = app.get(playlistUrl).text
-        val playlist = tryParseJson<NetMirrorPlaylistResponse>(response)
-
-        playlist?.sources?.forEach { source ->
-            val videoUrl = if (source.file?.startsWith("/") == true) {
-                "https://net52.cc${source.file}"
-            } else {
-                source.file ?: return@forEach
+        val apiBase = resolveApiUrl()
+        if (apiBase.isEmpty()) return false
+        val userToken = getNewTvUserToken(apiBase, "nf")
+        if (userToken.isEmpty()) return false
+        val id = tryParseJson<Map<String, String>>(data)?.get("id") ?: data
+        val headers = buildNewTvHeaders("nf", mapOf("Usertoken" to userToken))
+        val response = app.get("$apiBase/newtv/player.php?id=$id", headers = headers)
+        val playerResponse = tryParseJson<NewTvPlayerResponse>(response.text) ?: return false
+        val videoLink = playerResponse.video_link ?: return false
+        if (videoLink.isBlank()) return false
+        callback.invoke(
+            newExtractorLink(source = name, name = name, url = videoLink, type = ExtractorLinkType.M3U8) {
+                this.referer = playerResponse.referer ?: apiBase
             }
-
-            callback.invoke(
-                newExtractorLink(
-                    source = this.name,
-                    name = source.label ?: "NetMirror",
-                    url = videoUrl,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.quality = getQualityFromName(source.label)
-                }
-            )
-        }
-
-        playlist?.tracks?.forEach { track ->
-            if (track.kind == "captions" && track.file != null) {
-                val subUrl = if (track.file.startsWith("//")) {
-                    "https:${track.file}"
-                } else {
-                    track.file
-                }
-                subtitleCallback.invoke(
-                    newSubtitleFile(
-                        lang = track.language ?: "en",
-                        url = subUrl
-                    )
-                )
-            }
-        }
-
+        )
         return true
     }
 }
