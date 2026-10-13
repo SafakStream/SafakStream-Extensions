@@ -22,6 +22,5 @@ include(
     "DiziPal",
     "HDFilmCehennemi",
     "StreamingCommunity",
-    "SelcukFlix",
-    "NetMirror"
+    "SelcukFlix"
 )
