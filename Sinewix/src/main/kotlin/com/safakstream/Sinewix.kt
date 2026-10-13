@@ -40,7 +40,9 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
 import java.util.UUID
+import javax.crypto.Cipher
 import javax.crypto.Mac
+import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class Sinewix : MainAPI() {
@@ -200,9 +202,33 @@ class Sinewix : MainAPI() {
     }
 
     private fun decryptAesGcm(json: JSONObject, sessionId: String, nonce: String, timestamp: String): String {
-        // Şimdilik placeholder - gerçek AES-GCM implementasyonu için anahtar türetme gerekli
-        // Smali kodunda Companion.decryptAesGcm çağrılıyor
-        return json.optString("data", json.toString())
+        try {
+            // 1. Anahtar türetme: HMAC-SHA256(RESP_SECRET, "easyplex-response-v1|session|nonce|timestamp")
+            val sb = "easyplex-response-v1|$sessionId|$nonce|$timestamp"
+            val keyBytes = hmacSha256(RESP_SECRET, sb)
+
+            // 2. Base64 decode
+            val iv = Base64.decode(json.getString("iv"), Base64.DEFAULT)
+            val tag = Base64.decode(json.getString("tag"), Base64.DEFAULT)
+            val aad = Base64.decode(json.getString("aad"), Base64.DEFAULT)
+            val ciphertext = Base64.decode(json.getString("ciphertext"), Base64.DEFAULT)
+
+            // 3. Ciphertext + Tag birleştir
+            val combined = ciphertext + tag
+
+            // 4. AES-GCM decrypt
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val keySpec = SecretKeySpec(keyBytes, "AES")
+            val gcmSpec = GCMParameterSpec(128, iv)
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, gcmSpec)
+            cipher.updateAAD(aad)
+            val plaintext = cipher.doFinal(combined)
+
+            return String(plaintext, Charsets.UTF_8)
+        } catch (e: Exception) {
+            Log.e("Sinewix", "decryptAesGcm error: ${e.message}", e)
+            return json.optString("data", json.toString())
+        }
     }
 
     // ==================== API REQUEST ====================
