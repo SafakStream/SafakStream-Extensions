@@ -33,7 +33,7 @@
             "SafakStream"
         ],
         "description": "Dizilla.now - Film ve Dizi \u0130zleme",
-        "fileSize": 12184,
+        "fileSize": 12320,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -42,7 +42,7 @@
         ],
         "iconUrl": "https://dizilla.now/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-68b23cd7297cebdb33ae7f8c3ced8f9ca53b13e43aec6ebf94a20276a0b39ecd"
+        "fileHash": "sha256-9957a29c5a633db10a30cf40fa35f01cac05edb83356d0a9b7e31b8be5fb2dac"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziPal.cs3",
