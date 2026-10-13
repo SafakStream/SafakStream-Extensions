@@ -24,27 +24,6 @@
         "fileHash": "sha256-8c20c03e73c8ebba6e057b82b613711ed727c31d7d385111ef298f7b763a647b"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Dizilla.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "Dizilla",
-        "internalName": "Dizilla",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "Dizilla.now - Film ve Dizi \u0130zleme",
-        "fileSize": 12320,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://dizilla.now/favicon.ico",
-        "apiVersion": 1,
-        "fileHash": "sha256-9957a29c5a633db10a30cf40fa35f01cac05edb83356d0a9b7e31b8be5fb2dac"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziPal.cs3",
         "status": 3,
         "version": 1,
@@ -106,6 +85,30 @@
         "iconUrl": "https://selcukflix.app/assets/favicon/apple-touch-icon.png",
         "apiVersion": 1,
         "fileHash": "sha256-580ce01790774b85f65b874626ce7535f350ff90f5c59eaa03eca6a751af6c62"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Sinewix.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "Sinewix",
+        "internalName": "Sinewix",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "Sinewix - T\u00fcrk\u00e7e film ve dizi izleme platformu",
+        "fileSize": 39070,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime",
+            "AsianDrama",
+            "Cartoon"
+        ],
+        "iconUrl": "https://www.google.com/s2/favicons?domain=sinewix.com&sz=%size%",
+        "apiVersion": 1,
+        "fileHash": "sha256-7e58aeb5c8267a1ec64215d6155160dc682bd42b545ec7bb5502b056f9c65de7"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
