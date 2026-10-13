@@ -1,5 +1,7 @@
 package com.safakstream
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
@@ -27,6 +29,8 @@ class DizillaProvider : MainAPI() {
     override var lang = "tr"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
     override val hasQuickSearch = true
+
+    private val mapper = jacksonObjectMapper()
 
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Popüler Diziler",
@@ -103,57 +107,77 @@ class DizillaProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
 
-        val title = document.selectFirst("h1")?.text()?.trim()
-            ?: document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()?.removeSuffix(" izle")
-            ?: return null
+        // JSON-LD şemasını bul (TVSeries veya Movie)
+        val jsonLdScripts = document.select("script[type='application/ld+json']")
+        var seriesNode: JsonNode? = null
+        var movieNode: JsonNode? = null
 
-        val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
-            ?: document.selectFirst("img[alt*='izle']")?.attr("src")
+        for (script in jsonLdScripts) {
+            try {
+                val json = mapper.readTree(script.data())
+                val nodes = if (json.isArray) json else listOf(json)
+                for (node in nodes) {
+                    val type = node.get("@type")?.asText() ?: continue
+                    when (type) {
+                        "TVSeries" -> seriesNode = node
+                        "Movie" -> movieNode = node
+                    }
+                }
+            } catch (_: Exception) { }
+        }
 
-        val description = document.selectFirst("meta[property=og:description]")?.attr("content")
-            ?: document.selectFirst("div[class*=description], p[class*=description]")?.text()?.trim()
+        return when {
+            seriesNode != null -> parseSeries(seriesNode!!, url)
+            movieNode != null -> parseMovie(movieNode!!, url)
+            else -> null
+        }
+    }
 
-        val year = Regex("(\\d{4})").find(document.text())?.value?.toIntOrNull()
-        val isSeries = url.contains("/dizi/")
+    private fun parseSeries(node: JsonNode, url: String): LoadResponse? {
+        val title = node.get("name")?.asText()?.trim() ?: return null
+        val poster = node.get("image")?.asText()
+        val description = node.get("description")?.asText()?.trim()
 
-        return if (isSeries) {
-            val episodes = mutableListOf<Episode>()
+        val year = node.get("datePublished")?.asText()?.take(4)?.toIntOrNull()
+            ?: node.get("dateModified")?.asText()?.take(4)?.toIntOrNull()
 
-            // Tüm olası bölüm linklerini dene
-            val epElements = document.select("a[href*='-sezon-'][href*='-bolum'], a[href*='-bolum']")
-            epElements.forEach { epElement ->
-                val epHref = epElement.attr("href").takeIf { it.isNotEmpty() } ?: return@forEach
+        val episodes = mutableListOf<Episode>()
 
-                // Bölüm ismini bul - farklı stratejiler
-                val epName = epElement.selectFirst("h3")?.text()?.trim()
-                    ?: epElement.attr("title")?.trim()?.removeSuffix(" izle")
-                    ?: epElement.selectFirst("span")?.text()?.trim()
-                    ?: epElement.text().trim()
-
-                val infoText = epElement.text() + " " + epElement.attr("title") + " " + epHref
-                val epSeason = Regex("""(\d+)[.\-]?\s*[Ss]ezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
-                val epEpisode = Regex("""(\d+)[.\-]?\s*[Bb]ölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+        // containsSeason -> episode listesi
+        node.get("containsSeason")?.forEach { seasonNode ->
+            val seasonNum = seasonNode.get("seasonNumber")?.asInt() ?: 1
+            seasonNode.get("episode")?.forEach { epNode ->
+                val epName = epNode.get("name")?.asText()?.trim() ?: return@forEach
+                val epUrl = epNode.get("url")?.asText() ?: return@forEach
+                val epNum = epNode.get("episodeNumber")?.asInt() ?: episodes.size + 1
 
                 episodes.add(
-                    newEpisode(fixUrl(epHref)) {
+                    newEpisode(fixUrl(epUrl)) {
                         this.name = epName
-                        this.season = epSeason
-                        this.episode = epEpisode
+                        this.season = seasonNum
+                        this.episode = epNum
                     }
                 )
             }
+        }
 
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.year = year
-                this.plot = description
-            }
-        } else {
-            newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.year = year
-                this.plot = description
-            }
+        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+            this.posterUrl = poster
+            this.year = year
+            this.plot = description
+        }
+    }
+
+    private fun parseMovie(node: JsonNode, url: String): LoadResponse? {
+        val title = node.get("name")?.asText()?.trim() ?: return null
+        val poster = node.get("image")?.asText()
+        val description = node.get("description")?.asText()?.trim()
+        val year = node.get("datePublished")?.asText()?.take(4)?.toIntOrNull()
+
+        return newMovieLoadResponse(title, url, TvType.Movie, url) {
+            this.posterUrl = poster
+            this.year = year
+            this.plot = description
         }
     }
 
