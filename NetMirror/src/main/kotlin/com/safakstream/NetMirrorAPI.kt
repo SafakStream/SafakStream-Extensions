@@ -35,7 +35,12 @@ class NetMirrorAPI : MainAPI() {
     private var cookieValue: String = ""
 
     private suspend fun bypass(): String {
-        if (cookieValue.isNotEmpty()) return cookieValue
+        if (cookieValue.isNotEmpty()) {
+            println("NetMirror DEBUG: bypass() - Mevcut cookie kullaniliyor: $cookieValue")
+            return cookieValue
+        }
+
+        println("NetMirror DEBUG: bypass() - Yeni cookie aliniyor...")
 
         try {
             val headers = mapOf(
@@ -55,26 +60,46 @@ class NetMirrorAPI : MainAPI() {
                 headers = headers
             )
 
+            println("NetMirror DEBUG: bypass() - Status Code = ${response.code}")
+            println("NetMirror DEBUG: bypass() - Set-Cookie = ${response.headers["Set-Cookie"]}")
+
             val setCookie = response.headers["Set-Cookie"] ?: ""
             val match = Regex("t_hash_t=([^;]+)").find(setCookie)
             cookieValue = match?.groupValues?.get(1) ?: ""
 
+            println("NetMirror DEBUG: bypass() - Yeni cookie = '$cookieValue'")
             return cookieValue
         } catch (e: Exception) {
+            println("NetMirror DEBUG: bypass() - HATA: ${e.message}")
             e.printStackTrace()
             return ""
         }
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        println("NetMirror DEBUG: getMainPage basladi")
+
         val cookie = bypass()
+        println("NetMirror DEBUG: Cookie = '$cookie'")
+
         val headers = mapOf(
             "Cookie" to "t_hash_t=$cookie; hd=on; ott=nf",
-            "Referer" to "$mainUrl/home"
+            "Referer" to "$mainUrl/home",
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
 
-        val document = app.get("$mainUrl/home", headers = headers).document
+        val response = app.get("$mainUrl/home", headers = headers)
+        println("NetMirror DEBUG: Status Code = ${response.code}")
+        println("NetMirror DEBUG: Response Body (ilk 500 karakter) = ${response.text.take(500)}")
+
+        val document = response.document
         val items = document.select("div.slider-item")
+        println("NetMirror DEBUG: Bulunan slider-item sayisi = ${items.size}")
+
+        if (items.isEmpty()) {
+            val altItems = document.select("div[data-post]")
+            println("NetMirror DEBUG: Alternatif data-post sayisi = ${altItems.size}")
+        }
 
         val homePageLists = mutableListOf<HomePageList>()
 
@@ -91,6 +116,7 @@ class NetMirrorAPI : MainAPI() {
                     this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
                 }
             }
+            println("NetMirror DEBUG: Olusturulan film sayisi = ${movies.size}")
 
             if (movies.isNotEmpty()) {
                 homePageLists.add(HomePageList("NetMirror", movies))
