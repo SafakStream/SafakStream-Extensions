@@ -41,9 +41,7 @@ class DizillaProvider : MainAPI() {
             name = title,
             url = fixUrl(href),
             posterUrl = poster,
-        ) {
-            this.quality = SearchQuality.HD
-        }
+        )
     }
 
     private fun Element.toSearchResultFromCard(): SearchResponse? {
@@ -55,9 +53,7 @@ class DizillaProvider : MainAPI() {
             name = title,
             url = fixUrl(href),
             posterUrl = poster,
-        ) {
-            this.quality = SearchQuality.HD
-        }
+        )
     }
 
     override suspend fun search(query: String): List<SearchResponse>? {
@@ -88,9 +84,7 @@ class DizillaProvider : MainAPI() {
             name = title,
             url = fixUrl(href),
             posterUrl = poster,
-        ) {
-            this.quality = SearchQuality.HD
-        }
+        )
     }
 
     override suspend fun load(url: String): LoadResponse? {
@@ -134,21 +128,22 @@ class DizillaProvider : MainAPI() {
             newTvSeriesLoadResponse(
                 name = title,
                 url = url,
+                type = TvType.TvSeries,
                 posterUrl = poster,
                 plot = description,
-            ) {
-                this.year = year
-                this.episodes = episodes
-            }
+                year = year,
+                episodes = episodes,
+            )
         } else {
             newMovieLoadResponse(
                 name = title,
                 url = url,
+                type = TvType.Movie,
                 posterUrl = poster,
                 plot = description,
-            ) {
-                this.year = year
-            }
+                year = year,
+                dataUrl = url,
+            )
         }
     }
 
