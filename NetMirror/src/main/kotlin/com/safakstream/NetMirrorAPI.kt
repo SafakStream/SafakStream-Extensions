@@ -44,7 +44,8 @@ class NetMirrorAPI : MainAPI() {
                 "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Encoding" to "gzip, deflate, br, zstd",
                 "Accept-Language" to "en-US,en;q=0.9",
-                "Cache-Control" to "max-age=0",
+                "Cache-Control" to "no-cache",
+                "Pragma" to "no-cache",
                 "Connection" to "keep-alive",
                 "Content-Type" to "application/x-www-form-urlencoded",
                 "Origin" to "https://net22.cc",
@@ -64,15 +65,16 @@ class NetMirrorAPI : MainAPI() {
                 .add("g-recaptcha-response", UUID.randomUUID().toString())
                 .build()
 
-            // net22.cc üzerinden dene
+            // cache = false ekleyerek önbelleği devre dışı bırakıyoruz
             val response = app.post(
                 "https://net52.cc/verify.php",
                 requestBody = body,
-                headers = headers
+                headers = headers,
+                cache = false
             )
 
             println("NetMirror DEBUG: bypass() - Status Code = ${response.code}")
-            println("NetMirror DEBUG: bypass() - Headers = ${response.headers}")
+            println("NetMirror DEBUG: bypass() - cf-mitigated = ${response.headers["cf-mitigated"]}")
 
             val setCookie = response.headers["Set-Cookie"] ?: ""
             val match = Regex("t_hash_t=([^;]+)").find(setCookie)
@@ -99,7 +101,7 @@ class NetMirrorAPI : MainAPI() {
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
 
-        val response = app.get("$mainUrl/home", headers = headers)
+        val response = app.get("$mainUrl/home", headers = headers, cache = false)
         println("NetMirror DEBUG: Status Code = ${response.code}")
 
         val document = response.document
@@ -151,7 +153,7 @@ class NetMirrorAPI : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val id = data
         val playlistUrl = "https://net52.cc/playlist.php?id=$id"
-        val response = app.get(playlistUrl).text
+        val response = app.get(playlistUrl, cache = false).text
         val playlist = tryParseJson<NetMirrorPlaylistResponse>(response)
 
         playlist?.sources?.forEach { source ->
