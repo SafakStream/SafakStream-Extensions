@@ -5,8 +5,6 @@ import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.fasterxml.jackson.annotation.JsonProperty
-import okhttp3.FormBody
-import java.util.UUID
 
 data class NetMirrorPlaylistResponse(
     @JsonProperty("sources") val sources: List<NetMirrorSource>?,
@@ -34,70 +32,11 @@ class NetMirrorAPI : MainAPI() {
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     private val cloudflareKiller by lazy { CloudflareKiller() }
-    private var cookieValue: String = ""
-
-    private suspend fun bypass(): String {
-        if (cookieValue.isNotEmpty()) return cookieValue
-
-        println("NetMirror DEBUG: bypass() - Yeni cookie aliniyor...")
-
-        try {
-            val headers = mapOf(
-                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Encoding" to "gzip, deflate, br, zstd",
-                "Accept-Language" to "en-US,en;q=0.9",
-                "Cache-Control" to "no-cache",
-                "Pragma" to "no-cache",
-                "Connection" to "keep-alive",
-                "Content-Type" to "application/x-www-form-urlencoded",
-                "Origin" to "https://net22.cc",
-                "Referer" to "https://net22.cc/verify2",
-                "sec-ch-ua" to "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
-                "sec-ch-ua-mobile" to "?0",
-                "sec-ch-ua-platform" to "\"Windows\"",
-                "Sec-Fetch-Dest" to "document",
-                "Sec-Fetch-Mode" to "navigate",
-                "Sec-Fetch-Site" to "same-origin",
-                "Sec-Fetch-User" to "?1",
-                "Upgrade-Insecure-Requests" to "1",
-                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-            )
-
-            val body = FormBody.Builder()
-                .add("g-recaptcha-response", UUID.randomUUID().toString())
-                .build()
-
-            val response = app.post(
-                "https://net52.cc/verify.php",
-                requestBody = body,
-                headers = headers,
-                interceptor = cloudflareKiller
-            )
-
-            println("NetMirror DEBUG: bypass() - Status Code = ${response.code}")
-            println("NetMirror DEBUG: bypass() - cf-mitigated = ${response.headers["cf-mitigated"]}")
-
-            val setCookie = response.headers["Set-Cookie"] ?: ""
-            val match = Regex("t_hash_t=([^;]+)").find(setCookie)
-            cookieValue = match?.groupValues?.get(1) ?: ""
-
-            println("NetMirror DEBUG: bypass() - Yeni cookie = '$cookieValue'")
-            return cookieValue
-        } catch (e: Exception) {
-            println("NetMirror DEBUG: bypass() - HATA: ${e.message}")
-            e.printStackTrace()
-            return ""
-        }
-    }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         println("NetMirror DEBUG: getMainPage basladi")
 
-        val cookie = bypass()
-        println("NetMirror DEBUG: Cookie = '$cookie'")
-
         val headers = mapOf(
-            "Cookie" to "t_hash_t=$cookie; hd=on; ott=nf",
             "Referer" to "$mainUrl/home",
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
