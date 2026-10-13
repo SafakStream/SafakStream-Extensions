@@ -3,7 +3,6 @@ package com.safakstream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class NetMirrorPlaylistResponse(
@@ -25,24 +24,33 @@ data class NetMirrorTrack(
 )
 
 class NetMirrorAPI : MainAPI() {
-    override var mainUrl = "https://net77.cc"
+    override var mainUrl = "https://net52.cc"
     override var name = "NetMirror"
     override var lang = "tr"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    private val cloudflareKiller by lazy { CloudflareKiller() }
-
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         println("NetMirror DEBUG: getMainPage basladi")
 
         val headers = mapOf(
-            "Referer" to "$mainUrl/home",
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language" to "en-IN,en-US;q=0.9,en;q=0.8",
+            "Cache-Control" to "max-age=0",
+            "Connection" to "keep-alive",
+            "Sec-Fetch-Dest" to "document",
+            "Sec-Fetch-Mode" to "navigate",
+            "Sec-Fetch-Site" to "same-origin",
+            "Sec-Fetch-User" to "?1",
+            "Upgrade-Insecure-Requests" to "1",
+            "User-Agent" to "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/144.0.7559.132 Safari/537.36 /OS.Gatu v3.0",
+            "X-Requested-With" to "XMLHttpRequest"
         )
 
-        val response = app.get("$mainUrl/home", headers = headers, interceptor = cloudflareKiller)
+        // net52.cc'ye istek at, yönlendirmeyi takip et
+        val response = app.get(mainUrl, headers = headers, allowRedirects = true)
         println("NetMirror DEBUG: Status Code = ${response.code}")
+        println("NetMirror DEBUG: Final URL = ${response.url}")
 
         val document = response.document
         val items = document.select("div.slider-item")
@@ -93,7 +101,7 @@ class NetMirrorAPI : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val id = data
         val playlistUrl = "https://net52.cc/playlist.php?id=$id"
-        val response = app.get(playlistUrl, interceptor = cloudflareKiller).text
+        val response = app.get(playlistUrl).text
         val playlist = tryParseJson<NetMirrorPlaylistResponse>(response)
 
         playlist?.sources?.forEach { source ->
