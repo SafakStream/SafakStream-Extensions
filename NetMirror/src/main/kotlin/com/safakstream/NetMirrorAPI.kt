@@ -3,9 +3,12 @@ package com.safakstream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
+import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.safakstream.entities.*
 import okhttp3.FormBody
 import java.util.UUID
+
+data class LoadData(val title: String, val id: String)
 
 class NetMirrorAPI : MainAPI() {
     override var mainUrl = "https://net52.cc"
@@ -47,7 +50,7 @@ class NetMirrorAPI : MainAPI() {
 
     private suspend fun bypass(): String {
         if (cookieValue.isNotEmpty()) return cookieValue
-        
+
         val saved = NetMirrorStorage.getCookie()
         if (saved.first != null && System.currentTimeMillis() - saved.second < 54000000) {
             cookieValue = saved.first!!
@@ -177,7 +180,21 @@ class NetMirrorAPI : MainAPI() {
         val type = if (isSeries) TvType.TvSeries else TvType.Movie
         val title = data.title ?: ""
 
-        return newTvSeriesLoadResponse(title, url, type, emptyList()) {
+        val episodeList = mutableListOf<Episode>()
+        data.episodes?.forEach { ep ->
+            val epId = ep.id ?: return@forEach
+            episodeList.add(
+                newEpisode(LoadData(title, epId)) {
+                    this.name = ep.t
+                    this.episode = ep.ep?.replace("E", "")?.trim()?.toIntOrNull()
+                    this.season = ep.s?.replace("S", "")?.trim()?.toIntOrNull()
+                    this.posterUrl = "https://imgcdn.kim/nf/v/200/$epId.jpg"
+                    this.runTime = ep.time?.replace("m", "")?.trim()?.toIntOrNull()
+                }
+            )
+        }
+
+        return newTvSeriesLoadResponse(title, url, type, episodeList) {
             this.posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
             this.backgroundPosterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
             this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
@@ -189,15 +206,9 @@ class NetMirrorAPI : MainAPI() {
             this.duration = data.runtime?.replace("m", "")?.trim()?.toIntOrNull()
             this.contentRating = data.ua
             this.recommendations = data.suggest?.map { sug ->
-                newMovieSearchResponse("", AppUtils.toJson(sug), TvType.Movie) {}
-            }
-            this.episodes = data.episodes?.map { ep ->
-                newEpisode(LoadData(title, ep.id ?: "")) {
-                    this.name = ep.t
-                    this.episode = ep.ep?.replace("E", "")?.toIntOrNull()
-                    this.season = ep.s?.replace("S", "")?.toIntOrNull()
-                    this.posterUrl = "https://imgcdn.kim/nf/v/200/${ep.id}.jpg"
-                    this.runTime = ep.time?.replace("m", "")?.trim()?.toIntOrNull()
+                newMovieSearchResponse("", toJson(sug), TvType.Movie) {
+                    this.posterUrl = "https://imgcdn.kim/poster/v/${sug.id}.jpg"
+                    this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
                 }
             }
         }
