@@ -4,6 +4,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.jsoup.nodes.Element
 
 data class NetMirrorPlaylistResponse(
     @JsonProperty("sources") val sources: List<NetMirrorSource>?,
@@ -30,18 +31,66 @@ class NetMirrorAPI : MainAPI() {
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
+    // Ana sayfa filmlerini çekme
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-        return null
+        val document = app.get("$mainUrl/home").document
+        
+        val homePageLists = mutableListOf<HomePageList>()
+        
+        // Ana sayfadaki tüm "slider-item" kartlarını bul
+        val items = document.select("div.slider-item")
+        
+        if (items.isNotEmpty()) {
+            val movies = items.mapNotNull { element ->
+                // Film ID'sini al
+                val id = element.attr("data-post")
+                
+                // Film başlığını al
+                val title = element.selectFirst("a[aria-label]")?.attr("aria-label") 
+                    ?: return@mapNotNull null
+                
+                // Poster URL'sini al
+                val posterUrl = element.selectFirst("img")?.attr("src") 
+                    ?: element.selectFirst("img")?.attr("data-src")
+                
+                // Yeni bir film nesnesi oluştur
+                newMovieSearchResponse(title, id, TvType.Movie) {
+                    this.posterUrl = posterUrl
+                }
+            }
+            
+            if (movies.isNotEmpty()) {
+                homePageLists.add(HomePageList("NetMirror", movies))
+            }
+        }
+        
+        return newHomePageResponse(homePageLists)
     }
 
+    // Arama fonksiyonu
     override suspend fun search(query: String): List<SearchResponse>? {
+        // Şimdilik boş, sonra dolduracağız
         return null
     }
 
+    // Film detay sayfası
     override suspend fun load(url: String): LoadResponse? {
-        return null
+        // url = film ID'si (örn: "80057918")
+        val id = url
+        
+        // Film başlığını ve posterini çekmek için ana sayfadan bilgi alalım
+        // Ama şimdilik basit bir yapı kuralım
+        return newMovieLoadResponse(
+            "NetMirror Movie", // Başlık
+            id, // URL (ID)
+            TvType.Movie,
+            id // data (loadLinks'e gönderilecek veri)
+        ) {
+            this.posterUrl = "https://imgcdn.kim/poster/341/$id.jpg"
+        }
     }
 
+    // Video linklerini çekme
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val id = data
         val playlistUrl = "https://net52.cc/playlist.php?id=$id"
