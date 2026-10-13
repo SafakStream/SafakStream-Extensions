@@ -9,7 +9,7 @@ data class PostData(
     @JsonProperty("match") val match: String? = null,
     @JsonProperty("runtime") val runtime: String? = null,
     @JsonProperty("suggest") val suggest: List<Suggest>? = null,
-    @JsonProperty("episodes") val episodes: List<Episode>? = null,
+    @JsonProperty("episodes") val episodes: List<NetMirrorEpisode>? = null,
     @JsonProperty("season") val season: List<Season>? = null,
     @JsonProperty("nextPageShow") val nextPageShow: Int? = null,
     @JsonProperty("nextPageSeason") val nextPageSeason: String? = null,

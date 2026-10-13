@@ -2,7 +2,7 @@ package com.safakstream.entities
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class Episode(
+data class NetMirrorEpisode(
     @JsonProperty("id") val id: String? = null,
     @JsonProperty("t") val t: String? = null,
     @JsonProperty("ep") val ep: String? = null,

@@ -3,7 +3,6 @@ package com.safakstream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.safakstream.entities.*
 import okhttp3.FormBody
 import java.util.UUID
@@ -206,8 +205,9 @@ class NetMirrorAPI : MainAPI() {
             this.duration = data.runtime?.replace("m", "")?.trim()?.toIntOrNull()
             this.contentRating = data.ua
             this.recommendations = data.suggest?.map { sug ->
-                newMovieSearchResponse("", toJson(sug), TvType.Movie) {
-                    this.posterUrl = "https://imgcdn.kim/poster/v/${sug.id}.jpg"
+                val sugId = sug.id ?: ""
+                newMovieSearchResponse("", sugId, TvType.Movie) {
+                    this.posterUrl = "https://imgcdn.kim/poster/v/$sugId.jpg"
                     this.posterHeaders = mapOf("Referer" to "$mainUrl/home")
                 }
             }
