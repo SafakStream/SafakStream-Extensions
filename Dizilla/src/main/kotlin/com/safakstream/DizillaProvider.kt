@@ -39,13 +39,22 @@ class DizillaProvider : MainAPI() {
         val document = app.get(request.data).document
         val home = mutableListOf<SearchResponse>()
 
-        // Ana sayfa (Popüler Diziler) için trends listesi
+        // Ana sayfa için trends listesi
         val trends = document.select("article.movie-type-genres ul.trends li")
         if (trends.isNotEmpty()) {
             home.addAll(trends.mapNotNull { it.toTrendSearchResult() })
-        } else {
-            // Diğer kategoriler için kart listesi
-            home.addAll(document.select("div.new-added-list a").mapNotNull { it.toCardSearchResult() })
+        }
+
+        // Kategori sayfaları için "Öne Çıkan Diziler" bölümü
+        val featured = document.select("section[aria-label='Diziler'] a[href*='/dizi/']")
+        if (featured.isNotEmpty()) {
+            home.addAll(featured.mapNotNull { it.toCardSearchResult() })
+        }
+
+        // Yeni eklenen diziler listesi (ana sayfa)
+        val newAdded = document.select("div.new-added-list a")
+        if (newAdded.isNotEmpty()) {
+            home.addAll(newAdded.mapNotNull { it.toCardSearchResult() })
         }
 
         val homePageList = listOf(HomePageList(request.name, home.distinctBy { it.url }))
@@ -63,7 +72,9 @@ class DizillaProvider : MainAPI() {
     }
 
     private fun Element.toCardSearchResult(): SearchResponse? {
-        val title = this.selectFirst("h3")?.text()?.trim() ?: return null
+        val title = this.selectFirst("h3")?.text()?.trim()
+            ?: this.attr("title")?.removeSuffix(" izle")?.trim()
+            ?: return null
         val href = this.attr("href").takeIf { it.isNotEmpty() } ?: return null
         val posterUrl = this.selectFirst("img")?.attr("src")
 
@@ -84,28 +95,16 @@ class DizillaProvider : MainAPI() {
 
         val document = response.document
         val results = document.select("a[href*='/dizi/'], a[href*='/film/']").mapNotNull {
-            it.toSearchResult()
+            it.toCardSearchResult()
         }
         return results.distinctBy { it.url }
-    }
-
-    private fun Element.toSearchResult(): SearchResponse? {
-        val href = this.attr("href").takeIf { it.isNotEmpty() } ?: return null
-        val title = this.selectFirst("h3")?.text()?.trim()
-            ?: this.attr("title")?.removeSuffix(" izle")?.trim()
-            ?: return null
-        val posterUrl = this.selectFirst("img")?.attr("src")
-
-        return newTvSeriesSearchResponse(title, fixUrl(href), TvType.TvSeries) {
-            this.posterUrl = posterUrl
-        }
     }
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
 
         val title = document.selectFirst("h1")?.text()?.trim()
-            ?: document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()
+            ?: document.selectFirst("meta[property=og:title]")?.attr("content")?.trim()?.removeSuffix(" izle")
             ?: return null
 
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
@@ -114,21 +113,26 @@ class DizillaProvider : MainAPI() {
         val description = document.selectFirst("meta[property=og:description]")?.attr("content")
             ?: document.selectFirst("div[class*=description], p[class*=description]")?.text()?.trim()
 
-        val year = Regex("(\\d{4})").find(title)?.value?.toIntOrNull()
+        val year = Regex("(\\d{4})").find(document.text())?.value?.toIntOrNull()
         val isSeries = url.contains("/dizi/")
 
         return if (isSeries) {
             val episodes = mutableListOf<Episode>()
 
-            document.select("a[href*='-sezon-'][href*='-bolum']").forEach { epElement ->
+            // Tüm olası bölüm linklerini dene
+            val epElements = document.select("a[href*='-sezon-'][href*='-bolum'], a[href*='-bolum']")
+            epElements.forEach { epElement ->
                 val epHref = epElement.attr("href").takeIf { it.isNotEmpty() } ?: return@forEach
-                val epName = epElement.selectFirst("h3")?.text()?.trim()
-                    ?: epElement.attr("title")?.trim()
-                    ?: return@forEach
 
-                val infoText = epElement.text()
-                val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
-                val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+                // Bölüm ismini bul - farklı stratejiler
+                val epName = epElement.selectFirst("h3")?.text()?.trim()
+                    ?: epElement.attr("title")?.trim()?.removeSuffix(" izle")
+                    ?: epElement.selectFirst("span")?.text()?.trim()
+                    ?: epElement.text().trim()
+
+                val infoText = epElement.text() + " " + epElement.attr("title") + " " + epHref
+                val epSeason = Regex("""(\d+)[.\-]?\s*[Ss]ezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+                val epEpisode = Regex("""(\d+)[.\-]?\s*[Bb]ölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
 
                 episodes.add(
                     newEpisode(fixUrl(epHref)) {
