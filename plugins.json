@@ -75,7 +75,7 @@
             "SafakStream"
         ],
         "description": "NetMirror - Net77.cc eklentisi",
-        "fileSize": 16944,
+        "fileSize": 16914,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -84,7 +84,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/NetMirror.png",
         "apiVersion": 1,
-        "fileHash": "sha256-56ed1e112dceaf84fa583897d26591ff83cbda97a7cc9c446c4ef955b45b4957"
+        "fileHash": "sha256-5668539e5c710074629a163ac96c1c3b6ee23f0d15aa8c2d38a6a1c7ff7a2b38"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
