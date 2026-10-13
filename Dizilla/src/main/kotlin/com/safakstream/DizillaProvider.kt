@@ -1,7 +1,23 @@
 package com.safakstream
 
-import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.HomePageResponse
+import com.lagradost.cloudstream3.HomePageList
+import com.lagradost.cloudstream3.LoadResponse
+import com.lagradost.cloudstream3.MainAPI
+import com.lagradost.cloudstream3.MainPageRequest
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.fixUrlNull
+import com.lagradost.cloudstream3.mainPageOf
+import com.lagradost.cloudstream3.newEpisode
+import com.lagradost.cloudstream3.newHomePageResponse
+import com.lagradost.cloudstream3.newMovieLoadResponse
+import com.lagradost.cloudstream3.newMovieSearchResponse
+import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.newTvSeriesSearchResponse
+import com.lagradost.cloudstream3.utils.ExtractorLink
 import org.jsoup.nodes.Element
 
 class DizillaProvider : MainAPI() {
@@ -19,44 +35,44 @@ class DizillaProvider : MainAPI() {
         "$mainUrl/kdrama-izle" to "K-Drama"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get(request.data).document
 
-        val trendItems = document.select("article.movie-type-genres ul.trends li").mapNotNull { it.toSearchResult() }
-        val newItems = document.select("div.new-added-list a").mapNotNull { it.toSearchResultFromCard() }
+        val home = mutableListOf<SearchResponse>()
 
-        val homePageList = mutableListOf<HomePageList>()
-        if (trendItems.isNotEmpty()) homePageList.add(HomePageList("Popüler Diziler", trendItems))
-        if (newItems.isNotEmpty()) homePageList.add(HomePageList("Yeni Eklenenler", newItems))
+        // Popüler diziler (trends listesi)
+        if (request.data == "$mainUrl/" || request.data.endsWith("/")) {
+            home.addAll(document.select("article.movie-type-genres ul.trends li").mapNotNull { it.toTrendSearchResult() })
+        } else {
+            // Kategori sayfaları için
+            home.addAll(document.select("div.new-added-list a").mapNotNull { it.toCardSearchResult() })
+        }
 
+        val homePageList = listOf(HomePageList(request.name, home.distinctBy { it.url }))
         return newHomePageResponse(homePageList, hasNext = false)
     }
 
-    private fun Element.toSearchResult(): SearchResponse? {
-        val href = this.selectFirst("a")?.attr("href") ?: return null
+    private fun Element.toTrendSearchResult(): SearchResponse? {
         val title = this.selectFirst("img")?.attr("alt")?.removeSuffix(" izle")?.trim() ?: return null
-        val poster = this.selectFirst("img")?.attr("src")
+        val href = this.selectFirst("a")?.attr("href") ?: return null
+        val posterUrl = this.selectFirst("img")?.attr("src")
 
-        return newTvSeriesSearchResponse(
-            name = title,
-            url = fixUrl(href),
-            posterUrl = poster,
-        )
+        return newTvSeriesSearchResponse(title, fixUrl(href), TvType.TvSeries) {
+            this.posterUrl = posterUrl
+        }
     }
 
-    private fun Element.toSearchResultFromCard(): SearchResponse? {
-        val href = this.attr("href").takeIf { it.isNotEmpty() } ?: return null
+    private fun Element.toCardSearchResult(): SearchResponse? {
         val title = this.selectFirst("h3")?.text()?.trim() ?: return null
-        val poster = this.selectFirst("img")?.attr("src")
+        val href = this.attr("href").takeIf { it.isNotEmpty() } ?: return null
+        val posterUrl = this.selectFirst("img")?.attr("src")
 
-        return newTvSeriesSearchResponse(
-            name = title,
-            url = fixUrl(href),
-            posterUrl = poster,
-        )
+        return newTvSeriesSearchResponse(title, fixUrl(href), TvType.TvSeries) {
+            this.posterUrl = posterUrl
+        }
     }
 
-    override suspend fun search(query: String): List<SearchResponse>? {
+    override suspend fun search(query: String): List<SearchResponse> {
         val response = app.post(
             "$mainUrl/bg/searchcontent",
             data = mapOf("q" to query, "search" to query),
@@ -68,23 +84,21 @@ class DizillaProvider : MainAPI() {
 
         val document = response.document
         val results = document.select("a[href*='/dizi/'], a[href*='/film/']").mapNotNull {
-            it.toSearchResultFromSearchPage()
+            it.toSearchResult()
         }
         return results.distinctBy { it.url }
     }
 
-    private fun Element.toSearchResultFromSearchPage(): SearchResponse? {
+    private fun Element.toSearchResult(): SearchResponse? {
         val href = this.attr("href").takeIf { it.isNotEmpty() } ?: return null
         val title = this.selectFirst("h3")?.text()?.trim()
             ?: this.attr("title")?.removeSuffix(" izle")?.trim()
             ?: return null
-        val poster = this.selectFirst("img")?.attr("src")
+        val posterUrl = this.selectFirst("img")?.attr("src")
 
-        return newTvSeriesSearchResponse(
-            name = title,
-            url = fixUrl(href),
-            posterUrl = poster,
-        )
+        return newTvSeriesSearchResponse(title, fixUrl(href), TvType.TvSeries) {
+            this.posterUrl = posterUrl
+        }
     }
 
     override suspend fun load(url: String): LoadResponse? {
@@ -105,6 +119,7 @@ class DizillaProvider : MainAPI() {
 
         return if (isSeries) {
             val episodes = mutableListOf<Episode>()
+
             document.select("a[href*='-sezon-'][href*='-bolum']").forEach { epElement ->
                 val epHref = epElement.attr("href").takeIf { it.isNotEmpty() } ?: return@forEach
                 val epTitle = epElement.selectFirst("h3")?.text()?.trim()
@@ -125,25 +140,17 @@ class DizillaProvider : MainAPI() {
                 )
             }
 
-            newTvSeriesLoadResponse(
-                name = title,
-                url = url,
-                type = TvType.TvSeries,
-                posterUrl = poster,
-                plot = description,
-                year = year,
-                episodes = episodes,
-            )
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.year = year
+                this.plot = description
+            }
         } else {
-            newMovieLoadResponse(
-                name = title,
-                url = url,
-                type = TvType.Movie,
-                posterUrl = poster,
-                plot = description,
-                year = year,
-                dataUrl = url,
-            )
+            newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.year = year
+                this.plot = description
+            }
         }
     }
 
