@@ -3,6 +3,7 @@ package com.safakstream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.fasterxml.jackson.annotation.JsonProperty
 import okhttp3.FormBody
 import java.util.UUID
@@ -32,15 +33,16 @@ class NetMirrorAPI : MainAPI() {
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
+    private val cloudflareKiller by lazy { CloudflareKiller() }
     private var cookieValue: String = ""
 
     private suspend fun bypass(): String {
         if (cookieValue.isNotEmpty()) {
-            println("NetMirror DEBUG: bypass() - Mevcut cookie kullaniliyor: $cookieValue")
+            println("NetMirror DEBUG: bypass() - Mevcut cookie kullaniliyor")
             return cookieValue
         }
 
-        println("NetMirror DEBUG: bypass() - Yeni cookie aliniyor...")
+        println("NetMirror DEBUG: bypass() - CloudflareKiller ile cookie aliniyor...")
 
         try {
             val headers = mapOf(
@@ -57,7 +59,8 @@ class NetMirrorAPI : MainAPI() {
             val response = app.post(
                 "https://net52.cc/verify.php",
                 requestBody = body,
-                headers = headers
+                headers = headers,
+                interceptor = cloudflareKiller
             )
 
             println("NetMirror DEBUG: bypass() - Status Code = ${response.code}")
@@ -88,18 +91,12 @@ class NetMirrorAPI : MainAPI() {
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
 
-        val response = app.get("$mainUrl/home", headers = headers)
+        val response = app.get("$mainUrl/home", headers = headers, interceptor = cloudflareKiller)
         println("NetMirror DEBUG: Status Code = ${response.code}")
-        println("NetMirror DEBUG: Response Body (ilk 500 karakter) = ${response.text.take(500)}")
 
         val document = response.document
         val items = document.select("div.slider-item")
         println("NetMirror DEBUG: Bulunan slider-item sayisi = ${items.size}")
-
-        if (items.isEmpty()) {
-            val altItems = document.select("div[data-post]")
-            println("NetMirror DEBUG: Alternatif data-post sayisi = ${altItems.size}")
-        }
 
         val homePageLists = mutableListOf<HomePageList>()
 
@@ -146,7 +143,7 @@ class NetMirrorAPI : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val id = data
         val playlistUrl = "https://net52.cc/playlist.php?id=$id"
-        val response = app.get(playlistUrl).text
+        val response = app.get(playlistUrl, interceptor = cloudflareKiller).text
         val playlist = tryParseJson<NetMirrorPlaylistResponse>(response)
 
         playlist?.sources?.forEach { source ->
