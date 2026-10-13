@@ -3,7 +3,6 @@ package com.safakstream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.fasterxml.jackson.annotation.JsonProperty
 import okhttp3.FormBody
 import java.util.UUID
@@ -27,13 +26,12 @@ data class NetMirrorTrack(
 )
 
 class NetMirrorAPI : MainAPI() {
-    override var mainUrl = "https://net77.cc"
+    override var mainUrl = "https://net22.cc"
     override var name = "NetMirror"
     override var lang = "tr"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    private val cloudflareKiller by lazy { CloudflareKiller() }
     private var cookieValue: String = ""
 
     private suspend fun bypass(): String {
@@ -42,13 +40,26 @@ class NetMirrorAPI : MainAPI() {
             return cookieValue
         }
 
-        println("NetMirror DEBUG: bypass() - CloudflareKiller ile cookie aliniyor...")
+        println("NetMirror DEBUG: bypass() - Yeni cookie aliniyor...")
 
         try {
             val headers = mapOf(
                 "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Encoding" to "gzip, deflate, br, zstd",
+                "Accept-Language" to "en-US,en;q=0.9",
+                "Cache-Control" to "max-age=0",
+                "Connection" to "keep-alive",
+                "Content-Type" to "application/x-www-form-urlencoded",
                 "Origin" to "https://net22.cc",
                 "Referer" to "https://net22.cc/verify2",
+                "sec-ch-ua" to "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+                "sec-ch-ua-mobile" to "?0",
+                "sec-ch-ua-platform" to "\"Windows\"",
+                "Sec-Fetch-Dest" to "document",
+                "Sec-Fetch-Mode" to "navigate",
+                "Sec-Fetch-Site" to "same-origin",
+                "Sec-Fetch-User" to "?1",
+                "Upgrade-Insecure-Requests" to "1",
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
             )
 
@@ -59,8 +70,7 @@ class NetMirrorAPI : MainAPI() {
             val response = app.post(
                 "https://net52.cc/verify.php",
                 requestBody = body,
-                headers = headers,
-                interceptor = cloudflareKiller
+                headers = headers
             )
 
             println("NetMirror DEBUG: bypass() - Status Code = ${response.code}")
@@ -91,7 +101,7 @@ class NetMirrorAPI : MainAPI() {
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
 
-        val response = app.get("$mainUrl/home", headers = headers, interceptor = cloudflareKiller)
+        val response = app.get("$mainUrl/home", headers = headers)
         println("NetMirror DEBUG: Status Code = ${response.code}")
 
         val document = response.document
@@ -143,7 +153,7 @@ class NetMirrorAPI : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val id = data
         val playlistUrl = "https://net52.cc/playlist.php?id=$id"
-        val response = app.get(playlistUrl, interceptor = cloudflareKiller).text
+        val response = app.get(playlistUrl).text
         val playlist = tryParseJson<NetMirrorPlaylistResponse>(response)
 
         playlist?.sources?.forEach { source ->
