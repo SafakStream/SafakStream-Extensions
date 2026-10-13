@@ -1,7 +1,8 @@
 package com.safakstream
 
-import com.lagradost.cloudstream3.HomePageResponse
+import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageList
+import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageRequest
@@ -9,12 +10,11 @@ import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
-import com.lagradost.cloudstream3.fixUrlNull
+import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newEpisode
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
-import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -37,14 +37,14 @@ class DizillaProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get(request.data).document
-
         val home = mutableListOf<SearchResponse>()
 
-        // Popüler diziler (trends listesi)
-        if (request.data == "$mainUrl/" || request.data.endsWith("/")) {
-            home.addAll(document.select("article.movie-type-genres ul.trends li").mapNotNull { it.toTrendSearchResult() })
+        // Ana sayfa (Popüler Diziler) için trends listesi
+        val trends = document.select("article.movie-type-genres ul.trends li")
+        if (trends.isNotEmpty()) {
+            home.addAll(trends.mapNotNull { it.toTrendSearchResult() })
         } else {
-            // Kategori sayfaları için
+            // Diğer kategoriler için kart listesi
             home.addAll(document.select("div.new-added-list a").mapNotNull { it.toCardSearchResult() })
         }
 
@@ -122,20 +122,19 @@ class DizillaProvider : MainAPI() {
 
             document.select("a[href*='-sezon-'][href*='-bolum']").forEach { epElement ->
                 val epHref = epElement.attr("href").takeIf { it.isNotEmpty() } ?: return@forEach
-                val epTitle = epElement.selectFirst("h3")?.text()?.trim()
+                val epName = epElement.selectFirst("h3")?.text()?.trim()
                     ?: epElement.attr("title")?.trim()
                     ?: return@forEach
 
-                val seasonEpRegex = Regex("(\\d+)\\.\\s*Sezon\\s*(\\d+)\\.\\s*Bölüm")
-                val match = seasonEpRegex.find(epElement.text())
-                val season = match?.groupValues?.get(1)?.toIntOrNull() ?: 1
-                val episode = match?.groupValues?.get(2)?.toIntOrNull() ?: 1
+                val infoText = epElement.text()
+                val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+                val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
 
                 episodes.add(
                     newEpisode(fixUrl(epHref)) {
-                        this.name = epTitle
-                        this.season = season
-                        this.episode = episode
+                        this.name = epName
+                        this.season = epSeason
+                        this.episode = epEpisode
                     }
                 )
             }
