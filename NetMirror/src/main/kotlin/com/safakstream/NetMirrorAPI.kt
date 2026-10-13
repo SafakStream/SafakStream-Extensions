@@ -26,7 +26,7 @@ data class NetMirrorTrack(
 )
 
 class NetMirrorAPI : MainAPI() {
-    override var mainUrl = "https://net22.cc"
+    override var mainUrl = "https://net77.cc"
     override var name = "NetMirror"
     override var lang = "tr"
     override val hasMainPage = true
@@ -35,10 +35,7 @@ class NetMirrorAPI : MainAPI() {
     private var cookieValue: String = ""
 
     private suspend fun bypass(): String {
-        if (cookieValue.isNotEmpty()) {
-            println("NetMirror DEBUG: bypass() - Mevcut cookie kullaniliyor")
-            return cookieValue
-        }
+        if (cookieValue.isNotEmpty()) return cookieValue
 
         println("NetMirror DEBUG: bypass() - Yeni cookie aliniyor...")
 
@@ -67,6 +64,7 @@ class NetMirrorAPI : MainAPI() {
                 .add("g-recaptcha-response", UUID.randomUUID().toString())
                 .build()
 
+            // net22.cc üzerinden dene
             val response = app.post(
                 "https://net52.cc/verify.php",
                 requestBody = body,
@@ -74,7 +72,7 @@ class NetMirrorAPI : MainAPI() {
             )
 
             println("NetMirror DEBUG: bypass() - Status Code = ${response.code}")
-            println("NetMirror DEBUG: bypass() - Set-Cookie = ${response.headers["Set-Cookie"]}")
+            println("NetMirror DEBUG: bypass() - Headers = ${response.headers}")
 
             val setCookie = response.headers["Set-Cookie"] ?: ""
             val match = Regex("t_hash_t=([^;]+)").find(setCookie)
