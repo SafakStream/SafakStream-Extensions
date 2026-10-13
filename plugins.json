@@ -74,8 +74,8 @@
         "authors": [
             "SafakStream"
         ],
-        "description": "NetMirror - Net77.cc eklentisi",
-        "fileSize": 14920,
+        "description": "NetMirror - Net77.cc eklentisi (CNCVerse tabanl\u0131)",
+        "fileSize": 32452,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -84,7 +84,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/NetMirror.png",
         "apiVersion": 1,
-        "fileHash": "sha256-dbe2802fdcf7c497b361155019f599400b42d2f3f68f7b9e9eebba9152805ac3"
+        "fileHash": "sha256-8ea906ccae8dea38334e315bf1cd39a14164c474b0a3dfeb325776e0c1e57dc2"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
