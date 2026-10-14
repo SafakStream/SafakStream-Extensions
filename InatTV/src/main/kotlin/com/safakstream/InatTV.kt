@@ -33,6 +33,7 @@ import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.URI
+import java.net.URLDecoder
 import java.net.URLEncoder
 
 class InatTV : MainAPI() {
@@ -152,18 +153,15 @@ class InatTV : MainAPI() {
         val sourcesRaw = attr("data-source")
         val target = attr("data-target").trim()
 
-        // Kaynak formatini belirle
         val player: String
         val targetType: String
 
         if (sourcesRaw.startsWith("[")) {
-            // Mac formati: JSON array
             val sources = try { mapper.readValue<List<Source>>(sourcesRaw) } catch (e: Exception) { emptyList() }
             val first = sources.firstOrNull() ?: return null
             player = first.link ?: return null
             targetType = first.type ?: "viptv"
         } else if (sourcesRaw.isNotBlank()) {
-            // Kanal formati: direkt
             player = sourcesRaw
             targetType = target.ifBlank { "viptv" }
         } else {
@@ -176,17 +174,20 @@ class InatTV : MainAPI() {
             }
         }
 
-        // data icinde `||` ile ayir
-        val data = "$name||$player||$targetType"
+        // RAW ID: data-url'dan temizle
+        val id = attr("data-url").removePrefix("#").removeSuffix("-canli-izle").ifBlank { name.replace(" ", "-").lowercase() }
 
-        return newMovieSearchResponse(name, data, TvType.Live) {
+        // STABLE URL (gercek URL formati - referans gibi)
+        val stableUrl = buildStableUrl(id, name, player, targetType)
+
+        return newLiveSearchResponse(name, stableUrl, TvType.Live) {
             this.posterUrl = poster
         }
     }
 
     private fun SportsChannel.toSearchResponse(): SearchResponse {
-        val data = "$title||$player||$target"
-        return newMovieSearchResponse(title, data, TvType.Live) {
+        val stableUrl = buildStableUrl(id, title, player, target)
+        return newLiveSearchResponse(title, stableUrl, TvType.Live) {
             this.posterUrl = poster
         }
     }
@@ -216,32 +217,27 @@ class InatTV : MainAPI() {
     // ========================================================================
 
     override suspend fun load(url: String): LoadResponse? {
-        Log.d("InatTV", "=== load() cagrildi ===")
-        Log.d("InatTV", "url = [$url]")
-        val parts = url.split("||")
-        Log.d("InatTV", "parts = ${parts.size} adet: ${parts.joinToString(" | ")}")
-        if (parts.size < 3) return null
+        Log.d(TAG, "=== load() cagrildi: url=[$url] ===")
 
-        val displayName = parts[0].trim()
-        val player = parts[1].trim()
-        val target = parts[2].trim()
+        val parsed = parseStableUrl(url)
+        if (parsed == null) {
+            Log.e(TAG, "parseStableUrl null")
+            return null
+        }
 
-        val description = when (target) {
+        Log.d(TAG, "parsed: id=${parsed.id} title=${parsed.title} player=${parsed.player} target=${parsed.target}")
+
+        val description = when (parsed.target) {
             "viptv", "vip" -> "Canli yayin"
             "m3u8" -> "HLS yayin"
             "frame" -> "Gomulu yayin"
             else -> "Canli yayin"
         }
 
-        // Gercek URL formati (Cloudstream URL bekliyor)
-        val stableUrl = "https://www.inattvizle494.top/watch/$player"
-
-        Log.d("InatTV", "displayName=[$displayName] stableUrl=[$stableUrl]")
-        return newMovieLoadResponse(
-            displayName,        // name
-            stableUrl,          // url (temiz, URL formati)
-            TvType.Live,        // type
-            url                 // data (loadLinks'e gecer)
+        return newLiveStreamLoadResponse(
+            parsed.title,   // name = Baslik
+            url,            // url
+            url             // dataUrl (loadLinks'e gider)
         ) {
             this.plot = description
         }
@@ -257,15 +253,17 @@ class InatTV : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val parts = data.split("||")
-        if (parts.size < 3) {
-            Log.e(TAG, "Gecersiz data: $data")
+        Log.d(TAG, "=== loadLinks() cagrildi: data=[$data] ===")
+
+        val parsed = parseStableUrl(data)
+        if (parsed == null) {
+            Log.e(TAG, "parseStableUrl null (loadLinks)")
             return false
         }
 
-        val name = parts[0].trim()
-        val player = parts[1].trim()
-        val target = parts[2].trim()
+        val name = parsed.title
+        val player = parsed.player
+        val target = parsed.target
 
         Log.d(TAG, "loadLinks => name=$name, target=$target, player=$player")
 
