@@ -223,24 +223,21 @@ class InatTV : MainAPI() {
         val player = parts[1].trim()
         val target = parts[2].trim()
 
-        // Cloudstream URL bekliyor - gercek formatli URL olustur
-        val stableUrl = "https://www.inattvizle494.top/watch" +
-            "?name=" + URLEncoder.encode(displayName, "UTF-8") +
-            "&player=" + URLEncoder.encode(player, "UTF-8") +
-            "&target=" + URLEncoder.encode(target, "UTF-8")
-
         val description = when (target) {
-            "viptv" -> "Canli yayin"
-            "vip"   -> "Canli yayin"
-            "m3u8"  -> "HLS yayin"
+            "viptv", "vip" -> "Canli yayin"
+            "m3u8" -> "HLS yayin"
             "frame" -> "Gomulu yayin"
-            else    -> "Canli yayin"
+            else -> "Canli yayin"
         }
 
-        return newLiveStreamLoadResponse(
-            name = displayName,      // Baslik: "beIN 1"
-            url = stableUrl,         // Cloudstream'in gordugu URL
-            dataUrl = url            // loadLinks'e gececek data
+        // Gercek URL formati (Cloudstream URL bekliyor)
+        val stableUrl = "https://www.inattvizle494.top/watch/$player"
+
+        return newMovieLoadResponse(
+            displayName,        // name
+            stableUrl,          // url (temiz, URL formati)
+            TvType.Live,        // type
+            url                 // data (loadLinks'e gecer)
         ) {
             this.plot = description
         }
