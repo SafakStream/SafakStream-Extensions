@@ -96,9 +96,7 @@ class Sinewix : MainAPI() {
         "${mainUrl}/public/api/media/seriesEpisodesAll/$API_TOKEN" to "Yeni Bölümler",
         "${mainUrl}/public/api/genres/latestanimes/all/$API_TOKEN" to "Son Animeler",
         "${mainUrl}/public/api/genres/mediaLibrary/show/80/movie/$API_TOKEN" to "Suç Filmleri",
-        "${mainUrl}/public/api/genres/mediaLibrary/show/80/serie/$API_TOKEN" to "Suç Dizileri",
         "${mainUrl}/public/api/genres/mediaLibrary/show/9648/movie/$API_TOKEN" to "Gizem Filmleri",
-        "${mainUrl}/public/api/genres/mediaLibrary/show/9648/serie/$API_TOKEN" to "Gizem Dizileri",
         "${mainUrl}/public/api/genres/mediaLibrary/show/10769/serie/$API_TOKEN" to "Kore Diziler",
         "${mainUrl}/public/api/genres/mediaLibrary/show/16/movie/$API_TOKEN" to "Animasyonlar"
     )
