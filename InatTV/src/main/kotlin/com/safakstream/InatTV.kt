@@ -109,16 +109,39 @@ class InatTV : MainAPI() {
         val searchKey = attr("data-search").ifBlank { name }
         val category = attr("data-category").ifBlank { "genel" }
 
+        // IKI YAPIYI DESTEKLE:
+        // 1) Maclar: data-source='[{"ad":"HD","tip":"viptv","link":"101303"}]'
+        // 2) TV kanallari: data-target="m3u8" data-source="https://..."
         val sourcesRaw = attr("data-source")
-        val sources = try {
-            if (sourcesRaw.isBlank()) emptyList()
-            else mapper.readValue<List<Source>>(sourcesRaw)
-        } catch (e: Exception) {
-            Log.e("InatTV", "Source parse hatasi: ${e.message}")
-            emptyList()
+        val directTarget = attr("data-target")
+
+        val sources: List<Source> = when {
+            sourcesRaw.startsWith("[") -> {
+                try {
+                    mapper.readValue(sourcesRaw)
+                } catch (e: Exception) {
+                    Log.e("InatTV", "Source parse hatasi: ${e.message}")
+                    emptyList()
+                }
+            }
+            directTarget.isNotBlank() && sourcesRaw.isNotBlank() -> {
+                listOf(
+                    Source(
+                        quality = "HD",
+                        type = directTarget,
+                        link = sourcesRaw
+                    )
+                )
+            }
+            else -> emptyList()
         }
 
-        val homeLogo = attr("data-home_logo").ifBlank { null }
+        // Logo: maclarda data-home_logo, TV kanallarinda img src
+        val homeLogo = attr("data-home_logo").ifBlank {
+            selectFirst("img")?.attr("src")?.let {
+                if (it.startsWith("http")) it else fixUrl(it)
+            }
+        }
         val awayLogo = attr("data-away_logo").ifBlank { null }
         val time = selectFirst("span.saat")?.text()
 
