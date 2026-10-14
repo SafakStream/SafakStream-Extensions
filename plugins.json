@@ -108,30 +108,6 @@
         "fileHash": "sha256-580ce01790774b85f65b874626ce7535f350ff90f5c59eaa03eca6a751af6c62"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Sinewix.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "Sinewix",
-        "internalName": "Sinewix",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "Sinewix - T\u00fcrk\u00e7e film ve dizi izleme platformu",
-        "fileSize": 39608,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries",
-            "Anime",
-            "AsianDrama",
-            "Cartoon"
-        ],
-        "iconUrl": "https://www.google.com/s2/favicons?domain=sinewix.com&sz=%size%",
-        "apiVersion": 1,
-        "fileHash": "sha256-d9a3cc4f7466557af558cc49c210218802ce8561d56e2e86b4508c45df7f4d49"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
         "status": 1,
         "version": 1,
