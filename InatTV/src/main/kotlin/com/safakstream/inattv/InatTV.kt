@@ -3,17 +3,17 @@ package com.safakstream.inattv
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
-import com.lagradost.cloudstream3.MainPageData
 import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import java.net.URLEncoder
 
@@ -28,6 +28,7 @@ class InatTV(
     override val supportedTypes = setOf(TvType.Live)
     override val hasMainPage = true
     override val hasDownloadSupport = false
+    override val hasQuickSearch = false
     override val mainPage = mainPageOf(
         "all" to "Canlı Spor"
     )
@@ -44,20 +45,20 @@ class InatTV(
     /**
      * SportsChannel'ı LiveSearchResponse'a çevirir
      */
-    private suspend fun SportsChannel.toSearchResponse(): SearchResponse {
-        val brand = ChannelBranding.forChannel(this)
+    private suspend fun channelToSearchResponse(channel: SportsChannel): SearchResponse {
+        val brand = ChannelBranding.forChannel(channel)
         return newLiveSearchResponse(
             name = brand.title,
-            url = stableUrl(this),
+            url = stableUrl(channel),
             type = TvType.Live
         ) {
-            this.posterUrl = artwork.poster(this@toSearchResponse)
+            this.posterUrl = artwork.poster(channel)
         }
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val snapshot = domains.resolve() ?: return newHomePageResponse(request.name, emptyList())
-        val items = snapshot.channels.map { it.toSearchResponse() }
+        val items = snapshot.channels.map { channelToSearchResponse(it) }
         return newHomePageResponse(request.name, items)
     }
 
@@ -69,7 +70,7 @@ class InatTV(
                 it.title.lowercase().contains(q) ||
                 it.id.lowercase().contains(q)
             }
-            .map { it.toSearchResponse() }
+            .map { channelToSearchResponse(it) }
     }
 
     /**
@@ -87,7 +88,6 @@ class InatTV(
                 name = "Bilinmeyen Kanal",
                 url = url,
                 dataUrl = url,
-                referer = DomainResolver.GATEWAY
             ) { }
 
         val brand = ChannelBranding.forChannel(channel)
@@ -95,8 +95,7 @@ class InatTV(
         return newLiveStreamLoadResponse(
             name = brand.title,
             url = stableUrl(channel),
-            dataUrl = channel.player, // stream URL'i veya viptv ID'si
-            referer = DomainResolver.GATEWAY
+            dataUrl = channel.player,
         ) {
             this.posterUrl = artwork.poster(channel)
         }
@@ -109,18 +108,17 @@ class InatTV(
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
-            // dataUrl = "viptv" ise player = sayısal ID; stream URL'i auth ile alınır
-            // "m3u8" ise player zaten direkt URL
-            // Şimdilik direkt URL olarak yükleyelim
+            // dataUrl direkt URL ise (m3u8) yükle
             if (data.startsWith("http://") || data.startsWith("https://")) {
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
                         name = this.name,
-                        url = data
+                        url = data,
+                        type = ExtractorLinkType.M3U8
                     ) {
                         this.referer = DomainResolver.GATEWAY
-                        this.quality = com.lagradost.cloudstream3.utils.ExtractorLinkType.M3U8
+                        this.quality = Qualities.Unknown.value
                     }
                 )
                 return true
