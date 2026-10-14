@@ -1,5 +1,6 @@
 package com.safakstream.inattv
 
+import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
@@ -7,6 +8,7 @@ import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
@@ -33,18 +35,14 @@ class InatTV(
         "all" to "Canlı Spor"
     )
 
-    /**
-     * Kanal için kalıcı URL üretir: inatgiris.com/turkspor?id=X&title=Y
-     */
+    private val ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+
     private fun stableUrl(channel: SportsChannel): String {
         val id = URLEncoder.encode(channel.id, "UTF-8")
         val title = URLEncoder.encode(channel.title, "UTF-8")
         return "${DomainResolver.GATEWAY}turkspor?id=$id&title=$title"
     }
 
-    /**
-     * SportsChannel'ı LiveSearchResponse'a çevirir
-     */
     private suspend fun channelToSearchResponse(channel: SportsChannel): SearchResponse {
         val brand = ChannelBranding.forChannel(channel)
         return newLiveSearchResponse(
@@ -73,9 +71,6 @@ class InatTV(
             .map { channelToSearchResponse(it) }
     }
 
-    /**
-     * URL'den kanalı bulur. URL formatı: inatgiris.com/turkspor?id=X&title=Y
-     */
     private suspend fun currentChannel(url: String): SportsChannel? {
         val id = SportsParser.queryParam(url, "id") ?: return null
         val snapshot = domains.resolve() ?: return null
@@ -83,19 +78,18 @@ class InatTV(
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val channel = currentChannel(url)
-            ?: return newLiveStreamLoadResponse(
-                name = "Bilinmeyen Kanal",
-                url = url,
-                dataUrl = url,
-            ) { }
+        val channel = currentChannel(url) ?: return newLiveStreamLoadResponse(
+            name = "Bilinmeyen Kanal",
+            url = url,
+            dataUrl = url
+        ) { }
 
         val brand = ChannelBranding.forChannel(channel)
 
         return newLiveStreamLoadResponse(
             name = brand.title,
-            url = stableUrl(channel),
-            dataUrl = channel.player,
+            url = url,
+            dataUrl = stableUrl(channel)
         ) {
             this.posterUrl = artwork.poster(channel)
         }
@@ -107,23 +101,79 @@ class InatTV(
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        val channel = currentChannel(data) ?: return false
+        val snapshot = domains.resolve() ?: return false
+
+        // === M3U8 direkt akış ===
+        if (channel.target == "m3u8") {
+            val streamUrl = SportsParser.httpsUrl(channel.player) ?: return false
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = "${ChannelBranding.forChannel(channel).title} (m3u8)",
+                    url = streamUrl,
+                    type = ExtractorLinkType.M3U8
+                ) {
+                    this.referer = snapshot.url
+                    this.headers = mapOf("User-Agent" to ua)
+                    this.quality = Qualities.Unknown.value
+                }
+            )
+            return true
+        }
+
+        // === viptv akış ===
+        if (channel.target != "viptv") return false
+
+        val headers = mutableMapOf(
+            "User-Agent" to ua,
+            "Origin" to snapshot.url.trimEnd('/'),
+            "X-Requested-With" to "XMLHttpRequest",
+            "Accept" to "application/json, text/javascript, */*; q=0.01"
+        )
+
         try {
-            // dataUrl direkt URL ise (m3u8) yükle
-            if (data.startsWith("http://") || data.startsWith("https://")) {
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = this.name,
-                        url = data,
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = DomainResolver.GATEWAY
-                        this.quality = Qualities.Unknown.value
-                    }
-                )
-                return true
+            // 1) authUrl'ye POST: channel=player
+            val playlist = app.post(
+                snapshot.config.authUrl,
+                headers = headers,
+                data = mapOf("channel" to channel.player)
+            )
+
+            val session = SportsParser.streamSession(playlist.text)
+                ?: throw ErrorLoadingException("Kaynak bu kanal için yayın adresi vermedi. Maç saatinde veya WARP ile tekrar deneyin.")
+
+            // 2) Token varsa headers'a ekle
+            if (session.token.isNotEmpty()) {
+                headers["usertoken"] = session.token
+                headers["pl"] = snapshot.config.siteName
             }
-            return false
+
+            // 3) session.url'e GET → gerçek m3u8 URL'i
+            val stream = app.get(session.url, headers = headers).text.trim()
+
+            if (stream.isBlank()) {
+                throw ErrorLoadingException("Yayın adresi boş döndü.")
+            }
+
+            // 4) Stream URL'ini m3u8 olarak ver
+            val finalUrl = SportsParser.httpsUrl(stream) ?: stream
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = ChannelBranding.forChannel(channel).title,
+                    url = finalUrl,
+                    type = ExtractorLinkType.M3U8
+                ) {
+                    this.referer = snapshot.url
+                    this.headers = headers
+                    this.quality = Qualities.Unknown.value
+                }
+            )
+            return true
+
+        } catch (e: ErrorLoadingException) {
+            throw e
         } catch (t: Throwable) {
             return false
         }
