@@ -66,6 +66,26 @@
         "fileHash": "sha256-85de9f8e2f6f58eef27e521537d7d84efc8d42ee6dd1a885fb3fe8859e1249b9"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "InatTV",
+        "internalName": "InatTV",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "Inat TV - T\u00fcrk\u00e7e canl\u0131 spor kanallar\u0131",
+        "fileSize": 26105,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Live"
+        ],
+        "iconUrl": "https://www.google.com/s2/favicons?domain=inatgiris.com&sz=%size%",
+        "apiVersion": 1,
+        "fileHash": "sha256-57f3ec0b93bb827dea5d569c7e06628201bdf9d13e1c88c63c199276c9c48b8d"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
         "status": 3,
         "version": 1,
