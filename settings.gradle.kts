@@ -23,5 +23,8 @@ include(
     "HDFilmCehennemi",
     "StreamingCommunity",
     "SelcukFlix",
-    "InatTV"
+    "InatTV",
+    "Sinewix",
+    "InatTV",
+    "DiziFilmizle"
 )
