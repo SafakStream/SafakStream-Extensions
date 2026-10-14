@@ -83,12 +83,16 @@ class InatTV : MainAPI() {
             val title = el.attr("data-name").trim()
             if (title.isBlank()) return@mapNotNull null
 
+            val poster = el.selectFirst("img")?.attr("src")?.let {
+                if (it.startsWith("http")) it else fixUrl(it)
+            }
+
             when (target) {
                 "viptv" -> if (Regex("[0-9]{1,12}").matches(source))
-                    SportsChannel(rawId, title, "Spor Kanallari", source, target) else null
+                    SportsChannel(rawId, title, "Spor Kanallari", source, target, poster) else null
                 "m3u8" -> if (source.startsWith("http"))
-                    SportsChannel(rawId, title, "Spor Kanallari", source, target) else null
-                "frame" -> SportsChannel(rawId, title, "Spor Kanallari", source, target)
+                    SportsChannel(rawId, title, "Spor Kanallari", source, target, poster) else null
+                "frame" -> SportsChannel(rawId, title, "Spor Kanallari", source, target, poster)
                 else -> null
             }
         }.distinctBy { it.id }
@@ -181,7 +185,9 @@ class InatTV : MainAPI() {
 
     private fun SportsChannel.toSearchResponse(): SearchResponse {
         val data = "$title||$player||$target"
-        return newMovieSearchResponse(title, data, TvType.Live)
+        return newMovieSearchResponse(title, data, TvType.Live) {
+            this.posterUrl = poster
+        }
     }
 
     // ========================================================================
@@ -212,15 +218,18 @@ class InatTV : MainAPI() {
         val parts = url.split("||")
         if (parts.size < 3) return null
 
-        val name = parts[0].trim()
+        val displayName = parts[0].trim()
         val target = parts[2].trim()
 
-        val description = buildString {
-            append("Kaynak tipi: $target\n")
-            append("Yayin saglayici: $name")
+        val description = when (target) {
+            "viptv" -> "Canli yayin"
+            "vip"   -> "Canli yayin"
+            "m3u8"  -> "HLS yayin"
+            "frame" -> "Gomulu yayin"
+            else    -> "Canli yayin"
         }
 
-        return newMovieLoadResponse(name, url, TvType.Live, url) {
+        return newMovieLoadResponse(displayName, url, TvType.Live, url) {
             this.plot = description
         }
     }
@@ -416,7 +425,8 @@ data class SportsChannel(
     val title: String,
     val category: String,
     val player: String,
-    val target: String
+    val target: String,
+    val poster: String? = null
 )
 
 data class StreamSession(
