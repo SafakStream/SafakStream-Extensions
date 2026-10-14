@@ -125,7 +125,7 @@ class Sinewix : MainAPI() {
 
                 // Form parametreleri
                 val formParams = linkedMapOf(
-                    "signature" to RAW_CERT_HEX,
+                    "signature" to CERT_SHA256,
                     "package_name" to "com.wxsmash.game",
                     "device_id" to deviceId,
                     "nonce" to tokenNonce,
@@ -157,7 +157,7 @@ class Sinewix : MainAPI() {
                     "X-App-Id" to "sinewix-mobile",
                     "X-Platform" to "android",
                     "X-Device-Id" to deviceId,
-                    "signature" to RAW_CERT_HEX,
+                    "signature" to CERT_SHA256,
                     "hash256" to CERT_SHA256,
                     "X-Encrypt-Response" to "1",
                     "X-Timestamp" to nowTs,
@@ -282,7 +282,7 @@ class Sinewix : MainAPI() {
             "X-App-Id" to "sinewix-mobile",
             "X-Platform" to "android",
             "X-Device-Id" to deviceId,
-            "signature" to RAW_CERT_HEX,
+            "signature" to CERT_SHA256,
             "hash256" to CERT_SHA256,
             "X-Encrypt-Response" to "1",
             "X-Timestamp" to nowTs,
