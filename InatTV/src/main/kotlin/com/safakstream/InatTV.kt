@@ -224,6 +224,82 @@ class InatTV : MainAPI() {
         return try {
             val data = if (isChannel) mapOf("channel" to id) else mapOf("id" to id)
 
+            // auth.php endpoint'lerini sirayla dene
+            val authEndpoints = listOf(
+                "$mainUrl/auth.php",
+                "https://top2new.newkso.ru/auth.php"
+            )
+
+            var authResponse: String? = null
+            for (endpoint in authEndpoints) {
+                try {
+                    val resp = app.post(
+                        endpoint,
+                        data = data,
+                        headers = mapOf(
+                            "User-Agent"       to USER_AGENT,
+                            "Content-Type"     to "application/x-www-form-urlencoded",
+                            "X-Requested-With" to "XMLHttpRequest",
+                            "Referer"          to "$mainUrl/",
+                            "Origin"           to mainUrl
+                        ),
+                        interceptor = cloudflareKiller
+                    ).text
+                    if (resp.contains("URL")) {
+                        authResponse = resp
+                        Log.d("InatTV", "auth.php basarili: $endpoint")
+                        break
+                    }
+                } catch (e: Exception) {
+                    Log.d("InatTV", "auth.php basarisiz ($endpoint): ${e.message}")
+                }
+            }
+
+            if (authResponse == null) {
+                Log.e("InatTV", "Hicbir auth.php calismadi")
+                return null
+            }
+
+            // 2. JSON parse
+            val json = JSONObject(authResponse)
+            if (json.has("ERROR")) {
+                Log.e("InatTV", "auth.php error: ${json.optString("ERROR")}")
+                return null
+            }
+
+            val jsUrl = json.optString("URL", "")
+            val token = json.optString("TOKEN", "")
+
+            if (jsUrl.isBlank()) return null
+
+            // 3. .js dosyasini CloudflareKiller ile cek
+            val jsContent = app.get(
+                jsUrl,
+                headers = mapOf(
+                    "User-Agent" to USER_AGENT,
+                    "usertoken"  to token,
+                    "pl"         to "inatTV",
+                    "Referer"    to "$mainUrl/",
+                    "Origin"     to mainUrl
+                ),
+                interceptor = cloudflareKiller
+            ).text
+
+            Log.d("InatTV", ".js content (first 1000): ${jsContent.take(1000)}")
+
+            // 4. Icerikten m3u8 linkini cikar
+            extractM3u8FromContent(jsContent, jsUrl)
+        } catch (e: Exception) {
+            Log.e("InatTV", "fetchVipStream error: ${e.message}", e)
+            null
+        }
+    }
+
+    @Suppress("unused")
+    private suspend fun fetchVipStreamOld(id: String, isChannel: Boolean): String? {
+        return try {
+            val data = if (isChannel) mapOf("channel" to id) else mapOf("id" to id)
+
             // 1. auth.php'ye POST
             val authResponse = app.post(
                 "$mainUrl/auth.php",
@@ -264,7 +340,7 @@ class InatTV : MainAPI() {
                 interceptor = cloudflareKiller
             ).text
 
-            Log.d("InatTV", ".js content (first 800): ${jsContent.take(800)}")
+            Log.d("InatTV", ".js content (first 1500): ${jsContent.take(1500)}")
 
             // 4. Icerikten m3u8 linkini cikar
             extractM3u8FromContent(jsContent, jsUrl)
