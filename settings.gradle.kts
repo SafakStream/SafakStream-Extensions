@@ -25,6 +25,5 @@ include(
     "SelcukFlix",
     "InatTV",
     "Sinewix",
-    "InatTV",
     "DiziFilmizle"
 )
