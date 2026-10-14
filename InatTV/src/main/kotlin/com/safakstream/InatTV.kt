@@ -28,6 +28,8 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.Jsoup
+import com.lagradost.cloudstream3.network.CloudflareKiller
+import org.json.JSONObject
 import org.jsoup.nodes.Element
 
 class InatTV : MainAPI() {
@@ -43,6 +45,12 @@ class InatTV : MainAPI() {
         "Accept"     to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Referer"    to "$mainUrl/"
     )
+
+    private val cloudflareKiller by lazy { CloudflareKiller() }
+
+    companion object {
+        private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36"
+    }
 
     override val mainPage = mainPageOf(
         "canli-maclar"  to "Canli Maclar",
@@ -212,6 +220,100 @@ class InatTV : MainAPI() {
         }
     }
 
+    private suspend fun fetchVipStream(id: String, isChannel: Boolean): String? {
+        return try {
+            val data = if (isChannel) mapOf("channel" to id) else mapOf("id" to id)
+
+            // 1. auth.php'ye POST
+            val authResponse = app.post(
+                "$mainUrl/auth.php",
+                data = data,
+                headers = mapOf(
+                    "User-Agent"       to USER_AGENT,
+                    "Content-Type"     to "application/x-www-form-urlencoded",
+                    "X-Requested-With" to "XMLHttpRequest",
+                    "Referer"          to "$mainUrl/",
+                    "Origin"           to mainUrl
+                )
+            ).text
+
+            Log.d("InatTV", "auth.php response: $authResponse")
+
+            // 2. JSON parse
+            val json = JSONObject(authResponse)
+            if (json.has("ERROR")) {
+                Log.e("InatTV", "auth.php error: ${json.optString("ERROR")}")
+                return null
+            }
+
+            val jsUrl = json.optString("URL", "")
+            val token = json.optString("TOKEN", "")
+
+            if (jsUrl.isBlank()) return null
+
+            // 3. CloudflareKiller ile .js dosyasini cek
+            val jsContent = app.get(
+                jsUrl,
+                headers = mapOf(
+                    "User-Agent" to USER_AGENT,
+                    "usertoken"  to token,
+                    "pl"         to "inatTV",
+                    "Referer"    to "$mainUrl/",
+                    "Origin"     to mainUrl
+                ),
+                interceptor = cloudflareKiller
+            ).text
+
+            Log.d("InatTV", ".js content (first 800): ${jsContent.take(800)}")
+
+            // 4. Icerikten m3u8 linkini cikar
+            extractM3u8FromContent(jsContent, jsUrl)
+        } catch (e: Exception) {
+            Log.e("InatTV", "fetchVipStream error: ${e.message}", e)
+            null
+        }
+    }
+
+    private fun extractM3u8FromContent(content: String, baseUrl: String): String? {
+        // 1. Direkt m3u8 linki ara
+        val m3u8Regex = Regex("""https?://[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*""")
+        m3u8Regex.find(content)?.let {
+            Log.d("InatTV", "m3u8 found (direct): ${it.value}")
+            return it.value
+        }
+
+        // 2. file: "..." formati
+        val fileRegex = Regex("""["']?file["']?\s*[:=]\s*["']([^"']+)["']""")
+        fileRegex.find(content)?.groupValues?.get(1)?.let {
+            if (it.contains(".m3u8") || it.startsWith("http")) {
+                Log.d("InatTV", "m3u8 found (file): $it")
+                return if (it.startsWith("http")) it else fixUrl(it)
+            }
+        }
+
+        // 3. src: "..." formati
+        val srcRegex = Regex("""["']?src["']?\s*[:=]\s*["']([^"']+\.m3u8[^"']*)["']""")
+        srcRegex.find(content)?.groupValues?.get(1)?.let {
+            Log.d("InatTV", "m3u8 found (src): $it")
+            return if (it.startsWith("http")) it else fixUrl(it)
+        }
+
+        // 4. Icerik m3u8 manifest mi?
+        if (content.trimStart().startsWith("#EXTM3U")) {
+            Log.d("InatTV", "Content is m3u8 manifest")
+            // Master playlist ise variant sec
+            val variantRegex = Regex("""(?m)^(?!#)([^\r\n]+\.m3u8[^\r\n]*)""")
+            variantRegex.find(content)?.groupValues?.get(1)?.trim()?.let {
+                return if (it.startsWith("http")) it else fixUrl(it)
+            }
+            // Master degilse direkt baseUrl'i don
+            return baseUrl
+        }
+
+        Log.d("InatTV", "m3u8 not found in content. First 300: ${content.take(300)}")
+        return null
+    }
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -259,6 +361,52 @@ class InatTV : MainAPI() {
                     val fixed = if (link.startsWith("http")) link else fixUrl(link)
                     val handled = loadExtractor(fixed, "$mainUrl/", subtitleCallback, callback)
                     if (handled) anyHandled = true
+                }
+
+                "vip" -> {
+                    Log.d("InatTV", "VIP kaynak isleniyor: $link")
+                    val m3u8 = fetchVipStream(link, isChannel = false)
+                    if (m3u8 != null) {
+                        callback.invoke(
+                            newExtractorLink(
+                                source = this.name,
+                                name   = "${this.name} [$quality] (vip)",
+                                url    = m3u8,
+                                type   = INFER_TYPE
+                            ) {
+                                this.referer = "$mainUrl/"
+                                this.quality = when (quality.uppercase()) {
+                                    "HD", "FHD" -> Qualities.P1080.value
+                                    "SD"        -> Qualities.P480.value
+                                    else        -> Qualities.Unknown.value
+                                }
+                            }
+                        )
+                        anyHandled = true
+                    }
+                }
+
+                "viptv" -> {
+                    Log.d("InatTV", "viptv kaynak isleniyor: $link")
+                    val m3u8 = fetchVipStream(link, isChannel = true)
+                    if (m3u8 != null) {
+                        callback.invoke(
+                            newExtractorLink(
+                                source = this.name,
+                                name   = "${this.name} [$quality] (viptv)",
+                                url    = m3u8,
+                                type   = INFER_TYPE
+                            ) {
+                                this.referer = "$mainUrl/"
+                                this.quality = when (quality.uppercase()) {
+                                    "HD", "FHD" -> Qualities.P1080.value
+                                    "SD"        -> Qualities.P480.value
+                                    else        -> Qualities.Unknown.value
+                                }
+                            }
+                        )
+                        anyHandled = true
+                    }
                 }
 
                 else -> {
