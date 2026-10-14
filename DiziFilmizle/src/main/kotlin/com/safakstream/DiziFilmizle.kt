@@ -19,6 +19,7 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.Qualities
 import org.json.JSONArray
 import org.json.JSONObject
@@ -283,14 +284,15 @@ class DiziFilmizle : MainAPI() {
             newMovieSearchResponse(this.title ?: "?", "$mainUrl/film/${this.slug}", type)
         }
         response.posterUrl = this.posterUrl
-        response.year = this.year
+        (response as? com.lagradost.cloudstream3.MovieSearchResponse)?.year = this.year
+    (response as? com.lagradost.cloudstream3.TvSeriesSearchResponse)?.year = this.year
         return response
     }
 
     private fun SeriesItem.toSearchResponse(isSeries: Boolean): SearchResponse {
         val response = newTvSeriesSearchResponse(this.title ?: "?", "$mainUrl/dizi/${this.slug}", TvType.TvSeries)
         response.posterUrl = this.posterUrl
-        response.year = this.startYear
+        (response as? com.lagradost.cloudstream3.TvSeriesSearchResponse)?.year = this.startYear
         return response
     }
 
@@ -301,7 +303,8 @@ class DiziFilmizle : MainAPI() {
             TvType.Movie
         )
         response.posterUrl = this.posterUrl
-        response.year = this.year
+        (response as? com.lagradost.cloudstream3.MovieSearchResponse)?.year = this.year
+    (response as? com.lagradost.cloudstream3.TvSeriesSearchResponse)?.year = this.year
         return response
     }
 }
