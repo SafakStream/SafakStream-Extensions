@@ -216,7 +216,10 @@ class InatTV : MainAPI() {
     // ========================================================================
 
     override suspend fun load(url: String): LoadResponse? {
+        Log.d("InatTV", "=== load() cagrildi ===")
+        Log.d("InatTV", "url = [$url]")
         val parts = url.split("||")
+        Log.d("InatTV", "parts = ${parts.size} adet: ${parts.joinToString(" | ")}")
         if (parts.size < 3) return null
 
         val displayName = parts[0].trim()
@@ -233,6 +236,7 @@ class InatTV : MainAPI() {
         // Gercek URL formati (Cloudstream URL bekliyor)
         val stableUrl = "https://www.inattvizle494.top/watch/$player"
 
+        Log.d("InatTV", "displayName=[$displayName] stableUrl=[$stableUrl]")
         return newMovieLoadResponse(
             displayName,        // name
             stableUrl,          // url (temiz, URL formati)
