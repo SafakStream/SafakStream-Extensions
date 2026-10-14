@@ -24,6 +24,5 @@ include(
     "StreamingCommunity",
     "SelcukFlix",
     "InatTV",
-    "Sinewix",
     "DiziFilmizle"
 )
