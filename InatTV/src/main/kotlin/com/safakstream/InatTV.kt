@@ -121,6 +121,44 @@ class InatTV : MainAPI() {
         return channels to cachedConfig!!
     }
 
+
+    // ========================================================================
+    // STABLE URL YARDIMCILARI
+    // ========================================================================
+
+    private fun buildStableUrl(id: String, title: String, player: String, target: String): String {
+        return "$mainUrl/watch" +
+            "?id=" + URLEncoder.encode(id, "UTF-8") +
+            "&title=" + URLEncoder.encode(title, "UTF-8") +
+            "&player=" + URLEncoder.encode(player, "UTF-8") +
+            "&target=" + URLEncoder.encode(target, "UTF-8")
+    }
+
+    private fun queryParam(url: String, key: String): String? {
+        return try {
+            val uri = URI(url)
+            val rawQuery = uri.rawQuery ?: return null
+            rawQuery.split("&")
+                .firstOrNull { it.substringBefore("=") == key }
+                ?.substringAfter("=")
+                ?.let { URLDecoder.decode(it, "UTF-8") }
+        } catch (e: Exception) { null }
+    }
+
+    private data class ParsedUrl(
+        val id: String,
+        val title: String,
+        val player: String,
+        val target: String
+    )
+
+    private fun parseStableUrl(url: String): ParsedUrl? {
+        val id = queryParam(url, "id") ?: return null
+        val title = queryParam(url, "title") ?: return null
+        val player = queryParam(url, "player") ?: return null
+        val target = queryParam(url, "target") ?: return null
+        return ParsedUrl(id, title, player, target)
+    }
     // ========================================================================
     // ANA SAYFA
     // ========================================================================
