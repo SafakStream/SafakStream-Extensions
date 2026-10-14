@@ -33,6 +33,7 @@ import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.URI
+import java.net.URLEncoder
 
 class InatTV : MainAPI() {
     override var mainUrl              = "https://www.inattvizle494.top"
@@ -219,7 +220,14 @@ class InatTV : MainAPI() {
         if (parts.size < 3) return null
 
         val displayName = parts[0].trim()
+        val player = parts[1].trim()
         val target = parts[2].trim()
+
+        // Cloudstream URL bekliyor - gercek formatli URL olustur
+        val stableUrl = "https://www.inattvizle494.top/watch" +
+            "?name=" + URLEncoder.encode(displayName, "UTF-8") +
+            "&player=" + URLEncoder.encode(player, "UTF-8") +
+            "&target=" + URLEncoder.encode(target, "UTF-8")
 
         val description = when (target) {
             "viptv" -> "Canli yayin"
@@ -229,7 +237,11 @@ class InatTV : MainAPI() {
             else    -> "Canli yayin"
         }
 
-        return newMovieLoadResponse(displayName, url, TvType.Live, url) {
+        return newLiveStreamLoadResponse(
+            name = displayName,      // Baslik: "beIN 1"
+            url = stableUrl,         // Cloudstream'in gordugu URL
+            dataUrl = url            // loadLinks'e gececek data
+        ) {
             this.plot = description
         }
     }
