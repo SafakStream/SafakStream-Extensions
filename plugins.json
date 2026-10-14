@@ -75,7 +75,7 @@
             "SafakStream"
         ],
         "description": "inatTV - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, 7/24 TV kanallar\u0131 ve spor kar\u015f\u0131la\u015fmalar\u0131n\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 18019,
+        "fileSize": 23345,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -84,7 +84,7 @@
         ],
         "iconUrl": "https://www.inattvizle494.top/lib/img/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-46a34ee2082b939c73e2db3a0f409d244f9b491c1f6f6d6a5d2b7420d987c8c9"
+        "fileHash": "sha256-ec6d8577c4438a07a6510c9f4fe2cba9348e11a753850f2611081283fee42238"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
