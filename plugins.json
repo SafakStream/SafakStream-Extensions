@@ -74,16 +74,17 @@
         "authors": [
             "SafakStream"
         ],
-        "description": "Inat TV - T\u00fcrk\u00e7e canl\u0131 spor kanallar\u0131",
-        "fileSize": 28690,
+        "description": "inatTV - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, 7/24 TV kanallar\u0131 ve spor kar\u015f\u0131la\u015fmalar\u0131n\u0131 Cloudstream \u00fczerinden izle.",
+        "fileSize": 17777,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
-            "Live"
+            "LiveStream",
+            "Others"
         ],
-        "iconUrl": "https://www.google.com/s2/favicons?domain=inatgiris.com&sz=%size%",
+        "iconUrl": "https://www.inattvizle494.top/lib/img/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-894d168c35c283806b7bcfc89b121da3b6063f69a6e9b06113185f59175f22b2"
+        "fileHash": "sha256-acd67ae46d50e995541b0274a478ee1180b17c05b279942d619ddc6413000f51"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
