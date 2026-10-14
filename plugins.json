@@ -96,7 +96,7 @@
             "SafakStream"
         ],
         "description": "Sinewix - T\u00fcrk\u00e7e film ve dizi izleme platformu",
-        "fileSize": 39642,
+        "fileSize": 39608,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -108,7 +108,7 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=sinewix.com&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-717131ee91a5f12018b197f5e35543253c5acaaf2a23758e3e9877998056c182"
+        "fileHash": "sha256-d9a3cc4f7466557af558cc49c210218802ce8561d56e2e86b4508c45df7f4d49"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
