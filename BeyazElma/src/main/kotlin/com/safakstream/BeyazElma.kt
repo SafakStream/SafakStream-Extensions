@@ -79,16 +79,20 @@ class BeyazElma : MainAPI() {
 
     private fun parseChannels(document: org.jsoup.nodes.Document): List<SearchResponse> {
         val out = mutableListOf<SearchResponse>()
-        document.select("a[href^=/kanal/]").forEach { a ->
+        document.select("a.site-channel-row, a.site-channel-card, a[href^=/kanal/]").forEach { a ->
             val href = a.attr("href").trim()
-            if (href.isEmpty()) return@forEach
+            if (href.isEmpty() || !href.startsWith("/kanal/")) return@forEach
 
-            val name = a.selectFirst("span, p, div")?.text()?.trim()
-                ?: a.attr("title").trim()
-                ?: a.text().trim()
+            // Kanal adı: .site-channel-row-name class'ında
+            val name = a.selectFirst(".site-channel-row-name")?.text()?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: a.selectFirst("img")?.attr("alt")?.trim()
+                    ?.removeSuffix(" logosu")
+                    ?.takeIf { it.isNotEmpty() }
+                ?: a.attr("title").trim().takeIf { it.isNotEmpty() }
+                ?: return@forEach
 
-            if (name.isEmpty()) return@forEach
-
+            // Logo: img src
             val poster = a.selectFirst("img")?.attr("src")?.let {
                 if (it.startsWith("http")) it else "$mainUrl$it"
             }
