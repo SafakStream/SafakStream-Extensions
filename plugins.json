@@ -150,6 +150,26 @@
         "fileHash": "sha256-580ce01790774b85f65b874626ce7535f350ff90f5c59eaa03eca6a751af6c62"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Streamed.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "Streamed",
+        "internalName": "Streamed",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "Streamed.pk spor yayinlarini izlemenizi saglar",
+        "fileSize": 19275,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "en",
+        "tvTypes": [
+            "Live"
+        ],
+        "iconUrl": "https://streamed.pk/favicon.ico",
+        "apiVersion": 1,
+        "fileHash": "sha256-04d994ff1fffc3afda5c281562193f5d71a8246e25e50884863ab40439def00b"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
         "status": 1,
         "version": 1,
