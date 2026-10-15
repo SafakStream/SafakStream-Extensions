@@ -111,7 +111,7 @@ class DiziFilmizle : MainAPI() {
         val plot = doc.selectFirst("meta[name=description]")?.attr("content")
 
         // Parts'ı HTML'den çek
-        val partsRegex = Regex("""parts\\":\[([\s\S]*?)\]}""")
+        val partsRegex = Regex("""parts.{0,3}\[([\s\S]*?)\]""")
         val partsMatch = partsRegex.find(html)
         val links = mutableListOf<Pair<String, String>>() // url to title
 
