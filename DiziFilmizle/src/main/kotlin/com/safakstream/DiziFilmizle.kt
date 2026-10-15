@@ -161,7 +161,7 @@ class DiziFilmizle : MainAPI() {
                                     ep.optString("title").ifBlank { "$seasonNumber. Sezon $epNum. Bölüm" }
                                 }
                                 val epPoster = ep.optString("thumbnail_url").ifBlank { null }
-                                val epUrl = "$mainUrl/dizi/$slug/${seasonNumber}-sezon-${epNum}-bolum"
+                                val epUrl = "$mainUrl/dizi/$slug/sezon-${seasonNumber}/bolum-${epNum}"
 
                                 episodes.add(
                                     newEpisode(epUrl) {
