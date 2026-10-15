@@ -25,5 +25,6 @@ include(
     "SelcukFlix",
     "InatTV",
     "DiziFilmizle",
-    "BeyazElma"
+    "BeyazElma",
+    "Streamed"
 )
