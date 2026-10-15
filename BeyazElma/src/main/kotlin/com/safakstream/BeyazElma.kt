@@ -7,7 +7,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.jsoup.nodes.Element
 import org.json.JSONObject
 
 class BeyazElma : MainAPI() {
@@ -18,7 +17,7 @@ class BeyazElma : MainAPI() {
     override val hasQuickSearch = false
     override val hasDownloadSupport = false
     override val supportedTypes = setOf(
-        TvType.LiveStream,
+        TvType.Live,
         TvType.Others,
     )
 
@@ -44,23 +43,15 @@ class BeyazElma : MainAPI() {
         )
     }
 
-    /**
-     * Ana sayfadaki maç kartlarını parse eder.
-     * Kart yapısı: <a href="/mac/{slug}"> ... </a>
-     */
     private fun parseMatches(document: org.jsoup.nodes.Document): List<SearchResponse> {
         val out = mutableListOf<SearchResponse>()
-        // Ana sayfadaki maç kartlarının hepsi <a href="/mac/..."> şeklinde
         document.select("a[href^=/mac/]").forEach { a ->
             val href = a.attr("href").trim()
             if (href.isEmpty()) return@forEach
 
-            // Takım isimleri
             val home = a.selectFirst(".site-fixture-side--home .site-fixture-name")?.text()?.trim()
             val away = a.selectFirst(".site-fixture-side--away .site-fixture-name")?.text()?.trim()
 
-            // Eğer kartta takım isimleri yoksa (örn. "Bugünkü Diğer Maçlar" listesi)
-            // o zaman link içindeki metni kullan
             val title = if (!home.isNullOrEmpty() && !away.isNullOrEmpty()) {
                 "$home - $away"
             } else {
@@ -69,21 +60,16 @@ class BeyazElma : MainAPI() {
                     ?: return@forEach
             }
 
-            // Lig bilgisi
-            val league = a.selectFirst(".site-fixture-league")?.text()?.trim()
-                ?: a.selectFirst("p.text-\\[10px\\]")?.text()?.trim()
-
-            // Saat
-            val time = a.selectFirst(".site-fixture-time")?.text()?.trim()
-
-            // Logo
             val poster = a.selectFirst("img.site-fixture-logo")?.attr("src")?.let {
                 if (it.startsWith("http")) it else "$mainUrl$it"
             }
 
             out.add(
-                newLiveStreamSearchResponse(href) {
-                    this.name = title
+                newMovieSearchResponse(
+                    name = title,
+                    url = href,
+                    type = TvType.Live,
+                ) {
                     this.posterUrl = poster
                 }
             )
@@ -91,31 +77,28 @@ class BeyazElma : MainAPI() {
         return out.distinctBy { it.url }
     }
 
-    /**
-     * /kanallar sayfasındaki kanal kartlarını parse eder.
-     * Kart yapısı: <a href="/kanal/{slug}"> ... </a>
-     */
     private fun parseChannels(document: org.jsoup.nodes.Document): List<SearchResponse> {
         val out = mutableListOf<SearchResponse>()
         document.select("a[href^=/kanal/]").forEach { a ->
             val href = a.attr("href").trim()
             if (href.isEmpty()) return@forEach
 
-            // Kanal adı - genelde link içindeki görselin altında yazar
             val name = a.selectFirst("span, p, div")?.text()?.trim()
                 ?: a.attr("title").trim()
                 ?: a.text().trim()
 
             if (name.isEmpty()) return@forEach
 
-            // Kanal logosu
             val poster = a.selectFirst("img")?.attr("src")?.let {
                 if (it.startsWith("http")) it else "$mainUrl$it"
             }
 
             out.add(
-                newLiveStreamSearchResponse(href) {
-                    this.name = name
+                newMovieSearchResponse(
+                    name = name,
+                    url = href,
+                    type = TvType.Live,
+                ) {
                     this.posterUrl = poster
                 }
             )
@@ -124,21 +107,20 @@ class BeyazElma : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        // Maç ve kanal detay sayfaları için basit bir LiveStream response döneriz.
-        // loadLinks zaten URL üzerinden çalışacağı için burada detay gerekmez.
         val document = app.get(url).document
         val title = document.selectFirst("title")?.text()?.trim() ?: "BeyazElma"
-        return newLiveStreamLoadResponse(title, url) {
-            this.posterUrl = null
+        val poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim()
+
+        return newMovieLoadResponse(
+            name = title,
+            url = url,
+            type = TvType.Live,
+            dataUrl = url,
+        ) {
+            this.posterUrl = poster
         }
     }
 
-    /**
-     * 1. Detay sayfasından /api/embed?u=XXX linklerini çeker
-     * 2. Her biri için embed sayfasına gider, "slug" değerini alır
-     * 3. /api/play/{slug} çağırır, JSON'dan m3u8 URL'lerini alır
-     * 4. Cloudstream'e ExtractorLink olarak verir
-     */
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -148,30 +130,22 @@ class BeyazElma : MainAPI() {
         var found = false
         val pageUrl = if (data.startsWith("http")) data else "$mainUrl$data"
 
-        // 1. Detay sayfasını çek
         val document = app.get(pageUrl).document
 
-        // 2. /api/embed?u=XXX linklerini al (aynı olanları tekilleştir)
-        val embedPaths = document.select("link[href*=/api/embed?u=], script, [data-stream-url]")
-            .mapNotNull { it.attr("href").takeIf { h -> h.contains("/api/embed?u=") } }
-            .plus(
-                // HTML içinde düz metin olarak geçen /api/embed?u=... linklerini de yakala
-                Regex("""/api/embed\?u=[A-Za-z0-9_\-]+""")
-                    .findAll(document.html())
-                    .map { it.value }
-                    .toList()
-            )
+        // /api/embed?u=XXX linklerini bul
+        val embedPaths = Regex("""/api/embed\?u=[A-Za-z0-9_\-]+""")
+            .findAll(document.html())
+            .map { it.value }
             .distinct()
+            .toList()
 
         if (embedPaths.isEmpty()) return false
 
-        // 3. Her embed için: embed sayfası -> slug -> /api/play/{slug} -> m3u8
         for (embedPath in embedPaths) {
             try {
                 val embedFullUrl = if (embedPath.startsWith("http")) embedPath else "$mainUrl$embedPath"
                 val embedHtml = app.get(embedFullUrl).text
 
-                // StreamPlayer.mount('#player', {"slug":"tr-bein-sports-2-hd", ...})
                 val slug = Regex(""""slug"\s*:\s*"([^"]+)"""")
                     .find(embedHtml)?.groupValues?.get(1)
                     ?: continue
@@ -184,7 +158,7 @@ class BeyazElma : MainAPI() {
                 ).text
 
                 val obj = JSONObject(json)
-                val sources = mutableListOf<Pair<String, String>>() // (url, label)
+                val sources = mutableListOf<Pair<String, String>>()
 
                 if (obj.has("primary")) {
                     sources.add(obj.getString("primary") to "BeyazElma")
@@ -217,7 +191,6 @@ class BeyazElma : MainAPI() {
                     found = true
                 }
             } catch (e: Exception) {
-                // Bir embed başarısız olursa diğerini dene
                 continue
             }
         }
