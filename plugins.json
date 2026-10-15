@@ -33,7 +33,7 @@
             "SafakStream"
         ],
         "description": "DiziFilmizle - dizifilmizle.to",
-        "fileSize": 39632,
+        "fileSize": 35864,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -42,7 +42,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziFilmizle.png",
         "apiVersion": 1,
-        "fileHash": "sha256-eabda36a538403a89a11ad88ad396ea6e8a39e332f9193fd347c2837d74c1211"
+        "fileHash": "sha256-16066a72279df1f88a60b8f8d79a6a3c8cf084ef437a5f28295c01da4857d159"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziPal.cs3",
