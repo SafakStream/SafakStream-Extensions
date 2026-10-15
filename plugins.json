@@ -9,7 +9,7 @@
             "SafakStream"
         ],
         "description": "BeyazElma - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, spor kanallar\u0131 ve canl\u0131 skorlar\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 14537,
+        "fileSize": 16327,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -18,7 +18,7 @@
         ],
         "iconUrl": "https://beyazelma78.com/favicon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-93cfd7e7625c5820eb7f789a29b3f719a9064eb9841c36fd5b395233e6827851"
+        "fileHash": "sha256-445cfc3b5b057d4bf5c11c639edc1022b3d35d2ef15bbb1aaee80991ba84cec6"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/CineStream.cs3",
