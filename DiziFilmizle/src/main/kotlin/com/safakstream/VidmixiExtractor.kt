@@ -4,6 +4,7 @@ import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
@@ -45,54 +46,98 @@ class VidmixiExtractor : ExtractorApi() {
             return
         }
 
-        Log.d("Vidmixi", "--> decrypted: $decrypted")
-
-        val json = try { JSONObject(decrypted) } catch (e: Exception) {
-            Log.e("Vidmixi", "JSON parse hatasi: ${e.message}")
-            return
-        }
+        val json = try { JSONObject(decrypted) } catch (e: Exception) { return }
         val videoLocation = json.optString("video_location", "")
         if (videoLocation.isBlank()) {
             Log.e("Vidmixi", "video_location bos")
             return
         }
-        Log.d("Vidmixi", "--> video_location: $videoLocation")
 
-        val m3u8Resp = app.get(videoLocation, referer = "https://dizifilmizle.to/").text
-        Log.d("Vidmixi", "--> m3u8Resp: ${m3u8Resp.take(200)}")
-
-        val lines = m3u8Resp.lines()
-        var i = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            if (line.startsWith("#EXT-X-STREAM-INF:")) {
-                val nameMatch = """NAME="([^"]+)"""".toRegex().find(line)
-                val resMatch = """RESOLUTION=(\d+)x(\d+)""".toRegex().find(line)
-                val qualityName = nameMatch?.groupValues?.get(1) ?: "Auto"
-                val height = resMatch?.groupValues?.get(2)?.toIntOrNull() ?: 0
-
-                if (i + 1 < lines.size) {
-                    val streamUrl = lines[i + 1].trim()
-                    if (streamUrl.startsWith("http")) {
-                        Log.d("Vidmixi", "--> stream: $qualityName $streamUrl")
-                        callback.invoke(
-                            newExtractorLink(
-                                source = this.name,
-                                name = "$name ($qualityName)",
-                                url = streamUrl,
-                                type = ExtractorLinkType.M3U8
-                            ) {
-                                headers = mapOf(
-                                    "Referer" to "https://vidmixi.com/",
-                                    "Origin" to "https://vidmixi.com"
-                                )
-                                quality = heightToQuality(height)
-                            }
-                        )
-                    }
+        // ALTYAZILAR
+        val subtitlesArr = json.optJSONArray("strSubtitles")
+        if (subtitlesArr != null) {
+            for (i in 0 until subtitlesArr.length()) {
+                val sub = subtitlesArr.getJSONObject(i)
+                val subUrl = sub.optString("file", "")
+                val subLabel = sub.optString("label", "Unknown")
+                if (subUrl.isNotBlank()) {
+                    val fullUrl = if (subUrl.startsWith("http")) subUrl else "https://vidmixi.com${subUrl}"
+                    Log.d("Vidmixi", "--> subtitle: $subLabel $fullUrl")
+                    subtitleCallback.invoke(
+                        newSubtitleFile(lang = subLabel, url = fullUrl) {
+                            headers = mapOf(
+                                "Referer" to "https://vidmixi.com/",
+                                "User-Agent" to "Mozilla/5.0"
+                            )
+                        }
+                    )
                 }
             }
-            i++
+        }
+
+        // MASTER PLAYLIST (Otomatik ses track'li)
+        callback.invoke(
+            newExtractorLink(
+                source = this.name,
+                name = "Vidmixi (Otomatik)",
+                url = videoLocation,
+                type = ExtractorLinkType.M3U8
+            ) {
+                headers = mapOf(
+                    "Referer" to "https://dizifilmizle.to/",
+                    "Origin" to "https://vidmixi.com",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                )
+                quality = Qualities.Unknown.value
+            }
+        )
+
+        // Ayrıca her kaliteyi manuel ver
+        try {
+            val m3u8Resp = app.get(
+                videoLocation,
+                referer = "https://dizifilmizle.to/",
+                headers = mapOf(
+                    "Origin" to "https://vidmixi.com",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                )
+            ).text
+
+            val lines = m3u8Resp.lines()
+            var i = 0
+            while (i < lines.size) {
+                val line = lines[i]
+                if (line.startsWith("#EXT-X-STREAM-INF:")) {
+                    val nameMatch = """NAME="([^"]+)"""".toRegex().find(line)
+                    val resMatch = """RESOLUTION=(\d+)x(\d+)""".toRegex().find(line)
+                    val qualityName = nameMatch?.groupValues?.get(1) ?: "Auto"
+                    val height = resMatch?.groupValues?.get(2)?.toIntOrNull() ?: 0
+
+                    if (i + 1 < lines.size) {
+                        val streamUrl = lines[i + 1].trim()
+                        if (streamUrl.startsWith("http")) {
+                            callback.invoke(
+                                newExtractorLink(
+                                    source = this.name,
+                                    name = "$name ($qualityName)",
+                                    url = streamUrl,
+                                    type = ExtractorLinkType.M3U8
+                                ) {
+                                    headers = mapOf(
+                                        "Referer" to "https://vidmixi.com/",
+                                        "Origin" to "https://vidmixi.com",
+                                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                                    )
+                                    quality = heightToQuality(height)
+                                }
+                            )
+                        }
+                    }
+                }
+                i++
+            }
+        } catch (e: Exception) {
+            Log.e("Vidmixi", "playlist parse hatasi: ${e.message}")
         }
     }
 
