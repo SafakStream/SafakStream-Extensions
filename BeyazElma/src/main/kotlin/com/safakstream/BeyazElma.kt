@@ -125,6 +125,33 @@ class BeyazElma : MainAPI() {
         }
     }
 
+
+    override suspend fun search(query: String): List<SearchResponse> {
+        val results = mutableListOf<SearchResponse>()
+        val q = query.trim()
+        if (q.isEmpty()) return results
+
+        // 1. Tüm kanalları çek ve filtrele (statik liste, hızlı)
+        try {
+            val channelsDoc = app.get("$mainUrl/kanallar").document
+            val channels = parseChannels(channelsDoc)
+            results.addAll(channels.filter {
+                it.name.contains(q, ignoreCase = true)
+            })
+        } catch (e: Exception) { }
+
+        // 2. Bugünün maçlarını çek ve filtrele
+        try {
+            val matchesDoc = app.get("$mainUrl/").document
+            val matches = parseMatches(matchesDoc)
+            results.addAll(matches.filter {
+                it.name.contains(q, ignoreCase = true)
+            })
+        } catch (e: Exception) { }
+
+        return results.distinctBy { it.url }
+    }
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
