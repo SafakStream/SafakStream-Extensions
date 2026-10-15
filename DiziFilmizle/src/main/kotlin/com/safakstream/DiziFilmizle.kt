@@ -22,7 +22,6 @@ import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import org.json.JSONArray
-import org.jsoup.Jsoup
 
 class DiziFilmizle : MainAPI() {
     override var mainUrl = "https://dizifilmizle.to"
@@ -81,15 +80,13 @@ class DiziFilmizle : MainAPI() {
 
     private suspend fun loadMovie(url: String, slug: String): LoadResponse? {
         val doc = app.get(url).document
-        val html = doc.html()
-
         val searchResp = app.get("$mainUrl/api/search?q=$slug").text
         val searchParsed = try { mapper.readValue<SearchResponse2>(searchResp) } catch (e: Exception) { null }
         val matched = searchParsed?.results?.firstOrNull { it.slug == slug }
 
         val title = matched?.title ?: doc.selectFirst("h1")?.text() ?: slug
         val poster = matched?.posterUrl
-        val year = matched?.year
+        val year = matched?.year ?: matched?.startYear
         val plot = doc.selectFirst("meta[name=description]")?.attr("content")
 
         return newMovieLoadResponse(title, url, TvType.Movie, url) {
@@ -109,7 +106,7 @@ class DiziFilmizle : MainAPI() {
 
         val title = matched?.title ?: doc.selectFirst("h1")?.text() ?: slug
         val poster = matched?.posterUrl
-        val year = matched?.year
+        val year = matched?.year ?: matched?.startYear
         val plot = doc.selectFirst("meta[name=description]")?.attr("content")
 
         val episodes = mutableListOf<Episode>()
@@ -244,6 +241,7 @@ class DiziFilmizle : MainAPI() {
         return false
     }
 
+    // Film listesinden gelen
     private fun MovieItem.toSearchResponse(isSeries: Boolean): SearchResponse {
         val response = if (isSeries) {
             newTvSeriesSearchResponse(this.title ?: "?", "$mainUrl/dizi/${this.slug}", TvType.TvSeries)
@@ -256,6 +254,7 @@ class DiziFilmizle : MainAPI() {
         return response
     }
 
+    // Dizi listesinden gelen
     private fun SeriesItem.toSearchResponse(isSeries: Boolean): SearchResponse {
         val response = newTvSeriesSearchResponse(this.title ?: "?", "$mainUrl/dizi/${this.slug}", TvType.TvSeries)
         response.posterUrl = this.posterUrl
@@ -263,10 +262,29 @@ class DiziFilmizle : MainAPI() {
         return response
     }
 
+    // Arama sonucundan gelen
     private fun SearchItem.toSearchResponse(): SearchResponse {
-        val response = newMovieSearchResponse(this.title ?: "?", "$mainUrl/film/${this.slug}", TvType.Movie)
+        val isSeries = this.contentType == "series" ||
+                       this.contentType == "tv" ||
+                       (this.totalSeasons ?: 0) > 0
+        val year = this.year ?: this.startYear
+
+        val response = if (isSeries) {
+            newTvSeriesSearchResponse(
+                this.title ?: "?",
+                "$mainUrl/dizi/${this.slug}",
+                TvType.TvSeries
+            )
+        } else {
+            newMovieSearchResponse(
+                this.title ?: "?",
+                "$mainUrl/film/${this.slug}",
+                TvType.Movie
+            )
+        }
         response.posterUrl = this.posterUrl
-        (response as? com.lagradost.cloudstream3.MovieSearchResponse)?.year = this.year
+        (response as? com.lagradost.cloudstream3.MovieSearchResponse)?.year = year
+        (response as? com.lagradost.cloudstream3.TvSeriesSearchResponse)?.year = year
         return response
     }
 }

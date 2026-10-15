@@ -23,8 +23,11 @@ data class SearchItem(
     @JsonProperty("slug") val slug: String? = null,
     @JsonProperty("poster_url") val posterUrl: String? = null,
     @JsonProperty("year") val year: Int? = null,
+    @JsonProperty("start_year") val startYear: Int? = null,
     @JsonProperty("imdb_rating") val imdbRating: Double? = null,
     @JsonProperty("tmdb_id") val tmdbId: String? = null,
+    @JsonProperty("content_type") val contentType: String? = null,
+    @JsonProperty("total_seasons") val totalSeasons: Int? = null,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
