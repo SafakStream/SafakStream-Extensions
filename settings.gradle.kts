@@ -24,5 +24,6 @@ include(
     "StreamingCommunity",
     "SelcukFlix",
     "InatTV",
-    "DiziFilmizle"
+    "DiziFilmizle",
+    "BeyazElma"
 )

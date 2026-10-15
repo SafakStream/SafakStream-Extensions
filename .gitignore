@@ -33,3 +33,8 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Test dosyaları
+*.html
+*.bak
+local.properties
