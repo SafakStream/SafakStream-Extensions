@@ -166,7 +166,7 @@ class DiziFilmizle : MainAPI() {
         val plot = doc.selectFirst("meta[name=description]")?.attr("content")
 
         // series_id'yi HTML'den çek
-        val seriesIdRegex = """series_id["\s:]+(\d+)""".toRegex()
+       val seriesIdRegex = Regex("""series_id\D*?(\d+)""")
         val seriesId = seriesIdRegex.find(html)?.groupValues?.get(1)?.toLongOrNull()
             ?: run {
                 // Alternatif: HTML içinde id'yi bul
@@ -240,7 +240,7 @@ class DiziFilmizle : MainAPI() {
         val html = doc.html()
 
         // HTML içinde parts\"...url\":\"...\" var mı?
-        val partsRegex = Regex("""parts\\":\[([\s\S]*?)\]}""")
+       val partsRegex = Regex("""parts.{0,3}\[([\s\S]*?)\]""")
         val partsMatch = partsRegex.find(html)
 
         if (partsMatch != null) {
