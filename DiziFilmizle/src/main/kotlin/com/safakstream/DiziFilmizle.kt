@@ -115,7 +115,7 @@ class DiziFilmizle : MainAPI() {
         val episodes = mutableListOf<Episode>()
 
         try {
-            val idx = html.indexOf("\"seasonsWithEpisodes\":")
+            val idx = html.indexOf("seasonsWithEpisodes")
             if (idx != -1) {
                 val startIdx = html.indexOf('[', idx)
                 if (startIdx != -1) {
