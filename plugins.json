@@ -45,28 +45,6 @@
         "fileHash": "sha256-8c20c03e73c8ebba6e057b82b613711ed727c31d7d385111ef298f7b763a647b"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/CNCVerse.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "CNCVerse",
-        "internalName": "CNCVerse",
-        "authors": [
-            "SafakStream",
-            "NivinCNC"
-        ],
-        "description": "CNC Verse - Netflix, Hotstar, Prime Video ve Disney+ mirror'lar\u0131 (NetMirror/NewTV backend)",
-        "fileSize": 28575,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "en",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CNCVerse.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-3828eed586026bab5943cfc37ce3116f301b02101d1c9ab03e5f80b696f911b3"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziFilmizle.cs3",
         "status": 3,
         "version": 1,
