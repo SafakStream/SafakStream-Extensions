@@ -55,7 +55,7 @@
             "NivinCNC"
         ],
         "description": "CNC Verse - Netflix, Hotstar, Prime Video ve Disney+ mirror'lar\u0131 (NetMirror/NewTV backend)",
-        "fileSize": 22438,
+        "fileSize": 28575,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "en",
         "tvTypes": [
@@ -64,7 +64,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CNCVerse.png",
         "apiVersion": 1,
-        "fileHash": "sha256-f2e2be13f543315e4e497ebc5dbfb258ef4106a1b5bfc74f956abf12c5375bdb"
+        "fileHash": "sha256-3828eed586026bab5943cfc37ce3116f301b02101d1c9ab03e5f80b696f911b3"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziFilmizle.cs3",
