@@ -26,6 +26,5 @@ include(
     "InatTV",
     "DiziFilmizle",
     "BeyazElma",
-    "Streamed",
-    "CNCVerse"
+    "Streamed"
 )
