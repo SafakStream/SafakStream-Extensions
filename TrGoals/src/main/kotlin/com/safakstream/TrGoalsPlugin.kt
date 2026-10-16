@@ -10,6 +10,5 @@ import com.lagradost.cloudstream3.plugins.Plugin
 class TrGoalsPlugin : Plugin() {
     override fun load(context: Context) {
         registerMainAPI(TrGoals())
-        registerExtractorAPI(TrGoalsExtractor())
     }
 }

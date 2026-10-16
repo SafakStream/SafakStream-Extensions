@@ -14,6 +14,8 @@ import android.util.Base64
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
+data class AuthResult(val url: String, val token: String)
+
 class TrGoals : MainAPI() {
     override var mainUrl = "https://www.trgoals183.top"
     override var name = "TrGoals"
@@ -246,27 +248,54 @@ class TrGoals : MainAPI() {
                     }
 
                     "viptv" -> {
-                        val streamUrl = resolveVipTv(link)
-                        if (!streamUrl.isNullOrEmpty()) {
-                            // TrGoalsExtractor dogrudan cagir (loadExtractor CDN domain'i taniyor)
-                            TrGoalsExtractor().getUrl(
-                                url = streamUrl,
-                                referer = "$mainUrl/",
-                                subtitleCallback = subtitleCallback,
-                                callback = callback,
+                        val auth = resolveVipTv(link)
+                        if (auth != null) {
+                            callback.invoke(
+                                newExtractorLink(
+                                    source = name,
+                                    name = "$ad (VIP)",
+                                    url = auth.url,
+                                    type = ExtractorLinkType.M3U8,
+                                ) {
+                                    this.referer = "$mainUrl/"
+                                    this.quality = Qualities.Unknown.value
+                                    this.headers = if (auth.token.isNotBlank()) {
+                                        mapOf(
+                                            "User-Agent" to USER_AGENT,
+                                            "usertoken" to auth.token,
+                                            "pl" to "TrGoals",
+                                        )
+                                    } else {
+                                        mapOf("User-Agent" to USER_AGENT)
+                                    }
+                                }
                             )
                             found = true
                         }
                     }
 
                     "vip" -> {
-                        val streamUrl = resolveVip(link)
-                        if (!streamUrl.isNullOrEmpty()) {
-                            TrGoalsExtractor().getUrl(
-                                url = streamUrl,
-                                referer = "$mainUrl/",
-                                subtitleCallback = subtitleCallback,
-                                callback = callback,
+                        val auth = resolveVip(link)
+                        if (auth != null) {
+                            callback.invoke(
+                                newExtractorLink(
+                                    source = name,
+                                    name = "$ad (VIP-id)",
+                                    url = auth.url,
+                                    type = ExtractorLinkType.M3U8,
+                                ) {
+                                    this.referer = "$mainUrl/"
+                                    this.quality = Qualities.Unknown.value
+                                    this.headers = if (auth.token.isNotBlank()) {
+                                        mapOf(
+                                            "User-Agent" to USER_AGENT,
+                                            "usertoken" to auth.token,
+                                            "pl" to "TrGoals",
+                                        )
+                                    } else {
+                                        mapOf("User-Agent" to USER_AGENT)
+                                    }
+                                }
                             )
                             found = true
                         }
@@ -303,21 +332,22 @@ class TrGoals : MainAPI() {
     // -------------------------------------------------------------------
     // auth.php üzerinden VIP TV URL'ini çöz
     // -------------------------------------------------------------------
-    private suspend fun resolveVipTv(channel: String): String? {
+    private suspend fun resolveVipTv(channel: String): AuthResult? {
         return try {
             val response = app.post(
                 url = "$mainUrl/auth.php",
                 data = mapOf("channel" to channel),
                 headers = mapOf(
                     "User-Agent" to USER_AGENT,
-                    "Referer" to "$mainUrl/",
-                    "Origin" to mainUrl,
-                    "Content-Type" to "application/x-www-form-urlencoded",
                     "X-Requested-With" to "XMLHttpRequest",
+                    "Origin" to mainUrl,
                 ),
+                referer = "$mainUrl/",
             )
             val json = JSONObject(response.text)
-            json.optString("URL").takeIf { it.isNotEmpty() }
+            val url = json.optString("URL").takeIf { it.isNotEmpty() } ?: return null
+            val token = json.optString("TOKEN", "")
+            AuthResult(url, token)
         } catch (e: Exception) {
             null
         }
@@ -326,21 +356,22 @@ class TrGoals : MainAPI() {
     // -------------------------------------------------------------------
     // auth.php üzerinden VIP (id) URL'ini çöz
     // -------------------------------------------------------------------
-    private suspend fun resolveVip(id: String): String? {
+    private suspend fun resolveVip(id: String): AuthResult? {
         return try {
             val response = app.post(
                 url = "$mainUrl/auth.php",
                 data = mapOf("id" to id),
                 headers = mapOf(
                     "User-Agent" to USER_AGENT,
-                    "Referer" to "$mainUrl/",
-                    "Origin" to mainUrl,
-                    "Content-Type" to "application/x-www-form-urlencoded",
                     "X-Requested-With" to "XMLHttpRequest",
+                    "Origin" to mainUrl,
                 ),
+                referer = "$mainUrl/",
             )
             val json = JSONObject(response.text)
-            json.optString("URL").takeIf { it.isNotEmpty() }
+            val url = json.optString("URL").takeIf { it.isNotEmpty() } ?: return null
+            val token = json.optString("TOKEN", "")
+            AuthResult(url, token)
         } catch (e: Exception) {
             null
         }
