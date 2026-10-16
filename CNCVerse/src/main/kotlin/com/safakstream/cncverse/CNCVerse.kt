@@ -1,5 +1,6 @@
 package com.safakstream.cncverse
 
+import android.content.Context
 import com.lagradost.api.getContext
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -22,13 +23,13 @@ class CNCVerse : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse>? {
-        val ctx = getContext()
+        val ctx = getContext() as? Context
 
         // Cookie yoksa → Verify Activity aç, cookie gelene kadar bekle
         if (ctx != null && !CNCVerseCookieStore.isValid(ctx)) {
             CNCVerseUtils.startVerify(ctx)
 
-            // 60 saniye boyunca cookie'yi bekle (reCAPTCHA için)
+            // 60 saniye boyunca cookie'yi bekle
             repeat(120) {
                 delay(500)
                 if (CNCVerseCookieStore.isValid(ctx)) {

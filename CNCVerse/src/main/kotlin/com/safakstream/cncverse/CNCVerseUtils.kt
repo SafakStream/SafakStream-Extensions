@@ -41,26 +41,15 @@ object CNCVerseUtils {
     fun hotstarPoster(id: String): String = "$HOTSTAR_POSTER/$id.jpg"
     fun primePoster(id: String): String = "$PRIME_POSTER/$id.jpg"
 
-    /**
-     * Verify Activity'sini başlatır. Kullanıcı reCAPTCHA'yı çözer,
-     * cookie'ler SharedPreferences'a kaydedilir.
-     */
     fun startVerify(context: Context) {
         val intent = Intent(context, VerifyActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }
 
-    /**
-     * Cookie'leri context'ten oku (uygulama çalışırken).
-     */
     private fun currentCookies(): Map<String, String> {
-        val ctx = getContext() ?: return emptyMap()
+        val ctx = getContext() as? Context ?: return emptyMap()
         return CNCVerseCookieStore.getCookies(ctx)
-    }
-
-    private fun cookieHeader(): String {
-        return currentCookies().entries.joinToString("; ") { "${it.key}=${it.value}" }
     }
 
     suspend fun searchNetflix(api: MainAPI, query: String): List<SearchResponse>? {
