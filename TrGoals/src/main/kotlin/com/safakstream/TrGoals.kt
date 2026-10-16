@@ -248,8 +248,13 @@ class TrGoals : MainAPI() {
                     "viptv" -> {
                         val streamUrl = resolveVipTv(link)
                         if (!streamUrl.isNullOrEmpty()) {
-                            // WebView extractor ile Cloudflare'i gec ve m3u8 yakala
-                            loadExtractor(streamUrl, "$mainUrl/", subtitleCallback, callback)
+                            // TrGoalsExtractor dogrudan cagir (loadExtractor CDN domain'i taniyor)
+                            TrGoalsExtractor().getUrl(
+                                url = streamUrl,
+                                referer = "$mainUrl/",
+                                subtitleCallback = subtitleCallback,
+                                callback = callback,
+                            )
                             found = true
                         }
                     }
@@ -257,7 +262,12 @@ class TrGoals : MainAPI() {
                     "vip" -> {
                         val streamUrl = resolveVip(link)
                         if (!streamUrl.isNullOrEmpty()) {
-                            loadExtractor(streamUrl, "$mainUrl/", subtitleCallback, callback)
+                            TrGoalsExtractor().getUrl(
+                                url = streamUrl,
+                                referer = "$mainUrl/",
+                                subtitleCallback = subtitleCallback,
+                                callback = callback,
+                            )
                             found = true
                         }
                     }
