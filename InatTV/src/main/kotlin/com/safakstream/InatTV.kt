@@ -212,12 +212,34 @@ class InatTV : MainAPI() {
         val maxHeight = variants.maxOfOrNull { it.height } ?: 0
         val qualitySuffix = if (maxHeight > 0) " • ${maxHeight}p" else ""
 
-        // M3U8 icerigini data URL olarak ver (ExoPlayer .js uzantisini tanimaz)
+        // M3U8 icerigini absolute URL'lere cevir, sonra data URL olarak ver
         val m3u8Content = playlist.text
-        val base64Content = Base64.encodeToString(m3u8Content.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        val baseUrl = playlist.url.substringBeforeLast("/")
+
+        Log.d(TAG, "playlist first 500: " + m3u8Content.take(500))
+        Log.d(TAG, "baseUrl: " + baseUrl)
+
+        val absoluteContent = m3u8Content.lineSequence().joinToString("\n") { line ->
+            val trimmed = line.trim()
+            when {
+                trimmed.startsWith("#") && trimmed.contains("URI=") -> {
+                    trimmed.replace(Regex("URI=\"([^\"]+)\"")) { match ->
+                        val uri = match.groupValues[1]
+                        if (uri.startsWith("http")) match.value else "URI=\"$baseUrl/$uri\""
+                    }
+                }
+                trimmed.isNotBlank() && !trimmed.startsWith("#") -> {
+                    if (trimmed.startsWith("http")) line else "$baseUrl/$trimmed"
+                }
+                else -> line
+            }
+        }
+
+        val base64Content = Base64.encodeToString(absoluteContent.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         val dataUrl = "data:application/vnd.apple.mpegurl;base64,$base64Content"
 
-        Log.d(TAG, "dataUrl uzunlugu: ${dataUrl.length}, m3u8 icerik uzunlugu: ${m3u8Content.length}")
+        Log.d(TAG, "absoluteContent first 500: " + absoluteContent.take(500))
+        Log.d(TAG, "dataUrl uzunlugu: " + dataUrl.length)
 
         callback.invoke(
             newExtractorLink(
