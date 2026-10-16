@@ -6,6 +6,14 @@
 
     <application
         android:usesCleartextTraffic="true"
-        android:supportsRtl="true" />
+        android:supportsRtl="true">
+
+        <activity
+            android:name="com.safakstream.cncverse.ui.VerifyActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoTitleBar"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+    </application>
 
 </manifest>
