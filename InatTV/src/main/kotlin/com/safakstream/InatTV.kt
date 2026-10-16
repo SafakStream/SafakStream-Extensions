@@ -148,6 +148,7 @@ class InatTV : MainAPI() {
         }
 
         Log.d(TAG, "loadLinks => name=$name target=$target player=$player domain=${site.url}")
+        Log.d(TAG, "loadLinks => authUrl=${site.config.authUrl} siteName=${site.config.siteName}")
 
         val headers = mutableMapOf(
             "User-Agent" to DomainResolver.UA,

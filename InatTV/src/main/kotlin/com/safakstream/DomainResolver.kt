@@ -44,9 +44,10 @@ object DomainResolver {
             Log.e(TAG, "Manifest parse hatasi: ${e.message}")
         }
 
-        // 2. BOOTSTRAP + nextDomains
+        // 2. BOOTSTRAP + nextDomains (yuksek oncelikli)
         candidates.add(BOOTSTRAP)
         candidates.addAll(nextDomains(BOOTSTRAP))
+        Log.d(TAG, "Toplam ${candidates.size} aday: $candidates")
 
         // 3. Her adayi dene
         val tried = mutableSetOf<String>()
