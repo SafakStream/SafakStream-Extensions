@@ -202,7 +202,7 @@
             "SafakStream"
         ],
         "description": "TrGoals - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, 7/24 TV kanallar\u0131 ve spor kar\u015f\u0131la\u015fmalar\u0131n\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 18552,
+        "fileSize": 18554,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -211,7 +211,7 @@
         ],
         "iconUrl": "https://www.trgoals183.top/lib/img/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-428149cff3cc2d642459aabd34ca58b58f47d7c9e797de099c0ff7e5761a98a2"
+        "fileHash": "sha256-99633031846f06c599acfe5f3f3e1404dfe88b66fce9877e680b514b367f7260"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
