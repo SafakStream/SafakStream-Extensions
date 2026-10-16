@@ -107,7 +107,7 @@ class TrGoals : MainAPI() {
 
         return newMovieSearchResponse(
             name = title,
-            url = dataUrl,
+            url = "trgoals:$dataUrl",
             type = TvType.Live,
         ) {
             this.posterUrl = poster
@@ -128,7 +128,7 @@ class TrGoals : MainAPI() {
 
         return newMovieSearchResponse(
             name = name,
-            url = dataUrl,
+            url = "trgoals:$dataUrl",
             type = TvType.Live,
         ) {
             this.posterUrl = poster
@@ -156,8 +156,9 @@ class TrGoals : MainAPI() {
     // DETAY (load)
     // -------------------------------------------------------------------
     override suspend fun load(url: String): LoadResponse {
+        val cleanUrl = url.removePrefix("trgoals:")
         val document = app.get(mainUrl, headers = getHeaders()).document
-        val decoded = resolveDataByHash(document, url)
+        val decoded = resolveDataByHash(document, cleanUrl)
             ?: throw ErrorLoadingException("Kaynak bulunamadı: $url")
 
         val title = decoded.optString("name", "TrGoals")
@@ -166,7 +167,7 @@ class TrGoals : MainAPI() {
 
         return newLiveStreamLoadResponse(
             name = title,
-            url = url,
+            url = cleanUrl,
             dataUrl = sourcesJson,
         ) {
             this.posterUrl = poster
