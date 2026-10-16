@@ -43,7 +43,7 @@ class NetMirror : MainAPI() {
         val parts = url.split("|")
         val title = parts.getOrNull(0) ?: "NetMirror"
         val id = parts.getOrNull(1) ?: url.trim('/')
-        val poster = "https://imgcdn.kim/poster/1920/$id.jpg"
+        val poster = "https://imgcdn.kim/poster/v/$id.jpg"
 
         val epRes = app.get("$mainUrl/episodes.php?s=$id", headers = commonHeaders).text
         val epData = tryParseJson<EpisodesData>(epRes)
@@ -109,7 +109,7 @@ class NetMirror : MainAPI() {
     private fun SearchResult.toSearchResponse(): SearchResponse? {
         val id = this.id ?: return null
         val title = this.t ?: return null
-        val poster = this.i ?: "https://imgcdn.kim/poster/1920/$id.jpg"
+        val poster = this.i ?: "https://imgcdn.kim/poster/v/$id.jpg"
         return newMovieSearchResponse(title, "$title|$id", TvType.Movie) {
             this.posterUrl = poster
         }
