@@ -58,12 +58,12 @@ subprojects {
             iconUrl = "https://selcukflix.app/assets/favicon/apple-touch-icon.png"
             version = 1
         }
-        // NetMirror özel metadata
-        if (project.name == "NetMirror") {
-            description = "NetMirror - Net77.cc eklentisi"
-            language = "tr"
+        // CNCVerse özel metadata
+        if (project.name == "CNCVerse") {
+            description = "CNC Verse - Netflix, Hotstar, Prime Video ve Disney+ mirror eklentisi (NetMirror/NewTV backend)"
+            language = "en"
             tvTypes = listOf("Movie", "TvSeries")
-            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/NetMirror.png"
+            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CNCVerse.png"
             version = 1
         }
     }

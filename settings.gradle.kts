@@ -27,5 +27,5 @@ include(
     "DiziFilmizle",
     "BeyazElma",
     "Streamed",
-    "NetMirror"
+    "CNCVerse"
 )
