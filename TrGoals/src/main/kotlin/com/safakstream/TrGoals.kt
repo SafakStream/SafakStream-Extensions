@@ -6,6 +6,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
 import org.json.JSONObject
@@ -247,17 +248,8 @@ class TrGoals : MainAPI() {
                     "viptv" -> {
                         val streamUrl = resolveVipTv(link)
                         if (!streamUrl.isNullOrEmpty()) {
-                            callback.invoke(
-                                newExtractorLink(
-                                    source = name,
-                                    name = "$ad (VIP)",
-                                    url = streamUrl,
-                                    type = ExtractorLinkType.M3U8,
-                                ) {
-                                    this.referer = mainUrl
-                                    this.quality = Qualities.Unknown.value
-                                }
-                            )
+                            // WebView extractor ile Cloudflare'i gec ve m3u8 yakala
+                            loadExtractor(streamUrl, "$mainUrl/", subtitleCallback, callback)
                             found = true
                         }
                     }
@@ -265,17 +257,7 @@ class TrGoals : MainAPI() {
                     "vip" -> {
                         val streamUrl = resolveVip(link)
                         if (!streamUrl.isNullOrEmpty()) {
-                            callback.invoke(
-                                newExtractorLink(
-                                    source = name,
-                                    name = "$ad (VIP-id)",
-                                    url = streamUrl,
-                                    type = ExtractorLinkType.M3U8,
-                                ) {
-                                    this.referer = mainUrl
-                                    this.quality = Qualities.Unknown.value
-                                }
-                            )
+                            loadExtractor(streamUrl, "$mainUrl/", subtitleCallback, callback)
                             found = true
                         }
                     }
