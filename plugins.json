@@ -138,7 +138,7 @@
             "SafakStream"
         ],
         "description": "NetMirror eklentisi - Netflix, Hotstar, Prime icerikleri",
-        "fileSize": 20999,
+        "fileSize": 29382,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -147,7 +147,7 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=net77.cc&sz=64",
         "apiVersion": 1,
-        "fileHash": "sha256-245ec6d8c18a31d1cf5835d9e3a2a70edaad5e2b25a79780ce5b9762f42d5a52"
+        "fileHash": "sha256-8075e0fdd7aa0a39dafc8053440fb598d10a89dc4fa5d2c62e377d75001586fb"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
