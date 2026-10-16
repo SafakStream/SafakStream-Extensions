@@ -15,10 +15,7 @@ class CNCVerse : MainAPI() {
         TvType.TvSeries
     )
 
-    override val mainPage = mainPageOf()
-
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-        // Şimdilik boş — provider'lar üzerinden gelecek
         return null
     }
 
