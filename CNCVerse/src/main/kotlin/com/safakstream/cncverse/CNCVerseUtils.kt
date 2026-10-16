@@ -17,6 +17,13 @@ object CNCVerseUtils {
     const val NET22 = "https://net22.cc"
     const val NET52 = "https://net52.cc"
 
+    // Görsel CDN'leri
+    private const val IMG_CDN = "https://imgcdn.kim"
+    private const val NETFLIX_POSTER = "$IMG_CDN/poster/v"
+    private const val HOTSTAR_POSTER = "$IMG_CDN/hs/h"
+    private const val PRIME_POSTER = "$IMG_CDN/pv/h"
+    private const val DISNEY_POSTER = "$IMG_CDN/poster/v"
+
     var apiBase: String = NET52
         private set
 
@@ -27,6 +34,26 @@ object CNCVerseUtils {
             null
         }
     }
+
+    /**
+     * Netflix posteri.
+     */
+    fun netflixPoster(id: String): String = "$NETFLIX_POSTER/$id.jpg"
+
+    /**
+     * Hotstar posteri.
+     */
+    fun hotstarPoster(id: String): String = "$HOTSTAR_POSTER/$id.jpg"
+
+    /**
+     * Prime Video posteri.
+     */
+    fun primePoster(id: String): String = "$PRIME_POSTER/$id.jpg"
+
+    /**
+     * Disney posteri (Netflix ile aynı CDN).
+     */
+    fun disneyPoster(id: String): String = "$DISNEY_POSTER/$id.jpg"
 
     suspend fun searchNetflix(api: MainAPI, query: String): List<SearchResponse>? {
         val url = "$apiBase/mobile/search.php?s=$query"
@@ -41,7 +68,9 @@ object CNCVerseUtils {
         return data.searchResult?.mapNotNull { result ->
             val id = result.id ?: return@mapNotNull null
             val title = result.title ?: return@mapNotNull null
-            api.newMovieSearchResponse(title, id, TvType.Movie) {}
+            api.newMovieSearchResponse(title, id, TvType.Movie) {
+                this.posterUrl = netflixPoster(id)
+            }
         }
     }
 
