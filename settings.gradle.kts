@@ -27,6 +27,5 @@ include(
     "DiziFilmizle",
     "BeyazElma",
     "Streamed",
-    "TrGoals",
     "NetMirror"
 )
