@@ -1,7 +1,9 @@
 package com.safakstream.cncverse
 
+import com.lagradost.api.getContext
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import kotlinx.coroutines.delay
 
 class CNCVerse : MainAPI() {
     override var mainUrl = "https://net52.cc"
@@ -20,6 +22,22 @@ class CNCVerse : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse>? {
+        val ctx = getContext()
+
+        // Cookie yoksa → Verify Activity aç, cookie gelene kadar bekle
+        if (ctx != null && !CNCVerseCookieStore.isValid(ctx)) {
+            CNCVerseUtils.startVerify(ctx)
+
+            // 60 saniye boyunca cookie'yi bekle (reCAPTCHA için)
+            repeat(120) {
+                delay(500)
+                if (CNCVerseCookieStore.isValid(ctx)) {
+                    return CNCVerseUtils.searchNetflix(this, query)
+                }
+            }
+            return null
+        }
+
         return CNCVerseUtils.searchNetflix(this, query)
     }
 

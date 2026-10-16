@@ -8,5 +8,7 @@ import com.lagradost.cloudstream3.plugins.Plugin
 class CNCVersePlugin : Plugin() {
     override fun load(context: Context) {
         registerMainAPI(CNCVerse())
+        // Ayarlar ekranını kaydet
+        registerSettingsFragment { CNCVerseSettings() }
     }
 }

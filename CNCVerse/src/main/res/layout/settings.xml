@@ -12,109 +12,55 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Choose studios"
-            android:textSize="20sp"
+            android:text="CNC Verse"
+            android:textSize="22sp"
             android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Netflix, Hotstar, Prime Video ve Disney+ mirror'ları"
+            android:textSize="14sp"
+            android:paddingBottom="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Verification"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bu eklenti içerikleri göstermek için bir kez reCAPTCHA doğrulaması ister. Butona basıp doğrulamayı tamamlayın."
+            android:textSize="14sp"
             android:paddingBottom="12dp" />
 
-        <LinearLayout
-            android:id="@+id/studio_disney"
+        <Button
+            android:id="@+id/verifyBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:gravity="center_vertical">
+            android:text="Verify Now"
+            android:padding="12dp" />
 
-            <CheckBox
-                android:id="@+id/studio_disney_cb"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Disney+"
-                android:textSize="16sp"
-                android:paddingStart="8dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/studio_marvel"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:gravity="center_vertical">
-
-            <CheckBox
-                android:id="@+id/studio_marvel_cb"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Marvel"
-                android:textSize="16sp"
-                android:paddingStart="8dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/studio_pixar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:gravity="center_vertical">
-
-            <CheckBox
-                android:id="@+id/studio_pixar_cb"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Pixar"
-                android:textSize="16sp"
-                android:paddingStart="8dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/studio_starwars"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:gravity="center_vertical">
-
-            <CheckBox
-                android:id="@+id/studio_starwars_cb"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Star Wars"
-                android:textSize="16sp"
-                android:paddingStart="8dp" />
-        </LinearLayout>
+            android:text="Cookies"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingTop="24dp"
+            android:paddingBottom="8dp" />
 
         <Button
             android:id="@+id/clearCacheBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Clear cache"
-            android:layout_marginTop="16dp" />
-
-        <ImageView
-            android:id="@+id/save_btn"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/save_icon"
-            android:layout_gravity="end"
-            android:layout_marginTop="16dp" />
+            android:text="Clear Cookies"
+            android:padding="12dp" />
 
     </LinearLayout>
 </ScrollView>
