@@ -129,6 +129,27 @@
         "fileHash": "sha256-86d2b7d32e1087bff47d172a82544b6ccfacaf98b6ca78c80d785165e1d306c4"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/NetMirror.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "NetMirror",
+        "internalName": "NetMirror",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "NetMirror eklentisi - Netflix, Hotstar, Prime icerikleri",
+        "fileSize": 21002,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "iconUrl": "https://www.google.com/s2/favicons?domain=net77.cc&sz=64",
+        "apiVersion": 1,
+        "fileHash": "sha256-ae407da38d331d598cec5f69e91d3f2ec705b3dd6cbc782c281c5ad5156951c2"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
         "status": 3,
         "version": 1,
@@ -191,27 +212,6 @@
         "iconUrl": "https://streamingunity.dog/apple-touch-icon.png?v=2",
         "apiVersion": 1,
         "fileHash": "sha256-5038119e1a8fff251d3a7dd808d79a37d3ecb661a3eac332f82abde45df337b0"
-    },
-    {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/TrGoals.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "TrGoals",
-        "internalName": "TrGoals",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "TrGoals - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, 7/24 TV kanallar\u0131 ve spor kar\u015f\u0131la\u015fmalar\u0131n\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 19369,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "LiveStream",
-            "Others"
-        ],
-        "iconUrl": "https://www.trgoals183.top/lib/img/logo.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-69bf8c9720a04370d20052dadf3e06f5bec1f5ae279ab1f51ffcfbc1e0fefbb6"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
