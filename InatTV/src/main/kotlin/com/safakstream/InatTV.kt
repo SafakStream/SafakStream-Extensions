@@ -2,6 +2,7 @@
 
 package com.safakstream
 
+import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
@@ -211,15 +212,21 @@ class InatTV : MainAPI() {
         val maxHeight = variants.maxOfOrNull { it.height } ?: 0
         val qualitySuffix = if (maxHeight > 0) " • ${maxHeight}p" else ""
 
+        // M3U8 icerigini data URL olarak ver (ExoPlayer .js uzantisini tanimaz)
+        val m3u8Content = playlist.text
+        val base64Content = Base64.encodeToString(m3u8Content.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        val dataUrl = "data:application/vnd.apple.mpegurl;base64,$base64Content"
+
+        Log.d(TAG, "dataUrl uzunlugu: ${dataUrl.length}, m3u8 icerik uzunlugu: ${m3u8Content.length}")
+
         callback.invoke(
             newExtractorLink(
                 source = this.name,
                 name = "$name$qualitySuffix",
-                url = playlist.url,
+                url = dataUrl,
                 type = ExtractorLinkType.M3U8
             ) {
                 this.referer = site.url
-                this.headers = headers
                 this.quality = if (maxHeight > 0) maxHeight else Qualities.Unknown.value
             }
         )
