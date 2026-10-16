@@ -38,9 +38,7 @@ object DomainResolver {
             inattv.optJSONArray("candidates")?.let { arr ->
                 for (i in 0 until arr.length()) candidates.add(arr.getString(i))
             }
-            inattv.optJSONArray("gateways")?.let { arr ->
-                for (i in 0 until arr.length()) candidates.add(arr.getString(i))
-            }
+            // gateways'i atla (inatgiris.com gateway, asil kaynak degil)
             Log.d(TAG, "Manifest'ten ${candidates.size} aday alindi")
         } catch (e: Exception) {
             Log.e(TAG, "Manifest parse hatasi: ${e.message}")
@@ -55,6 +53,12 @@ object DomainResolver {
         for (candidate in candidates) {
             val siteUrl = candidate.trimEnd('/') + "/"
             if (!tried.add(siteUrl)) continue
+
+            // inatgiris.com sadece gateway, asil kaynak degil
+            if (siteUrl.contains("inatgiris.com")) {
+                Log.d(TAG, "inatgiris.com atlandi (gateway)")
+                continue
+            }
 
             try {
                 val doc = app.get(siteUrl, headers = mapOf("User-Agent" to UA)).document

@@ -159,15 +159,24 @@ class InatTV : MainAPI() {
         if (target == "viptv" || target == "vip") {
             val param = if (target == "viptv") "channel" else "id"
 
-            val response = app.post(
-                site.config.authUrl,
-                headers = headers + mapOf(
-                    "X-Requested-With" to "XMLHttpRequest",
-                    "Accept" to "application/json, text/javascript, */*; q=0.01"
-                ),
-                referer = site.url,
-                data = mapOf(param to player)
-            )
+            Log.d(TAG, "auth.php POST => url=${site.config.authUrl}, param=$param=$player")
+
+            val response = try {
+                app.post(
+                    site.config.authUrl,
+                    headers = headers + mapOf(
+                        "X-Requested-With" to "XMLHttpRequest",
+                        "Accept" to "application/json, text/javascript, */*; q=0.01"
+                    ),
+                    referer = site.url,
+                    data = mapOf(param to player)
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "auth.php POST exception: ${e.message}")
+                return false
+            }
+
+            Log.d(TAG, "auth.php response code=${response.code}")
 
             if (response.code != 200) {
                 Log.e(TAG, "auth.php hata: ${response.code}")
