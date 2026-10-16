@@ -9,6 +9,7 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
 import org.json.JSONObject
+import android.util.Base64
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
@@ -107,7 +108,7 @@ class TrGoals : MainAPI() {
 
         return newMovieSearchResponse(
             name = title,
-            url = "trgoals:$dataUrl",
+            url = "trgoals://" + Base64.encodeToString(dataUrl.toByteArray(), Base64.NO_WRAP),
             type = TvType.Live,
         ) {
             this.posterUrl = poster
@@ -128,7 +129,7 @@ class TrGoals : MainAPI() {
 
         return newMovieSearchResponse(
             name = name,
-            url = "trgoals:$dataUrl",
+            url = "trgoals://" + Base64.encodeToString(dataUrl.toByteArray(), Base64.NO_WRAP),
             type = TvType.Live,
         ) {
             this.posterUrl = poster
@@ -156,7 +157,7 @@ class TrGoals : MainAPI() {
     // DETAY (load)
     // -------------------------------------------------------------------
     override suspend fun load(url: String): LoadResponse {
-        val cleanUrl = url.removePrefix("trgoals:")
+        val cleanUrl = try { String(android.util.Base64.decode(url.removePrefix("trgoals://"), android.util.Base64.NO_WRAP)) } catch (e: Exception) { url }
         val document = app.get(mainUrl, headers = getHeaders()).document
         val decoded = resolveDataByHash(document, cleanUrl)
             ?: throw ErrorLoadingException("Kaynak bulunamadı: $url")
