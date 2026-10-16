@@ -11,6 +11,7 @@ object DomainResolver {
     private const val TAG = "DomainResolver"
     private const val MANIFEST = "https://raw.githubusercontent.com/Wiojelt/TurkSpor/main/domains.json"
     private const val BOOTSTRAP = "https://www.inattvizle494.top/"
+    private const val PREFERRED = "https://www.inattvizle495.top/"
     const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
 
     private var cached: SiteSnapshot? = null
@@ -45,6 +46,7 @@ object DomainResolver {
         }
 
         // 2. BOOTSTRAP + nextDomains (yuksek oncelikli)
+        candidates.add(PREFERRED)
         candidates.add(BOOTSTRAP)
         candidates.addAll(nextDomains(BOOTSTRAP))
         Log.d(TAG, "Toplam ${candidates.size} aday: $candidates")
