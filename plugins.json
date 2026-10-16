@@ -45,6 +45,28 @@
         "fileHash": "sha256-8c20c03e73c8ebba6e057b82b613711ed727c31d7d385111ef298f7b763a647b"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/CNCVerse.cs3",
+        "status": 3,
+        "version": 1,
+        "name": "CNCVerse",
+        "internalName": "CNCVerse",
+        "authors": [
+            "SafakStream",
+            "NivinCNC"
+        ],
+        "description": "CNC Verse - Netflix, Hotstar, Prime Video ve Disney+ mirror'lar\u0131 (NetMirror/NewTV backend)",
+        "fileSize": 21909,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "en",
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CNCVerse.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-7e07167c2254259d78bb868f7e7b9cd372c2b5ecf2ef429331480b0e6266abad"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziFilmizle.cs3",
         "status": 3,
         "version": 1,
@@ -127,27 +149,6 @@
         "iconUrl": "https://www.inattvizle494.top/lib/img/logo.png",
         "apiVersion": 1,
         "fileHash": "sha256-86d2b7d32e1087bff47d172a82544b6ccfacaf98b6ca78c80d785165e1d306c4"
-    },
-    {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/NetMirror.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "NetMirror",
-        "internalName": "NetMirror",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "NetMirror eklentisi - Netflix, Hotstar, Prime icerikleri",
-        "fileSize": 29382,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://www.google.com/s2/favicons?domain=net77.cc&sz=64",
-        "apiVersion": 1,
-        "fileHash": "sha256-8075e0fdd7aa0a39dafc8053440fb598d10a89dc4fa5d2c62e377d75001586fb"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
