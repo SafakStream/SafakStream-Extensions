@@ -11,7 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.network.CloudflareKiller
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
@@ -45,34 +45,17 @@ class BetmatikProvider : MainAPI() {
         "channels" to "7/24 Kanallar"
     )
 
-    // ========================================================================
-    // BASE URL (domain.php'den)
-    // ========================================================================
     private suspend fun resolveBaseUrl(): String {
         cachedBaseUrl?.let { return it }
         return try {
-            // CloudflareKiller kullanarak domain.php'yi çekmeyi dene
             val response = app.get(
                 "$DATA_BASE/domain.php",
-                headers = mapOf(
-                    "User-Agent" to UA,
-                    "Referer" to "$mainUrl/",
-                    "Origin" to mainUrl
-                ),
-                interceptor = CloudflareKiller()
+                headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/", "Origin" to mainUrl)
             ).text
-            
-            Log.d(TAG, "domain.php raw: $response")
             val json = JSONObject(response)
-            val base = json.optString("baseurl")
-                .ifBlank { json.optString("url") }
-                .ifBlank { json.optString("domain") }
-                .ifBlank { json.optString("base_url") }
-                .trimEnd('/')
-                
+            val base = json.optString("baseurl").trimEnd('/')
             if (base.isNotBlank()) {
                 cachedBaseUrl = base
-                Log.d(TAG, "Resolved baseUrl=$base")
                 base
             } else mainUrl
         } catch (e: Exception) {
@@ -81,24 +64,10 @@ class BetmatikProvider : MainAPI() {
         }
     }
 
-    // ========================================================================
-    // ANA SAYFA
-    // ========================================================================
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val endpoint = if (request.data == "channels") "$DATA_BASE/channels.php"
-                       else "$DATA_BASE/matches.php"
-
-        val doc = app.get(
-            endpoint,
-            headers = mapOf(
-                "User-Agent" to UA,
-                "Referer" to "$mainUrl/",
-                "Accept" to "text/html,*/*"
-            )
-        ).document
-
+        val endpoint = if (request.data == "channels") "$DATA_BASE/channels.php" else "$DATA_BASE/matches.php"
+        val doc = app.get(endpoint, headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/")).document
         val items = doc.select("a.single-match").mapNotNull { it.toSearchResponse() }
-        Log.d(TAG, "getMainPage(${request.data}) -> ${items.size} items")
         return newHomePageResponse(request.name, items)
     }
 
@@ -121,21 +90,12 @@ class BetmatikProvider : MainAPI() {
         }
 
         val cleanEvent = event.replace(Regex("^\\d{1,2}:\\d{2}\\s*\\|\\s*"), "")
-        val finalTitle = if (cleanEvent.isNotBlank() && cleanEvent != title)
-            "$title ($cleanEvent)" else title
-
-        val poster = logo1?.let {
-            if (it.startsWith("http")) it else fixUrl(it)
-        }
-
+        val finalTitle = if (cleanEvent.isNotBlank() && cleanEvent != title) "$title ($cleanEvent)" else title
+        val poster = logo1?.let { if (it.startsWith("http")) it else fixUrl(it) }
         val encodedTitle = URLEncoder.encode(finalTitle, "UTF-8")
         val url = "$mainUrl/channel?id=$id&title=$encodedTitle"
 
-        return newLiveSearchResponse(
-            name = finalTitle,
-            url = url,
-            type = TvType.Live
-        ) {
+        return newLiveSearchResponse(name = finalTitle, url = url, type = TvType.Live) {
             this.posterUrl = poster
         }
     }
@@ -146,40 +106,24 @@ class BetmatikProvider : MainAPI() {
         val results = mutableListOf<SearchResponse>()
         for (endpoint in listOf("$DATA_BASE/matches.php", "$DATA_BASE/channels.php")) {
             try {
-                val doc = app.get(
-                    endpoint,
-                    headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/")
-                ).document
+                val doc = app.get(endpoint, headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/")).document
                 doc.select("a.single-match").forEach { el ->
                     val item = el.toSearchResponse()
-                    if (item != null && item.name.contains(query, ignoreCase = true))
-                        results.add(item)
+                    if (item != null && item.name.contains(query, ignoreCase = true)) results.add(item)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "search error: ${e.message}")
-            }
+            } catch (e: Exception) { Log.e(TAG, "search error: ${e.message}") }
         }
         return results.distinctBy { it.url }
     }
 
-    // ========================================================================
-    // DETAY / LOAD
-    // ========================================================================
     override suspend fun load(url: String): LoadResponse {
         val id = url.substringAfter("id=", "").substringBefore("&").trim()
         val title = url.substringAfter("title=", "").let {
             if (it.isBlank()) id else try { URLDecoder.decode(it, "UTF-8") } catch (e: Exception) { id }
         }
-        return newLiveStreamLoadResponse(
-            name = title,
-            url = url,
-            dataUrl = id
-        )
+        return newLiveStreamLoadResponse(name = title, url = url, dataUrl = id)
     }
 
-    // ========================================================================
-    // LINK ÇIKARMA - CloudflareKiller ile (Garantili Çözüm)
-    // ========================================================================
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -190,42 +134,68 @@ class BetmatikProvider : MainAPI() {
         if (id.isBlank()) return false
 
         val playerPageUrl = "$mainUrl/channel?id=$id"
-        val headers = mapOf(
-            "User-Agent" to UA,
-            "Referer" to "$mainUrl/",
-            "Origin" to mainUrl
-        )
+        val headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/", "Origin" to mainUrl)
 
+        // --- WebViewResolver ile player sayfasını intercept et, gerçek m3u8'i yakala ---
         try {
-            Log.d(TAG, "CloudflareKiller ile stream URL alınıyor: $id")
-
-            // CloudflareKiller, siteye gidip Cloudflare'in istediği çerezleri (cf_clearance) 
-            // WebView aracılığıyla alır ve arka planda bu çerezleri kullanır.
-            val base = resolveBaseUrl()
-            val streamUrl = "$base/$id/mono.m3u8"
-            Log.d(TAG, "Oluşturulan stream URL: $streamUrl")
-
-            // Cloudstream'in oynatıcısına (ExoPlayer) linki veriyoruz.
-            // CloudflareKiller'ın aldığı çerezler Cloudstream'in global cookie jar'ına kaydedildiği için
-            // ExoPlayer bu isteği atarken 403 almaz.
-            callback(
-                newExtractorLink(
-                    source = this.name,
-                    name = "${this.name} - $id",
-                    url = streamUrl,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = "$mainUrl/"
-                    this.quality = Qualities.Unknown.value
-                    this.headers = headers
-                }
+            Log.d(TAG, "WebViewResolver ile player sayfası açılıyor: $playerPageUrl")
+            val m3u8Pattern = Regex(""".*\.m3u8.*""")
+            val resolver = WebViewResolver(
+                interceptUrl = m3u8Pattern,
+                additionalUrls = listOf(m3u8Pattern),
+                useOkhttp = false,
+                timeout = 30_000L
             )
-            return true
+
+            val response = app.get(
+                playerPageUrl,
+                referer = "$mainUrl/",
+                headers = headers,
+                interceptor = resolver
+            )
+
+            val caughtUrl = response.url.toString()
+            Log.d(TAG, "Yakalanan URL: $caughtUrl")
+
+            if (caughtUrl.contains(".m3u8", ignoreCase = true)) {
+                Log.d(TAG, "m3u8 başarıyla yakalandı: $caughtUrl")
+                callback(
+                    newExtractorLink(
+                        source = this.name,
+                        name = "${this.name} - $id",
+                        url = caughtUrl,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = "$mainUrl/"
+                        this.quality = Qualities.Unknown.value
+                        this.headers = headers
+                    }
+                )
+                return true
+            } else {
+                Log.e(TAG, "m3u8 yakalanamadı. Gelen: $caughtUrl")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "loadLinks hatası: ${e.message}")
+            Log.e(TAG, "WebViewResolver hatası: ${e.message}")
             e.printStackTrace()
         }
 
-        return false
+        // --- Fallback: doğrudan URL üret ---
+        Log.d(TAG, "WebView başarısız, fallback deneniyor")
+        val base = resolveBaseUrl()
+        val streamUrl = "$base/$id/mono.m3u8"
+        callback(
+            newExtractorLink(
+                source = this.name,
+                name = "${this.name} - $id",
+                url = streamUrl,
+                type = ExtractorLinkType.M3U8
+            ) {
+                this.referer = "$mainUrl/"
+                this.quality = Qualities.Unknown.value
+                this.headers = headers + ("Accept" to "*/*")
+            }
+        )
+        return true
     }
 }
