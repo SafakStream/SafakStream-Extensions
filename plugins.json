@@ -108,6 +108,27 @@
         "fileHash": "sha256-f81c68a920b2582711219c22724ea57218cf75a480690a4fcd55c95fc61c1f66"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/FilmMakinesi.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "FilmMakinesi",
+        "internalName": "FilmMakinesi",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "FilmMakinesi - Film ve dizi izleme sitesi",
+        "fileSize": 12048,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "iconUrl": "https://www.google.com/s2/favicons?domain=filmmakinesi.to&sz=%size%",
+        "apiVersion": 1,
+        "fileHash": "sha256-8005e5bfdeecc67ef0a94fbb04d16ff4883921921046115c00eaa3556a33d423"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/HDFilmCehennemi.cs3",
         "status": 1,
         "version": 1,
