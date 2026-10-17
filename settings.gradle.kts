@@ -28,8 +28,7 @@ include(
     "BeyazElma",
     "Streamed",
     "TrGoals",
-    "Betmatik",
-    "FilmMakinesi"
+    "Betmatik"
 )
 include("MahsunSports")
 include("PapazSports")
