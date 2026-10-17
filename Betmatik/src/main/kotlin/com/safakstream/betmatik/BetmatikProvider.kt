@@ -18,7 +18,6 @@ import com.lagradost.cloudstream3.newLiveStreamLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 import org.json.JSONObject
@@ -47,29 +46,49 @@ class BetmatikProvider : MainAPI() {
     )
 
     // ========================================================================
-    // BASE URL (domain.php'den)
+    // BASE URL (domain.php'den) - WebView ile dene, olmazsa app.get
     // ========================================================================
     private suspend fun resolveBaseUrl(): String {
         cachedBaseUrl?.let { return it }
+        
+        // Önce WebView ile dene (Cloudflare'i aşmak için)
+        try {
+            val m3u8Pattern = Regex("""\.m3u8""")
+            val resolver = WebViewResolver(
+                interceptUrl = m3u8Pattern,
+                additionalUrls = listOf(m3u8Pattern),
+                useOkhttp = false,
+                timeout = 20_000L
+            )
+            // domain.php'yi WebView ile çekmeye çalış (bazen CF challenge'ı geçmek için yeterli)
+            val response = app.get(
+                "$DATA_BASE/domain.php",
+                headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/"),
+                interceptor = resolver
+            )
+            val json = JSONObject(response.text)
+            val base = json.optString("baseurl").trimEnd('/')
+            if (base.isNotBlank()) {
+                cachedBaseUrl = base
+                Log.d(TAG, "WebView ile baseUrl alındı: $base")
+                return base
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WebView domain.php hatası: ${e.message}")
+        }
+
+        // Fallback: normal app.get
         return try {
             val response = app.get(
                 "$DATA_BASE/domain.php",
-                headers = mapOf(
-                    "User-Agent" to UA,
-                    "Referer" to "$mainUrl/",
-                    "Origin" to mainUrl
-                )
+                headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/", "Origin" to mainUrl)
             ).text
             Log.d(TAG, "domain.php raw: $response")
             val json = JSONObject(response)
-            val base = json.optString("baseurl")
-                .ifBlank { json.optString("url") }
-                .ifBlank { json.optString("domain") }
-                .ifBlank { json.optString("base_url") }
-                .trimEnd('/')
+            val base = json.optString("baseurl").trimEnd('/')
             if (base.isNotBlank()) {
                 cachedBaseUrl = base
-                Log.d(TAG, "Resolved baseUrl=$base")
+                Log.d(TAG, "Fallback baseUrl: $base")
                 base
             } else mainUrl
         } catch (e: Exception) {
@@ -160,7 +179,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // DETAY / LOAD — başlık düzeltmesi
+    // DETAY / LOAD
     // ========================================================================
     override suspend fun load(url: String): LoadResponse {
         val id = url.substringAfter("id=", "").substringBefore("&").trim()
@@ -175,7 +194,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // LINK ÇIKARMA — WebViewResolver (Streamed eklentisindeki desen)
+    // LINK ÇIKARMA - WebViewResolver ile player sayfasını intercept et
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -193,7 +212,7 @@ class BetmatikProvider : MainAPI() {
             "Origin" to mainUrl
         )
 
-        // --- Plan A: WebViewResolver ile Cloudflare'i aş ve m3u8'i yakala ---
+        // --- Plan A: WebViewResolver ile player sayfasını aç, m3u8 isteğini yakala ---
         try {
             Log.d(TAG, "WebViewResolver deniyor: $playerPageUrl")
             val m3u8Pattern = Regex(""".*\.m3u8.*""")
@@ -204,6 +223,7 @@ class BetmatikProvider : MainAPI() {
                 timeout = 30_000L
             )
 
+            // Player sayfasını WebView ile aç. Sayfa yüklenirken m3u8 isteği yakalanacak.
             val response = app.get(
                 playerPageUrl,
                 referer = "$mainUrl/",
@@ -215,32 +235,20 @@ class BetmatikProvider : MainAPI() {
             Log.d(TAG, "Yakalanan URL: $caughtUrl")
 
             if (caughtUrl.contains(".m3u8", ignoreCase = true)) {
-                try {
-                    M3u8Helper.generateM3u8(
+                Log.d(TAG, "m3u8 yakalandı: $caughtUrl")
+                callback(
+                    newExtractorLink(
                         source = this.name,
-                        streamUrl = caughtUrl,
-                        referer = "$mainUrl/",
-                        headers = headers
-                    ).forEach(callback)
-                    Log.d(TAG, "M3u8 generate başarılı")
-                    return true
-                } catch (e: Exception) {
-                    Log.e(TAG, "M3u8 generate hata: ${e.message}")
-                    // Fallback: doğrudan link olarak ver
-                    callback(
-                        newExtractorLink(
-                            source = this.name,
-                            name = "${this.name} - $id",
-                            url = caughtUrl,
-                            type = ExtractorLinkType.M3U8
-                        ) {
-                            this.referer = "$mainUrl/"
-                            this.quality = Qualities.Unknown.value
-                            this.headers = headers
-                        }
-                    )
-                    return true
-                }
+                        name = "${this.name} - $id",
+                        url = caughtUrl,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = "$mainUrl/"
+                        this.quality = Qualities.Unknown.value
+                        this.headers = headers
+                    }
+                )
+                return true
             } else {
                 Log.e(TAG, "m3u8 yakalanamadı. Gelen: $caughtUrl")
             }
@@ -249,7 +257,7 @@ class BetmatikProvider : MainAPI() {
             e.printStackTrace()
         }
 
-        // --- Plan B: Fallback — doğrudan URL üret ---
+        // --- Plan B: Fallback - domain.php'den base al, doğrudan URL üret ---
         Log.d(TAG, "WebView başarısız, fallback deneniyor")
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
