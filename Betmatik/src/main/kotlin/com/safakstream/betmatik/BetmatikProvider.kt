@@ -11,15 +11,19 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 import org.json.JSONObject
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 class BetmatikProvider : MainAPI() {
     override var mainUrl = "https://betmatiktv156.com"
@@ -32,7 +36,7 @@ class BetmatikProvider : MainAPI() {
     companion object {
         private const val TAG = "Betmatik"
         private const val DATA_BASE = "https://data-reality.com"
-        private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        private const val UA = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     }
 
     private var cachedBaseUrl: String? = null
@@ -43,25 +47,31 @@ class BetmatikProvider : MainAPI() {
     )
 
     // ========================================================================
-    // BASE URL ÇÖZÜMLEME (domain.php'den)
+    // BASE URL (domain.php'den)
     // ========================================================================
     private suspend fun resolveBaseUrl(): String {
         cachedBaseUrl?.let { return it }
         return try {
             val response = app.get(
                 "$DATA_BASE/domain.php",
-                headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/")
+                headers = mapOf(
+                    "User-Agent" to UA,
+                    "Referer" to "$mainUrl/",
+                    "Origin" to mainUrl
+                )
             ).text
             Log.d(TAG, "domain.php raw: $response")
             val json = JSONObject(response)
-            val base = json.optString("baseurl").trimEnd('/')
+            val base = json.optString("baseurl")
+                .ifBlank { json.optString("url") }
+                .ifBlank { json.optString("domain") }
+                .ifBlank { json.optString("base_url") }
+                .trimEnd('/')
             if (base.isNotBlank()) {
                 cachedBaseUrl = base
                 Log.d(TAG, "Resolved baseUrl=$base")
                 base
-            } else {
-                mainUrl
-            }
+            } else mainUrl
         } catch (e: Exception) {
             Log.e(TAG, "resolveBaseUrl error: ${e.message}")
             mainUrl
@@ -98,10 +108,8 @@ class BetmatikProvider : MainAPI() {
         val home = selectFirst(".teams .home")?.text()?.trim().orEmpty()
         val away = selectFirst(".teams .away")?.text()?.trim().orEmpty()
         val event = selectFirst(".event")?.text()?.trim().orEmpty()
-        val category = selectFirst(".date")?.text()?.trim().orEmpty()
         val imgs = select("img")
         val logo1 = imgs.getOrNull(0)?.attr("src")
-        val logo2 = imgs.getOrNull(1)?.attr("src")
 
         val title = when {
             home.isNotBlank() && away.isNotBlank() -> "$home - $away"
@@ -109,31 +117,29 @@ class BetmatikProvider : MainAPI() {
             else -> event.ifBlank { id }
         }
 
-        // "16:00 | Trendyol Süper Lig" -> temizle
         val cleanEvent = event.replace(Regex("^\\d{1,2}:\\d{2}\\s*\\|\\s*"), "")
-        val finalTitle = if (cleanEvent.isNotBlank() && cleanEvent != title) {
-            "$title ($cleanEvent)"
-        } else title
+        val finalTitle = if (cleanEvent.isNotBlank() && cleanEvent != title)
+            "$title ($cleanEvent)" else title
 
-        val poster = when {
-            logo1 != null && logo2 != null -> logo1 // İlk logo (ev sahibi)
-            logo1 != null -> logo1
-            else -> null
+        val poster = logo1?.let {
+            if (it.startsWith("http")) it else fixUrl(it)
         }
+
+        val encodedTitle = URLEncoder.encode(finalTitle, "UTF-8")
+        val url = "$mainUrl/channel?id=$id&title=$encodedTitle"
 
         return newLiveSearchResponse(
             name = finalTitle,
-            url = "$mainUrl/channel?id=$id",
+            url = url,
             type = TvType.Live
         ) {
-            this.posterUrl = poster?.let { if (it.startsWith("http")) it else fixUrl(it) }
+            this.posterUrl = poster
         }
     }
 
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun search(query: String): List<SearchResponse> {
-        // Hem maçları hem kanalları çekip filtrele
         val results = mutableListOf<SearchResponse>()
         for (endpoint in listOf("$DATA_BASE/matches.php", "$DATA_BASE/channels.php")) {
             try {
@@ -143,9 +149,8 @@ class BetmatikProvider : MainAPI() {
                 ).document
                 doc.select("a.single-match").forEach { el ->
                     val item = el.toSearchResponse()
-                    if (item != null && item.name.contains(query, ignoreCase = true)) {
+                    if (item != null && item.name.contains(query, ignoreCase = true))
                         results.add(item)
-                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "search error: ${e.message}")
@@ -155,19 +160,22 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // DETAY / LOAD
+    // DETAY / LOAD — başlık düzeltmesi
     // ========================================================================
     override suspend fun load(url: String): LoadResponse {
-        val id = url.substringAfterLast("id=", "").trim()
+        val id = url.substringAfter("id=", "").substringBefore("&").trim()
+        val title = url.substringAfter("title=", "").let {
+            if (it.isBlank()) id else try { URLDecoder.decode(it, "UTF-8") } catch (e: Exception) { id }
+        }
         return newLiveStreamLoadResponse(
-            name = id,
+            name = title,
             url = url,
             dataUrl = id
         )
     }
 
     // ========================================================================
-    // LINK ÇIKARMA
+    // LINK ÇIKARMA — WebViewResolver (Streamed eklentisindeki desen)
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -178,9 +186,74 @@ class BetmatikProvider : MainAPI() {
         val id = data.trim()
         if (id.isBlank()) return false
 
+        val playerPageUrl = "$mainUrl/channel?id=$id"
+        val headers = mapOf(
+            "User-Agent" to UA,
+            "Referer" to "$mainUrl/",
+            "Origin" to mainUrl
+        )
+
+        // --- Plan A: WebViewResolver ile Cloudflare'i aş ve m3u8'i yakala ---
+        try {
+            Log.d(TAG, "WebViewResolver deniyor: $playerPageUrl")
+            val m3u8Pattern = Regex(""".*\.m3u8.*""")
+            val resolver = WebViewResolver(
+                interceptUrl = m3u8Pattern,
+                additionalUrls = listOf(m3u8Pattern),
+                useOkhttp = false,
+                timeout = 30_000L
+            )
+
+            val response = app.get(
+                playerPageUrl,
+                referer = "$mainUrl/",
+                headers = headers,
+                interceptor = resolver
+            )
+
+            val caughtUrl = response.url.toString()
+            Log.d(TAG, "Yakalanan URL: $caughtUrl")
+
+            if (caughtUrl.contains(".m3u8", ignoreCase = true)) {
+                try {
+                    M3u8Helper.generateM3u8(
+                        source = this.name,
+                        streamUrl = caughtUrl,
+                        referer = "$mainUrl/",
+                        headers = headers
+                    ).forEach(callback)
+                    Log.d(TAG, "M3u8 generate başarılı")
+                    return true
+                } catch (e: Exception) {
+                    Log.e(TAG, "M3u8 generate hata: ${e.message}")
+                    // Fallback: doğrudan link olarak ver
+                    callback(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "${this.name} - $id",
+                            url = caughtUrl,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = "$mainUrl/"
+                            this.quality = Qualities.Unknown.value
+                            this.headers = headers
+                        }
+                    )
+                    return true
+                }
+            } else {
+                Log.e(TAG, "m3u8 yakalanamadı. Gelen: $caughtUrl")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WebViewResolver hatası: ${e.message}")
+            e.printStackTrace()
+        }
+
+        // --- Plan B: Fallback — doğrudan URL üret ---
+        Log.d(TAG, "WebView başarısız, fallback deneniyor")
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
-        Log.d(TAG, "loadLinks: id=$id base=$base -> $streamUrl")
+        Log.d(TAG, "Fallback stream: $streamUrl")
 
         callback(
             newExtractorLink(
@@ -191,10 +264,7 @@ class BetmatikProvider : MainAPI() {
             ) {
                 this.referer = "$mainUrl/"
                 this.quality = Qualities.Unknown.value
-                this.headers = mapOf(
-                    "User-Agent" to UA,
-                    "Referer" to "$mainUrl/"
-                )
+                this.headers = headers + ("Accept" to "*/*")
             }
         )
         return true
