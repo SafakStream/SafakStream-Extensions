@@ -11,7 +11,6 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
@@ -21,6 +20,7 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 import org.json.JSONObject
+import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -125,7 +125,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // ÇÖZÜM: m3u8 içeriğini CloudflareKiller ile indir ve oynatıcıya besle
+    // ÇÖZÜM: TrGoals mantığı — app.get ile m3u8'i çek, playlist.url ver
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -136,60 +136,91 @@ class BetmatikProvider : MainAPI() {
         val id = data.trim()
         if (id.isBlank()) return false
 
-        val headers = mapOf(
-            "User-Agent" to UA,
-            "Referer" to "$mainUrl/",
-            "Origin" to mainUrl
-        )
-
-        try {
-            val base = resolveBaseUrl()
-            val streamUrl = "$base/$id/mono.m3u8"
-            Log.d(TAG, "m3u8 içeriği indiriliyor: $streamUrl")
-
-            // CloudflareKiller kullanarak m3u8 metnini indir
-            val m3u8Content = app.get(
-                streamUrl,
-                headers = headers,
-                interceptor = CloudflareKiller()
-            ).text
-
-            Log.d(TAG, "m3u8 içeriği alındı, boyut: ${m3u8Content.length}")
-
-            // İçeriğin gerçekten m3u8 olup olmadığını kontrol et (Cloudflare HTML'i değil)
-            if (m3u8Content.contains("#EXTM3U")) {
-                Log.d(TAG, "Geçerli m3u8 içeriği, oynatıcıya besleniyor")
-                callback(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "${this.name} - $id",
-                        url = streamUrl, // URL'yi veriyoruz ama içeriği Cloudstream halledecek
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = "$mainUrl/"
-                        this.quality = Qualities.Unknown.value
-                        this.headers = headers
-                        // Not: Cloudstream'in içerik besleme mekanizması yoksa bu kısım çalışmaz
-                    }
-                )
-                return true
-            } else {
-                Log.e(TAG, "İçerik m3u8 değil, Cloudflare HTML'i olabilir. İlk 200 karakter: ${m3u8Content.take(200)}")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "loadLinks hatası: ${e.message}")
-            e.printStackTrace()
-        }
-
-        // Fallback: doğrudan URL dene
-        Log.d(TAG, "Fallback: doğrudan URL deneniyor")
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
-        callback(
+
+        val headers = mutableMapOf(
+            "User-Agent" to UA,
+            "Origin" to mainUrl.trimEnd('/'),
+            "Referer" to "$mainUrl/"
+        )
+
+        // 1. app.get ile m3u8 içeriğini çek (Cloudflare'i Cloudstream'in OkHttp'si çözecek)
+        val playlist = try {
+            app.get(streamUrl, headers = headers, referer = "$mainUrl/")
+        } catch (e: Exception) {
+            Log.e(TAG, "playlist hata: ${e.message}")
+            return false
+        }
+
+        Log.d(TAG, "playlist code=${playlist.code} url=${playlist.url}")
+        Log.d(TAG, "playlist ilk100=${playlist.text.take(100).replace("\n", "\\n")}")
+
+        // 2. Gerçekten m3u8 mi kontrol et
+        if (playlist.code != 200 || !playlist.text.trimStart().startsWith("#EXTM3U")) {
+            Log.e(TAG, "playlist #EXTM3U değil veya hata kodu: ${playlist.code}")
+
+            // Fallback: CloudflareKiller dene
+            try {
+                val cfPlaylist = app.get(streamUrl, headers = headers, referer = "$mainUrl/",
+                    interceptor = com.lagradost.cloudstream3.network.CloudflareKiller())
+                Log.d(TAG, "CF playlist code=${cfPlaylist.code} url=${cfPlaylist.url}")
+                if (cfPlaylist.code == 200 && cfPlaylist.text.trimStart().startsWith("#EXTM3U")) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "${this.name} - $id",
+                            url = cfPlaylist.url,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = "$mainUrl/"
+                            this.quality = Qualities.Unknown.value
+                            this.headers = headers
+                        }
+                    )
+                    return true
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "CF playlist hatası: ${e.message}")
+            }
+            return false
+        }
+
+        // 3. Master playlist ise en yüksek kaliteli alt linki bul
+        val finalUrl = if (playlist.text.contains("#EXT-X-STREAM-INF")) {
+            val lines = playlist.text.lines()
+            var bestUrl: String? = null
+            var maxBw = -1L
+            var pending = false
+            var pendingBw = 0L
+
+            for (line in lines) {
+                val trimmed = line.trim()
+                if (trimmed.startsWith("#EXT-X-STREAM-INF:")) {
+                    pendingBw = Regex("BANDWIDTH=(\\d+)").find(trimmed)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                    pending = true
+                } else if (pending && trimmed.isNotBlank() && !trimmed.startsWith("#")) {
+                    if (pendingBw > maxBw) {
+                        maxBw = pendingBw
+                        bestUrl = try {
+                            URI(playlist.url).resolve(trimmed).toString()
+                        } catch (e: Exception) { trimmed }
+                    }
+                    pending = false
+                }
+            }
+            bestUrl ?: playlist.url
+        } else {
+            playlist.url
+        }
+
+        Log.d(TAG, "finalUrl=$finalUrl")
+
+        callback.invoke(
             newExtractorLink(
                 source = this.name,
                 name = "${this.name} - $id",
-                url = streamUrl,
+                url = finalUrl,
                 type = ExtractorLinkType.M3U8
             ) {
                 this.referer = "$mainUrl/"
