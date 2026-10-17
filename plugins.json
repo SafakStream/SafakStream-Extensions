@@ -9,7 +9,7 @@
             "SafakStream"
         ],
         "description": "Betmatik - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve 7/24 spor kanallar\u0131 (Zirve Stream altyap\u0131s\u0131).",
-        "fileSize": 15383,
+        "fileSize": 15969,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -18,7 +18,7 @@
         ],
         "iconUrl": "https://betmatiktv156.com/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-939ad9a454a04f9a89d9c97020504d813d380f63b1009f809e6081ec8baeb447"
+        "fileHash": "sha256-10090f470a5728bb993d0cb8a282399fc9bb31b1ae42c79925d92e4425e9490f"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/BeyazElma.cs3",
