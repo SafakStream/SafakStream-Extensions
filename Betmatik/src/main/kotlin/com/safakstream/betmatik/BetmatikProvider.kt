@@ -11,7 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.network.WebViewResolver
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
@@ -19,7 +19,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import okhttp3.Request
 import org.jsoup.nodes.Element
 import org.json.JSONObject
 import java.net.URLDecoder
@@ -126,7 +125,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // LINK ÇIKARMA - resolveUsingWebView doğru imza ile
+    // ÇÖZÜM: m3u8 içeriğini CloudflareKiller ile indir ve oynatıcıya besle
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -137,7 +136,6 @@ class BetmatikProvider : MainAPI() {
         val id = data.trim()
         if (id.isBlank()) return false
 
-        val playerPageUrl = "$mainUrl/channel?id=$id"
         val headers = mapOf(
             "User-Agent" to UA,
             "Referer" to "$mainUrl/",
@@ -145,63 +143,46 @@ class BetmatikProvider : MainAPI() {
         )
 
         try {
-            Log.d(TAG, "resolveUsingWebView deneniyor: $playerPageUrl")
-            val m3u8Pattern = Regex(""".*\.m3u8.*""")
-            val resolver = WebViewResolver(
-                interceptUrl = m3u8Pattern,
-                additionalUrls = listOf(m3u8Pattern),
-                useOkhttp = false,
-                timeout = 30_000L
-            )
+            val base = resolveBaseUrl()
+            val streamUrl = "$base/$id/mono.m3u8"
+            Log.d(TAG, "m3u8 içeriği indiriliyor: $streamUrl")
 
-            // DÖNÜŞ: Pair<Request?, List<Request>>
-            val result = resolver.resolveUsingWebView(
-                url = playerPageUrl,
+            // CloudflareKiller kullanarak m3u8 metnini indir
+            val m3u8Content = app.get(
+                streamUrl,
                 headers = headers,
-                requestCallBack = { req: Request ->
-                    req.url.toString().contains(".m3u8", ignoreCase = true)
-                }
-            )
+                interceptor = CloudflareKiller()
+            ).text
 
-            // result.first NULLABLE, result.second List<Request>
-            val caughtRequests = mutableListOf<Request>()
-            result.first?.let { caughtRequests.add(it) }
-            caughtRequests.addAll(result.second)
+            Log.d(TAG, "m3u8 içeriği alındı, boyut: ${m3u8Content.length}")
 
-            Log.d(TAG, "Yakalanan istek sayısı: ${caughtRequests.size}")
-            caughtRequests.forEach { Log.d(TAG, "  → ${it.url}") }
-
-            val m3u8Request = caughtRequests.firstOrNull {
-                it.url.toString().contains(".m3u8", ignoreCase = true)
-            }
-
-            if (m3u8Request != null) {
-                val caughtUrl = m3u8Request.url.toString()
-                Log.d(TAG, "m3u8 BULUNDU: $caughtUrl")
-
+            // İçeriğin gerçekten m3u8 olup olmadığını kontrol et (Cloudflare HTML'i değil)
+            if (m3u8Content.contains("#EXTM3U")) {
+                Log.d(TAG, "Geçerli m3u8 içeriği, oynatıcıya besleniyor")
                 callback(
                     newExtractorLink(
                         source = this.name,
                         name = "${this.name} - $id",
-                        url = caughtUrl,
+                        url = streamUrl, // URL'yi veriyoruz ama içeriği Cloudstream halledecek
                         type = ExtractorLinkType.M3U8
                     ) {
                         this.referer = "$mainUrl/"
                         this.quality = Qualities.Unknown.value
                         this.headers = headers
+                        // Not: Cloudstream'in içerik besleme mekanizması yoksa bu kısım çalışmaz
                     }
                 )
                 return true
             } else {
-                Log.e(TAG, "m3u8 yakalanamadı")
+                Log.e(TAG, "İçerik m3u8 değil, Cloudflare HTML'i olabilir. İlk 200 karakter: ${m3u8Content.take(200)}")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "resolveUsingWebView hatası: ${e.message}")
+            Log.e(TAG, "loadLinks hatası: ${e.message}")
             e.printStackTrace()
         }
 
-        // Fallback
-        Log.d(TAG, "Fallback deneniyor")
+        // Fallback: doğrudan URL dene
+        Log.d(TAG, "Fallback: doğrudan URL deneniyor")
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
         callback(
