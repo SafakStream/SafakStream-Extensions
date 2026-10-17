@@ -59,7 +59,7 @@ class BetmatikProvider : MainAPI() {
     )
 
     // ========================================================================
-    // BASE URL (domain.php) - Cloudflare koruması yok, sorunsuz
+    // BASE URL (domain.php)
     // ========================================================================
     private suspend fun fetchBaseUrl(): String? {
         cachedBaseUrl?.let { return it }
@@ -112,9 +112,8 @@ class BetmatikProvider : MainAPI() {
         val home = selectFirst(".home")?.text()?.trim().orEmpty()
         val away = selectFirst(".away")?.text()?.trim().orEmpty()
         val event = selectFirst(".event")?.text()?.trim().orEmpty()
-        val date = selectFirst(".date")?.text()?.trim().orEmpty()
 
-        // Kanal ise sadece home adı
+        // Kanal ise sadece home adı, maç ise "Home - Away"
         val title = when {
             home.isNotBlank() && away.isNotBlank() -> "$home - $away"
             home.isNotBlank() -> home
@@ -122,9 +121,22 @@ class BetmatikProvider : MainAPI() {
             else -> return null
         }
 
-        val poster = select("img").firstOrNull()?.attr("src")?.let {
-            if (it.startsWith("http")) it else null
+        // --- POSTER DÜZELTMESİ ---
+        // 1) Tüm img'leri topla, göreceli yolları tam URL'ye çevir
+        // 2) "img/tv.png" gibi genel placeholder'ları atla
+        // 3) Kalan ilk gerçek görseli (genelde takım/kanal logosu) kullan
+        val allImgs = select("img").mapNotNull { img ->
+            val src = img.attr("src").trim()
+            if (src.isBlank()) return@mapNotNull null
+            when {
+                src.startsWith("http://") || src.startsWith("https://") -> src
+                src.startsWith("//") -> "https:$src"
+                else -> runCatching { fixUrl(src) }.getOrNull()
+            }
         }
+        val poster = allImgs.firstOrNull { url ->
+            !url.contains("img/tv.png", ignoreCase = true)
+        } ?: allImgs.firstOrNull()
 
         val stableUrl = buildStableUrl(channelId, title)
         return newLiveSearchResponse(title, stableUrl, TvType.Live) {
@@ -133,7 +145,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // ARAMA (basit filtreleme)
+    // ARAMA
     // ========================================================================
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
@@ -169,7 +181,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // LOADLINKS (M3U8) - En kritik kısım
+    // LOADLINKS (M3U8)
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -180,11 +192,9 @@ class BetmatikProvider : MainAPI() {
         val parsed = parseStableUrl(data) ?: return false
         val base = fetchBaseUrl() ?: return false
 
-        // base zaten "https://5ln.zirvedesin244.cfd/" şeklinde geliyor
         val streamUrl = "${base}${parsed.channelId}/mono.m3u8"
         Log.d(TAG, "streamUrl=$streamUrl")
 
-        // Önce varlığını doğrula
         try {
             val check = app.get(streamUrl, headers = streamHeaders(), allowRedirects = true)
             val text = check.text.trimStart()
