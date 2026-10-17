@@ -1,0 +1,12 @@
+package com.safakstream.papazsports
+
+import android.content.Context
+import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
+import com.lagradost.cloudstream3.plugins.Plugin
+
+@CloudstreamPlugin
+class PapazSportsPlugin : Plugin() {
+    override fun load(context: Context) {
+        registerMainAPI(PapazSportsProvider())
+    }
+}

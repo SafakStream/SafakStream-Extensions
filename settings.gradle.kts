@@ -31,3 +31,4 @@ include(
     "Betmatik"
 )
 include("MahsunSports")
+include("PapazSports")
