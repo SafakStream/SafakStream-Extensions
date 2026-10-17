@@ -117,7 +117,7 @@
             "SafakStream"
         ],
         "description": "FilmMakinesi - Film ve dizi izleme sitesi",
-        "fileSize": 13448,
+        "fileSize": 12202,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -126,7 +126,7 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=filmmakinesi.to&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-19540b3b8d0a548146e79853ada2699251eebeb940d754771f6f2de043cf3e14"
+        "fileHash": "sha256-504f3fc130a439cc4492c5cde40b769e54f1b99cdd2f93afcc67c9d2f895f5b9"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/HDFilmCehennemi.cs3",
