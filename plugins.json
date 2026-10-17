@@ -138,7 +138,7 @@
             "SafakStream"
         ],
         "description": "MahsunSports \u00fczerinden canl\u0131 ma\u00e7 ve 7/24 spor kanallar\u0131n\u0131 izleyin.",
-        "fileSize": 11437,
+        "fileSize": 12150,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -146,7 +146,7 @@
         ],
         "iconUrl": "https://mahsunsports55.xyz/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-c0321c0a3c05f953a4f6949cfa15067384bba43b2a191f96236ea963ceacebfb"
+        "fileHash": "sha256-a2b2fe807fa266eca3a781f3171baeafb7edea03d0328c58254d3b428fa4ee02"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
