@@ -11,7 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.network.WebViewResolver
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
@@ -46,49 +46,33 @@ class BetmatikProvider : MainAPI() {
     )
 
     // ========================================================================
-    // BASE URL (domain.php'den) - WebView ile dene, olmazsa app.get
+    // BASE URL (domain.php'den)
     // ========================================================================
     private suspend fun resolveBaseUrl(): String {
         cachedBaseUrl?.let { return it }
-        
-        // Önce WebView ile dene (Cloudflare'i aşmak için)
-        try {
-            val m3u8Pattern = Regex("""\.m3u8""")
-            val resolver = WebViewResolver(
-                interceptUrl = m3u8Pattern,
-                additionalUrls = listOf(m3u8Pattern),
-                useOkhttp = false,
-                timeout = 20_000L
-            )
-            // domain.php'yi WebView ile çekmeye çalış (bazen CF challenge'ı geçmek için yeterli)
-            val response = app.get(
-                "$DATA_BASE/domain.php",
-                headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/"),
-                interceptor = resolver
-            )
-            val json = JSONObject(response.text)
-            val base = json.optString("baseurl").trimEnd('/')
-            if (base.isNotBlank()) {
-                cachedBaseUrl = base
-                Log.d(TAG, "WebView ile baseUrl alındı: $base")
-                return base
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "WebView domain.php hatası: ${e.message}")
-        }
-
-        // Fallback: normal app.get
         return try {
+            // CloudflareKiller kullanarak domain.php'yi çekmeyi dene
             val response = app.get(
                 "$DATA_BASE/domain.php",
-                headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/", "Origin" to mainUrl)
+                headers = mapOf(
+                    "User-Agent" to UA,
+                    "Referer" to "$mainUrl/",
+                    "Origin" to mainUrl
+                ),
+                interceptor = CloudflareKiller()
             ).text
+            
             Log.d(TAG, "domain.php raw: $response")
             val json = JSONObject(response)
-            val base = json.optString("baseurl").trimEnd('/')
+            val base = json.optString("baseurl")
+                .ifBlank { json.optString("url") }
+                .ifBlank { json.optString("domain") }
+                .ifBlank { json.optString("base_url") }
+                .trimEnd('/')
+                
             if (base.isNotBlank()) {
                 cachedBaseUrl = base
-                Log.d(TAG, "Fallback baseUrl: $base")
+                Log.d(TAG, "Resolved baseUrl=$base")
                 base
             } else mainUrl
         } catch (e: Exception) {
@@ -194,7 +178,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // LINK ÇIKARMA - WebViewResolver ile player sayfasını intercept et
+    // LINK ÇIKARMA - CloudflareKiller ile (Garantili Çözüm)
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -212,69 +196,36 @@ class BetmatikProvider : MainAPI() {
             "Origin" to mainUrl
         )
 
-        // --- Plan A: WebViewResolver ile player sayfasını aç, m3u8 isteğini yakala ---
         try {
-            Log.d(TAG, "WebViewResolver deniyor: $playerPageUrl")
-            val m3u8Pattern = Regex(""".*\.m3u8.*""")
-            val resolver = WebViewResolver(
-                interceptUrl = m3u8Pattern,
-                additionalUrls = listOf(m3u8Pattern),
-                useOkhttp = false,
-                timeout = 30_000L
+            Log.d(TAG, "CloudflareKiller ile stream URL alınıyor: $id")
+
+            // CloudflareKiller, siteye gidip Cloudflare'in istediği çerezleri (cf_clearance) 
+            // WebView aracılığıyla alır ve arka planda bu çerezleri kullanır.
+            val base = resolveBaseUrl()
+            val streamUrl = "$base/$id/mono.m3u8"
+            Log.d(TAG, "Oluşturulan stream URL: $streamUrl")
+
+            // Cloudstream'in oynatıcısına (ExoPlayer) linki veriyoruz.
+            // CloudflareKiller'ın aldığı çerezler Cloudstream'in global cookie jar'ına kaydedildiği için
+            // ExoPlayer bu isteği atarken 403 almaz.
+            callback(
+                newExtractorLink(
+                    source = this.name,
+                    name = "${this.name} - $id",
+                    url = streamUrl,
+                    type = ExtractorLinkType.M3U8
+                ) {
+                    this.referer = "$mainUrl/"
+                    this.quality = Qualities.Unknown.value
+                    this.headers = headers
+                }
             )
-
-            // Player sayfasını WebView ile aç. Sayfa yüklenirken m3u8 isteği yakalanacak.
-            val response = app.get(
-                playerPageUrl,
-                referer = "$mainUrl/",
-                headers = headers,
-                interceptor = resolver
-            )
-
-            val caughtUrl = response.url.toString()
-            Log.d(TAG, "Yakalanan URL: $caughtUrl")
-
-            if (caughtUrl.contains(".m3u8", ignoreCase = true)) {
-                Log.d(TAG, "m3u8 yakalandı: $caughtUrl")
-                callback(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "${this.name} - $id",
-                        url = caughtUrl,
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = "$mainUrl/"
-                        this.quality = Qualities.Unknown.value
-                        this.headers = headers
-                    }
-                )
-                return true
-            } else {
-                Log.e(TAG, "m3u8 yakalanamadı. Gelen: $caughtUrl")
-            }
+            return true
         } catch (e: Exception) {
-            Log.e(TAG, "WebViewResolver hatası: ${e.message}")
+            Log.e(TAG, "loadLinks hatası: ${e.message}")
             e.printStackTrace()
         }
 
-        // --- Plan B: Fallback - domain.php'den base al, doğrudan URL üret ---
-        Log.d(TAG, "WebView başarısız, fallback deneniyor")
-        val base = resolveBaseUrl()
-        val streamUrl = "$base/$id/mono.m3u8"
-        Log.d(TAG, "Fallback stream: $streamUrl")
-
-        callback(
-            newExtractorLink(
-                source = this.name,
-                name = "${this.name} - $id",
-                url = streamUrl,
-                type = ExtractorLinkType.M3U8
-            ) {
-                this.referer = "$mainUrl/"
-                this.quality = Qualities.Unknown.value
-                this.headers = headers + ("Accept" to "*/*")
-            }
-        )
-        return true
+        return false
     }
 }
