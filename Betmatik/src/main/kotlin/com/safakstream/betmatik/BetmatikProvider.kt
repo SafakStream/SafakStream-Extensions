@@ -125,7 +125,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // LINK ÇIKARMA - m3u8 içeriğini indir, alt segmenti bul, ExoPlayer'a ver
+    // LINK ÇIKARMA - CloudflareKiller + Master Playlist Çözümleme
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -147,17 +147,18 @@ class BetmatikProvider : MainAPI() {
             val streamUrl = "$base/$id/mono.m3u8"
             Log.d(TAG, "Ana m3u8 URL'i: $streamUrl")
 
-            // CloudflareKiller ile m3u8 metnini indir (403'ü aşmak için)
+            // 1. CloudflareKiller ile m3u8 metnini indir (403'ü aşmak için)
             val m3u8Response = app.get(
                 streamUrl,
                 headers = headers,
                 interceptor = CloudflareKiller()
             ).text
 
-            Log.d(TAG, "m3u8 içeriği (ilk 5 satır): ${m3u8Response.lines().take(5).joinToString(" | ")}")
+            Log.d(TAG, "m3u8 içeriği (ilk 10 satır): ${m3u8Response.lines().take(10).joinToString(" | ")}")
 
-            // Eğer içerikte #EXT-X-STREAM-INF varsa master playlist'tir, alt linki çek
             var finalStreamUrl = streamUrl
+
+            // 2. Eğer içerik master playlist ise, en yüksek kaliteli alt linki bul
             if (m3u8Response.contains("#EXT-X-STREAM-INF")) {
                 val lines = m3u8Response.lines()
                 var bestVariantUrl: String? = null
@@ -167,7 +168,6 @@ class BetmatikProvider : MainAPI() {
                     val line = lines[i]
                     if (line.contains("#EXT-X-STREAM-INF")) {
                         val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                        // Alt satırda URL var
                         if (i + 1 < lines.size && !lines[i + 1].startsWith("#")) {
                             val variantUrl = lines[i + 1].trim()
                             if (bandwidth > maxBandwidth) {
@@ -179,12 +179,18 @@ class BetmatikProvider : MainAPI() {
                 }
 
                 if (bestVariantUrl != null) {
-                    // Göreceli URL ise base ile birleştir
+                    // Göreceli URL ise stream sunucusunun host'u ile birleştir
                     finalStreamUrl = if (bestVariantUrl.startsWith("http")) {
                         bestVariantUrl
                     } else {
                         val urlObj = java.net.URI(streamUrl)
-                        "${urlObj.scheme}://${urlObj.host}${if (bestVariantUrl.startsWith("/")) "" else "/"}$bestVariantUrl"
+                        val baseUrl = "${urlObj.scheme}://${urlObj.host}"
+                        if (bestVariantUrl.startsWith("/")) {
+                            baseUrl + bestVariantUrl
+                        } else {
+                            val path = urlObj.path.substringBeforeLast("/") + "/"
+                            baseUrl + path + bestVariantUrl
+                        }
                     }
                     Log.d(TAG, "Alt m3u8 bulundu: $finalStreamUrl (bw=$maxBandwidth)")
                 }
@@ -192,6 +198,7 @@ class BetmatikProvider : MainAPI() {
 
             Log.d(TAG, "ExoPlayer'a verilecek URL: $finalStreamUrl")
 
+            // 3. Alt m3u8'i (veya ana m3u8'i) ExoPlayer'a ver
             callback(
                 newExtractorLink(
                     source = this.name,
@@ -210,7 +217,8 @@ class BetmatikProvider : MainAPI() {
             e.printStackTrace()
         }
 
-        // Fallback: en azından doğrudan URL ver
+        // Fallback: CloudflareKiller olmadan doğrudan URL dene
+        Log.d(TAG, "Fallback deneniyor")
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
         callback(
