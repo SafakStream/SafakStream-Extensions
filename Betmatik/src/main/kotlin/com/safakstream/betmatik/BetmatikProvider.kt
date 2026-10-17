@@ -11,7 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.network.WebViewResolver
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
@@ -124,6 +124,9 @@ class BetmatikProvider : MainAPI() {
         return newLiveStreamLoadResponse(name = title, url = url, dataUrl = id)
     }
 
+    // ========================================================================
+    // LINK ÇIKARMA - m3u8 içeriğini indir, alt segmenti bul, ExoPlayer'a ver
+    // ========================================================================
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -133,55 +136,81 @@ class BetmatikProvider : MainAPI() {
         val id = data.trim()
         if (id.isBlank()) return false
 
-        val playerPageUrl = "$mainUrl/channel?id=$id"
-        val headers = mapOf("User-Agent" to UA, "Referer" to "$mainUrl/", "Origin" to mainUrl)
+        val headers = mapOf(
+            "User-Agent" to UA,
+            "Referer" to "$mainUrl/",
+            "Origin" to mainUrl
+        )
 
-        // --- WebViewResolver ile player sayfasını intercept et, gerçek m3u8'i yakala ---
         try {
-            Log.d(TAG, "WebViewResolver ile player sayfası açılıyor: $playerPageUrl")
-            val m3u8Pattern = Regex(""".*\.m3u8.*""")
-            val resolver = WebViewResolver(
-                interceptUrl = m3u8Pattern,
-                additionalUrls = listOf(m3u8Pattern),
-                useOkhttp = false,
-                timeout = 30_000L
-            )
+            val base = resolveBaseUrl()
+            val streamUrl = "$base/$id/mono.m3u8"
+            Log.d(TAG, "Ana m3u8 URL'i: $streamUrl")
 
-            val response = app.get(
-                playerPageUrl,
-                referer = "$mainUrl/",
+            // CloudflareKiller ile m3u8 metnini indir (403'ü aşmak için)
+            val m3u8Response = app.get(
+                streamUrl,
                 headers = headers,
-                interceptor = resolver
-            )
+                interceptor = CloudflareKiller()
+            ).text
 
-            val caughtUrl = response.url.toString()
-            Log.d(TAG, "Yakalanan URL: $caughtUrl")
+            Log.d(TAG, "m3u8 içeriği (ilk 5 satır): ${m3u8Response.lines().take(5).joinToString(" | ")}")
 
-            if (caughtUrl.contains(".m3u8", ignoreCase = true)) {
-                Log.d(TAG, "m3u8 başarıyla yakalandı: $caughtUrl")
-                callback(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "${this.name} - $id",
-                        url = caughtUrl,
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = "$mainUrl/"
-                        this.quality = Qualities.Unknown.value
-                        this.headers = headers
+            // Eğer içerikte #EXT-X-STREAM-INF varsa master playlist'tir, alt linki çek
+            var finalStreamUrl = streamUrl
+            if (m3u8Response.contains("#EXT-X-STREAM-INF")) {
+                val lines = m3u8Response.lines()
+                var bestVariantUrl: String? = null
+                var maxBandwidth = -1
+
+                for (i in lines.indices) {
+                    val line = lines[i]
+                    if (line.contains("#EXT-X-STREAM-INF")) {
+                        val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                        // Alt satırda URL var
+                        if (i + 1 < lines.size && !lines[i + 1].startsWith("#")) {
+                            val variantUrl = lines[i + 1].trim()
+                            if (bandwidth > maxBandwidth) {
+                                maxBandwidth = bandwidth
+                                bestVariantUrl = variantUrl
+                            }
+                        }
                     }
-                )
-                return true
-            } else {
-                Log.e(TAG, "m3u8 yakalanamadı. Gelen: $caughtUrl")
+                }
+
+                if (bestVariantUrl != null) {
+                    // Göreceli URL ise base ile birleştir
+                    finalStreamUrl = if (bestVariantUrl.startsWith("http")) {
+                        bestVariantUrl
+                    } else {
+                        val urlObj = java.net.URI(streamUrl)
+                        "${urlObj.scheme}://${urlObj.host}${if (bestVariantUrl.startsWith("/")) "" else "/"}$bestVariantUrl"
+                    }
+                    Log.d(TAG, "Alt m3u8 bulundu: $finalStreamUrl (bw=$maxBandwidth)")
+                }
             }
+
+            Log.d(TAG, "ExoPlayer'a verilecek URL: $finalStreamUrl")
+
+            callback(
+                newExtractorLink(
+                    source = this.name,
+                    name = "${this.name} - $id",
+                    url = finalStreamUrl,
+                    type = ExtractorLinkType.M3U8
+                ) {
+                    this.referer = "$mainUrl/"
+                    this.quality = Qualities.Unknown.value
+                    this.headers = headers
+                }
+            )
+            return true
         } catch (e: Exception) {
-            Log.e(TAG, "WebViewResolver hatası: ${e.message}")
+            Log.e(TAG, "loadLinks hatası: ${e.message}")
             e.printStackTrace()
         }
 
-        // --- Fallback: doğrudan URL üret ---
-        Log.d(TAG, "WebView başarısız, fallback deneniyor")
+        // Fallback: en azından doğrudan URL ver
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
         callback(
@@ -193,7 +222,7 @@ class BetmatikProvider : MainAPI() {
             ) {
                 this.referer = "$mainUrl/"
                 this.quality = Qualities.Unknown.value
-                this.headers = headers + ("Accept" to "*/*")
+                this.headers = headers
             }
         )
         return true
