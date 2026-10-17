@@ -6,6 +6,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
+import java.net.URLEncoder
 
 class MahsunSportsProvider : MainAPI() {
     override var mainUrl = "https://mahsunsports55.xyz"
@@ -24,6 +25,9 @@ class MahsunSportsProvider : MainAPI() {
 
     private val scriptUrl = "https://chatang0.com/script4.js"
 
+    // Maçlar ve kanallar için varsayılan poster
+    private val defaultPoster = "https://mahsunsports55.xyz/favicon.ico"
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val script = app.get(scriptUrl).text
         val home = ArrayList<HomePageList>()
@@ -41,10 +45,11 @@ class MahsunSportsProvider : MainAPI() {
                 val url = obj.optString("url")
                 val id = extractId(url) ?: continue
 
+                val displayTitle = "🔴 $title ($time - $league)"
                 liveMatches.add(
                     newLiveSearchResponse(
-                        name = "🔴 $title ($time - $league)",
-                        url = "$mainUrl/event.html?id=$id",
+                        name = displayTitle,
+                        url = buildLoadUrl(id, displayTitle),
                         type = TvType.Live
                     )
                 )
@@ -67,10 +72,11 @@ class MahsunSportsProvider : MainAPI() {
                 val title = obj.optString("title")
                 val url = obj.optString("url")
                 val id = extractId(url) ?: continue
+                val displayTitle = "📺 $title"
                 channelList.add(
                     newLiveSearchResponse(
-                        name = "📺 $title",
-                        url = "$mainUrl/event.html?id=$id",
+                        name = displayTitle,
+                        url = buildLoadUrl(id, displayTitle),
                         type = TvType.Live
                     )
                 )
@@ -101,10 +107,11 @@ class MahsunSportsProvider : MainAPI() {
             val id = extractId(url) ?: continue
 
             val prefix = if (isLive) "🔴 " else ""
+            val displayTitle = "$prefix$title ($time - $league)"
             list.add(
                 newLiveSearchResponse(
-                    name = "$prefix$title ($time - $league)",
-                    url = "$mainUrl/event.html?id=$id",
+                    name = displayTitle,
+                    url = buildLoadUrl(id, displayTitle),
                     type = TvType.Live
                 )
             )
@@ -115,7 +122,7 @@ class MahsunSportsProvider : MainAPI() {
     }
 
     override suspend fun quickSearch(query: String): List<SearchResponse> {
-        return search(query) ?: emptyList()
+        return search(query)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -138,7 +145,7 @@ class MahsunSportsProvider : MainAPI() {
                     results.add(
                         newLiveSearchResponse(
                             name = displayTitle,
-                            url = "$mainUrl/event.html?id=$id",
+                            url = buildLoadUrl(id, displayTitle),
                             type = TvType.Live
                         )
                     )
@@ -149,15 +156,21 @@ class MahsunSportsProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val id = url.substringAfter("id=", "").substringBefore("&")
+        val id = url.substringAfter("id=", "").substringBefore("&").ifBlank { "Unknown" }
+        val rawTitle = url.substringAfter("title=", "").substringBefore("&").ifBlank { null }
+        val displayTitle = if (rawTitle != null) {
+            try { java.net.URLDecoder.decode(rawTitle, "UTF-8") } catch (e: Exception) { rawTitle }
+        } else {
+            "MahsunSports: $id"
+        }
 
         return newMovieLoadResponse(
-            name = "MahsunSports: $id",
+            name = displayTitle,
             url = url,
             dataUrl = id,
             type = TvType.Live
         ) {
-            this.posterUrl = null
+            this.posterUrl = defaultPoster
             this.plot = "Canlı yayın - MahsunSports"
         }
     }
@@ -193,6 +206,11 @@ class MahsunSportsProvider : MainAPI() {
             }
         }
         return false
+    }
+
+    private fun buildLoadUrl(id: String, title: String): String {
+        val encoded = try { URLEncoder.encode(title, "UTF-8") } catch (e: Exception) { title }
+        return "$mainUrl/event.html?id=$id&title=$encoded"
     }
 
     private fun getStreamFile(id: String): String {
