@@ -170,6 +170,27 @@
         "fileHash": "sha256-a2b2fe807fa266eca3a781f3171baeafb7edea03d0328c58254d3b428fa4ee02"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/PapazSports.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "PapazSports",
+        "internalName": "PapazSports",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "PapazSports - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve 7/24 spor kanallar\u0131 Cloudstream \u00fczerinden izle.",
+        "fileSize": 23558,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "LiveStream",
+            "Others"
+        ],
+        "iconUrl": "https://www.papazsports1030.pro/lib/img/logo.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-55639abf8a1ef1e10608fffd3115e2e0c3d99fd10048f8d7daf058a9fe91d057"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
         "status": 3,
         "version": 1,
