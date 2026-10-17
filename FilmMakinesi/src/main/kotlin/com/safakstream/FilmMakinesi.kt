@@ -4,7 +4,6 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 
@@ -86,22 +85,45 @@ class FilmMakinesi : MainAPI() {
             val videoUrl = link.attr("data-video_url").takeIf { it.isNotBlank() } ?: continue
             val name = link.text().trim()
 
-            val extracted = loadExtractor(videoUrl, data, subtitleCallback) { extractorLink ->
-                callback(extractorLink)
-            }
+            try {
+                // Embed sayfasını çek
+                val embedPage = app.get(videoUrl, referer = data).text
 
-            if (!extracted) {
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = name,
-                        url = videoUrl,
-                        type = ExtractorLinkType.VIDEO
-                    ) {
-                        this.referer = data
-                        this.quality = Qualities.Unknown.value
-                    }
-                )
+                // Regex ile gerçek video linkini bul (m3u8 veya mp4)
+                val m3u8Regex = Regex("""(https?://[^\s"']+?\.m3u8[^\s"']*)""")
+                val mp4Regex = Regex("""(https?://[^\s"']+?\.mp4[^\s"']*)""")
+
+                val m3u8Match = m3u8Regex.find(embedPage)?.value
+                val mp4Match = mp4Regex.find(embedPage)?.value
+
+                if (m3u8Match != null) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = name,
+                            url = m3u8Match,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = videoUrl
+                            this.quality = Qualities.Unknown.value
+                        }
+                    )
+                } else if (mp4Match != null) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = name,
+                            url = mp4Match,
+                            type = ExtractorLinkType.VIDEO
+                        ) {
+                            this.referer = videoUrl
+                            this.quality = Qualities.Unknown.value
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                // Embed sayfası açılamazsa (404 vs.) bu kaynağı atla
+                continue
             }
         }
         return true
