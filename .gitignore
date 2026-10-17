@@ -38,3 +38,10 @@ google-services.json
 *.html
 *.bak
 local.properties
+
+# Betmatik geçici dosyalar
+cookies.txt
+betmatik_*.html
+bm_*.html
+*.log
+build/
