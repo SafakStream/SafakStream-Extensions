@@ -11,7 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.network.CloudflareKiller
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
 import com.lagradost.cloudstream3.newLiveStreamLoadResponse
@@ -19,6 +19,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import okhttp3.Request
 import org.jsoup.nodes.Element
 import org.json.JSONObject
 import java.net.URLDecoder
@@ -125,7 +126,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // LINK ÇIKARMA - CloudflareKiller + Master Playlist Çözümleme
+    // LINK ÇIKARMA - resolveUsingWebView doğru imza ile
     // ========================================================================
     override suspend fun loadLinks(
         data: String,
@@ -136,6 +137,7 @@ class BetmatikProvider : MainAPI() {
         val id = data.trim()
         if (id.isBlank()) return false
 
+        val playerPageUrl = "$mainUrl/channel?id=$id"
         val headers = mapOf(
             "User-Agent" to UA,
             "Referer" to "$mainUrl/",
@@ -143,81 +145,62 @@ class BetmatikProvider : MainAPI() {
         )
 
         try {
-            val base = resolveBaseUrl()
-            val streamUrl = "$base/$id/mono.m3u8"
-            Log.d(TAG, "Ana m3u8 URL'i: $streamUrl")
+            Log.d(TAG, "resolveUsingWebView deneniyor: $playerPageUrl")
+            val m3u8Pattern = Regex(""".*\.m3u8.*""")
+            val resolver = WebViewResolver(
+                interceptUrl = m3u8Pattern,
+                additionalUrls = listOf(m3u8Pattern),
+                useOkhttp = false,
+                timeout = 30_000L
+            )
 
-            // 1. CloudflareKiller ile m3u8 metnini indir (403'ü aşmak için)
-            val m3u8Response = app.get(
-                streamUrl,
+            // DÖNÜŞ: Pair<Request?, List<Request>>
+            val result = resolver.resolveUsingWebView(
+                url = playerPageUrl,
                 headers = headers,
-                interceptor = CloudflareKiller()
-            ).text
-
-            Log.d(TAG, "m3u8 içeriği (ilk 10 satır): ${m3u8Response.lines().take(10).joinToString(" | ")}")
-
-            var finalStreamUrl = streamUrl
-
-            // 2. Eğer içerik master playlist ise, en yüksek kaliteli alt linki bul
-            if (m3u8Response.contains("#EXT-X-STREAM-INF")) {
-                val lines = m3u8Response.lines()
-                var bestVariantUrl: String? = null
-                var maxBandwidth = -1
-
-                for (i in lines.indices) {
-                    val line = lines[i]
-                    if (line.contains("#EXT-X-STREAM-INF")) {
-                        val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                        if (i + 1 < lines.size && !lines[i + 1].startsWith("#")) {
-                            val variantUrl = lines[i + 1].trim()
-                            if (bandwidth > maxBandwidth) {
-                                maxBandwidth = bandwidth
-                                bestVariantUrl = variantUrl
-                            }
-                        }
-                    }
-                }
-
-                if (bestVariantUrl != null) {
-                    // Göreceli URL ise stream sunucusunun host'u ile birleştir
-                    finalStreamUrl = if (bestVariantUrl.startsWith("http")) {
-                        bestVariantUrl
-                    } else {
-                        val urlObj = java.net.URI(streamUrl)
-                        val baseUrl = "${urlObj.scheme}://${urlObj.host}"
-                        if (bestVariantUrl.startsWith("/")) {
-                            baseUrl + bestVariantUrl
-                        } else {
-                            val path = urlObj.path.substringBeforeLast("/") + "/"
-                            baseUrl + path + bestVariantUrl
-                        }
-                    }
-                    Log.d(TAG, "Alt m3u8 bulundu: $finalStreamUrl (bw=$maxBandwidth)")
-                }
-            }
-
-            Log.d(TAG, "ExoPlayer'a verilecek URL: $finalStreamUrl")
-
-            // 3. Alt m3u8'i (veya ana m3u8'i) ExoPlayer'a ver
-            callback(
-                newExtractorLink(
-                    source = this.name,
-                    name = "${this.name} - $id",
-                    url = finalStreamUrl,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = "$mainUrl/"
-                    this.quality = Qualities.Unknown.value
-                    this.headers = headers
+                requestCallBack = { req: Request ->
+                    req.url.toString().contains(".m3u8", ignoreCase = true)
                 }
             )
-            return true
+
+            // result.first NULLABLE, result.second List<Request>
+            val caughtRequests = mutableListOf<Request>()
+            result.first?.let { caughtRequests.add(it) }
+            caughtRequests.addAll(result.second)
+
+            Log.d(TAG, "Yakalanan istek sayısı: ${caughtRequests.size}")
+            caughtRequests.forEach { Log.d(TAG, "  → ${it.url}") }
+
+            val m3u8Request = caughtRequests.firstOrNull {
+                it.url.toString().contains(".m3u8", ignoreCase = true)
+            }
+
+            if (m3u8Request != null) {
+                val caughtUrl = m3u8Request.url.toString()
+                Log.d(TAG, "m3u8 BULUNDU: $caughtUrl")
+
+                callback(
+                    newExtractorLink(
+                        source = this.name,
+                        name = "${this.name} - $id",
+                        url = caughtUrl,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = "$mainUrl/"
+                        this.quality = Qualities.Unknown.value
+                        this.headers = headers
+                    }
+                )
+                return true
+            } else {
+                Log.e(TAG, "m3u8 yakalanamadı")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "loadLinks hatası: ${e.message}")
+            Log.e(TAG, "resolveUsingWebView hatası: ${e.message}")
             e.printStackTrace()
         }
 
-        // Fallback: CloudflareKiller olmadan doğrudan URL dene
+        // Fallback
         Log.d(TAG, "Fallback deneniyor")
         val base = resolveBaseUrl()
         val streamUrl = "$base/$id/mono.m3u8"
