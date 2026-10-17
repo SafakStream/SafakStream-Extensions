@@ -27,7 +27,6 @@ include(
     "DiziFilmizle",
     "BeyazElma",
     "Streamed",
-    "TrGoals",
-    "Betmatik"
+    "TrGoals"
 )
 include("MahsunSports")
