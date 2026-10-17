@@ -29,3 +29,4 @@ include(
     "Streamed",
     "TrGoals"
 )
+include("MahsunSports")
