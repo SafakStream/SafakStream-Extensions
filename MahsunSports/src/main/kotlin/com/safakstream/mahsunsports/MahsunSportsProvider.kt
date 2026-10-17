@@ -25,8 +25,8 @@ class MahsunSportsProvider : MainAPI() {
 
     private val scriptUrl = "https://chatang0.com/script4.js"
 
-    // Maçlar ve kanallar için varsayılan poster
-    private val defaultPoster = "https://mahsunsports55.xyz/favicon.ico"
+    // Hem detay sayfası hem de ana sayfa kartları için varsayılan poster
+    private val defaultPoster = "https://placehold.co/600x900/0D0D10/FF9D00/png?text=MAHSUN+SPORTS&font=oswald"
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val script = app.get(scriptUrl).text
@@ -51,7 +51,9 @@ class MahsunSportsProvider : MainAPI() {
                         name = displayTitle,
                         url = buildLoadUrl(id, displayTitle),
                         type = TvType.Live
-                    )
+                    ) {
+                        this.posterUrl = defaultPoster
+                    }
                 )
             }
             if (liveMatches.isNotEmpty()) {
@@ -78,7 +80,9 @@ class MahsunSportsProvider : MainAPI() {
                         name = displayTitle,
                         url = buildLoadUrl(id, displayTitle),
                         type = TvType.Live
-                    )
+                    ) {
+                        this.posterUrl = defaultPoster
+                    }
                 )
             }
             if (channelList.isNotEmpty()) {
@@ -113,7 +117,9 @@ class MahsunSportsProvider : MainAPI() {
                     name = displayTitle,
                     url = buildLoadUrl(id, displayTitle),
                     type = TvType.Live
-                )
+                ) {
+                    this.posterUrl = defaultPoster
+                }
             )
         }
         if (list.isNotEmpty()) {
@@ -147,7 +153,9 @@ class MahsunSportsProvider : MainAPI() {
                             name = displayTitle,
                             url = buildLoadUrl(id, displayTitle),
                             type = TvType.Live
-                        )
+                        ) {
+                            this.posterUrl = defaultPoster
+                        }
                     )
                 }
             }
