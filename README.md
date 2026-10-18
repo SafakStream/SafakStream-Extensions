@@ -45,15 +45,15 @@ Aşağıda depoda bulunan ve aktif olarak çalışan **15 eklentinin** güncel l
 | Eklenti | Tür / Açıklama | Durum |
 | :--- | :--- | :---: |
 | **Betmatik** | 7/24 canlı yayın kanalları ve posterleri | ✅ Aktif |
-| **BeyazElma** | Arama fonksiyonu destekli genel içerik eklentisi | ✅ Aktif |
+| **BeyazElma** | Canlı maç yayınları ve spor etkinlikleri | ✅ Aktif |
 | **DiziFilmizle** | Film ve dizi içerikleri (içerik tipine göre filtreleme) | ✅ Aktif |
 | **DiziPal** | Dizi ve film yayınları, dinamik ana sayfa | ✅ Aktif |
-| **Dizibox** | Dizi açıklamaları için gelişmiş düzen (max-w-2xl desteği) | ✅ Aktif |
+| **DiziBox** | Dizi açıklamaları için gelişmiş düzen (max-w-2xl desteği) | ✅ Aktif |
 | **FilmMakinesi** | Film ve dizi sağlayıcısı (sezon bölümleri ayrılmış) | ✅ Aktif |
 | **HDFilmCehennemi** | Popüler HDFilmCehennemi içerik sağlayıcısı | ✅ Aktif |
 | **InatTV** | Inat TV canlı yayın (Data URL ve JS URL desteği) | ✅ Aktif |
 | **MahsunSports** | Spor yayınları (özel ana sayfa ve kart tasarımları) | ✅ Aktif |
-| **PapaZSports** | Canlı spor maçları ve etkinlikleri | ✅ Aktif |
+| **PapazSports** | Canlı spor maçları ve etkinlikleri | ✅ Aktif |
 | **SelcukFlix** | Dizi ve filmler (son sezon bölümleri öne çıkarır) | ✅ Aktif |
 | **Streamed** | Streamed içerik sağlayıcısı (genişletilmiş Regex desteği) | ✅ Aktif |
 | **StreamingCommunity** | Yabancı dizi/film sağlayıcısı (DTO'lar güncel) | ✅ Aktif |
