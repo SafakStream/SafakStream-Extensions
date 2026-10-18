@@ -2,7 +2,7 @@
   "name": "SafakStream Extensions",
   "description": "Official Cloudstream extensions by SafakStream",
   "manifestVersion": 1,
-  "iconUrl": "https://github.com/SafakStream/SafakStream-Extensions/raw/builds/icons/logo.png",
+  "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/logo.png",
   "homepage": "https://github.com/SafakStream/SafakStream-Extensions",
   "pluginLists": [
     "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/plugins.json"
