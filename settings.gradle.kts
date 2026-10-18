@@ -29,7 +29,8 @@ include(
     "Streamed",
     "TrGoals",
     "Betmatik",
-    "Dizibox"
+    "Dizibox",
+    "Filmmakinesi"
 )
 include("MahsunSports")
 include("PapazSports")
