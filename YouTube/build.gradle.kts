@@ -11,6 +11,6 @@ cloudstream {
 }
 
 dependencies {
-    // NewPipe Extractor kütüphanesi (YouTube verilerini çekmek için)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:master-SNAPSHOT")
+    // NewPipe Extractor kütüphanesi (master-SNAPSHOT yerine stabil sürüm kullanıyoruz)
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.3")
 }
