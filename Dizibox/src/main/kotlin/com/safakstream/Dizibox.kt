@@ -17,6 +17,9 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.newExtractorLink
+import org.json.JSONObject
 import org.jsoup.nodes.Document
 
 class Dizibox : MainAPI() {
@@ -28,6 +31,7 @@ class Dizibox : MainAPI() {
     override val supportedTypes       = setOf(TvType.TvSeries, TvType.Movie)
 
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    private val playerBase = "https://pilavyerplay.top"
 
     override val mainPage = mainPageOf(
         "${mainUrl}/rss.xml" to "Son Eklenenler"
@@ -36,7 +40,6 @@ class Dizibox : MainAPI() {
     // ============ ANA SAYFA (RSS) ============
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         if (page > 1) return newHomePageResponse(request.name, emptyList())
-
         val body = app.get(request.data, headers = mapOf("User-Agent" to userAgent)).text
         val items = parseRss(body)
         return newHomePageResponse(request.name, items)
@@ -49,13 +52,9 @@ class Dizibox : MainAPI() {
             val title = item.selectFirst("title")?.text()?.trim() ?: continue
             val link  = item.selectFirst("link")?.text()?.trim() ?: continue
             if (link.isBlank()) continue
-
             val cleanTitle = title.removeSuffix(" izle").trim()
-
             val poster = item.selectFirst("media|content")?.attr("url")
-                ?: item.selectFirst("enclosure")?.attr("url")
-                ?: ""
-
+                ?: item.selectFirst("enclosure")?.attr("url") ?: ""
             val isMovie = link.contains("/film/")
             val response = if (isMovie) {
                 newMovieSearchResponse(cleanTitle, link, TvType.Movie)
@@ -84,10 +83,8 @@ class Dizibox : MainAPI() {
             val href = a.attr("href")
             if (href.isBlank()) continue
             if (!href.contains("/dizi/") && !href.contains("/film/")) continue
-
             val cleanTitle = alt.removeSuffix(" izle").trim()
             val poster = img.attr("src")
-
             val isMovie = href.contains("/film/")
             val response = if (isMovie) {
                 newMovieSearchResponse(cleanTitle, href, TvType.Movie)
@@ -95,7 +92,6 @@ class Dizibox : MainAPI() {
                 newTvSeriesSearchResponse(cleanTitle, href, TvType.TvSeries)
             }
             response.posterUrl = poster
-
             if (results.none { it.url == href }) results.add(response)
         }
         return results
@@ -120,8 +116,6 @@ class Dizibox : MainAPI() {
             }
         } else {
             val episodeList = mutableListOf<Episode>()
-
-            // Sezon linkleri: /dizi/{slug}?sezon=N#bolumler
             val seasonLinks = doc.select("a[href*='?sezon=']").map { it.attr("href") }.distinct()
 
             if (seasonLinks.isEmpty()) {
@@ -149,15 +143,10 @@ class Dizibox : MainAPI() {
         for (a in doc.select("a[href*='/sezon-'][href*='/bolum-']")) {
             val href = a.attr("href")
             if (href.isBlank()) continue
-
-            val seasonMatch = Regex("""/sezon-(\d+)/""").find(href)
-            val episodeMatch = Regex("""/bolum-(\d+)""").find(href)
-            val seasonNum = seasonMatch?.groupValues?.get(1)?.toIntOrNull()
-            val episodeNum = episodeMatch?.groupValues?.get(1)?.toIntOrNull()
-
+            val seasonNum = Regex("""/sezon-(\d+)/""").find(href)?.groupValues?.get(1)?.toIntOrNull()
+            val episodeNum = Regex("""/bolum-(\d+)""").find(href)?.groupValues?.get(1)?.toIntOrNull()
             val name = a.selectFirst("p")?.text()?.trim()
                 ?: "Sezon ${seasonNum ?: "?"} Bölüm ${episodeNum ?: "?"}"
-
             episodes.add(
                 newEpisode(href) {
                     this.name = name
@@ -169,14 +158,95 @@ class Dizibox : MainAPI() {
         return episodes
     }
 
-    // ============ VIDEO LINKLERI (FAZ 1: BOS) ============
+    // ============ VIDEO LINKLERI ============
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // Faz 2'de pilavyerplay.top entegrasyonu eklenecek
-        return false
+        val doc = app.get(data, headers = mapOf("User-Agent" to userAgent)).document
+
+        // 1. data-pv ID'sini al (bolum/film sayfasinda)
+        val pvId = doc.selectFirst("div[data-pv]")?.attr("data-pv")
+            ?: doc.select("div[data-pv]").firstOrNull()?.attr("data-pv")
+            ?: return false
+
+        // 2. s.php'ye referer ile istek at
+        val playerUrl = "$playerBase/assets/js/s.php?s=$pvId"
+        val playerHtml = app.get(
+            playerUrl,
+            headers = mapOf(
+                "User-Agent" to userAgent,
+                "Referer" to data,
+                "Origin" to mainUrl
+            )
+        ).text
+
+        // 3. window.__PLAYER__ JSON'unu parse et
+        val playerJsonMatch = Regex("""window\.__PLAYER__\s*=\s*(\{.*?\});""", RegexOption.DOT_MATCHES_ALL)
+            .find(playerHtml)?.groupValues?.get(1) ?: return false
+
+        val playerObj = JSONObject(playerJsonMatch)
+        val streamUrl = playerObj.optString("stream", "")
+        if (streamUrl.isBlank()) return false
+
+        // 4. Altyazilari ekle
+        val subsArray = playerObj.optJSONArray("subs")
+        if (subsArray != null) {
+            for (i in 0 until subsArray.length()) {
+                val sub = subsArray.getJSONObject(i)
+                val subUrl = sub.optString("src", "")
+                val subLang = sub.optString("lang", "tr")
+                val subLabel = sub.optString("label", subLang)
+                if (subUrl.isNotBlank()) {
+                    subtitleCallback(SubtitleFile(subLang, subUrl))
+                }
+            }
+        }
+
+        // 5. stream.php'ye istek at (m3u8 kontrolu icin)
+        val m3u8Response = app.get(
+            streamUrl,
+            headers = mapOf(
+                "User-Agent" to userAgent,
+                "Referer" to playerUrl,
+                "Origin" to playerBase
+            )
+        ).text
+
+        if (!m3u8Response.contains("#EXTM3U")) {
+            // m3u8 degil, belki dogrudan mp4
+            if (streamUrl.contains(".mp4")) {
+                callback(
+                    newExtractorLink(
+                        source = this.name,
+                        name = "DiziBox",
+                        url = streamUrl,
+                        type = ExtractorLinkType.VIDEO
+                    ) {
+                        this.referer = playerUrl
+                        this.quality = 1080
+                    }
+                )
+                return true
+            }
+            return false
+        }
+
+        // 6. m3u8 linkini callback'e ver
+        callback(
+            newExtractorLink(
+                source = this.name,
+                name = "DiziBox",
+                url = streamUrl,
+                type = ExtractorLinkType.M3U8
+            ) {
+                this.referer = playerUrl
+                this.quality = 1080
+            }
+        )
+
+        return true
     }
 }
