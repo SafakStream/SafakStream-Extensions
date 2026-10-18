@@ -5,21 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafakStream Destek</title>
     <style>
-        body { font-family: sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
+        body { 
+            font-family: sans-serif; 
+            background-color: #121212; 
+            color: #fff; 
+            padding: 20px; 
+            text-align: center; 
+        }
         h1 { color: #ff004f; }
-        p { line-height: 1.6; text-align: left; background: #1e1e1e; padding: 15px; border-radius: 8px; }
-        .btn { display: block; padding: 15px; margin: 15px 0; border-radius: 8px; text-decoration: none; color: white; font-weight: bold; font-size: 16px; }
+        .card { 
+            line-height: 1.6; 
+            text-align: left; 
+            background: #1e1e1e; 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            border: 1px solid #333;
+        }
+        .btn { 
+            display: block; 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 16px; 
+            transition: 0.3s;
+        }
+        .btn:hover { opacity: 0.8; }
         .github { background-color: #24292e; }
         .kreosus { background-color: #ff004f; }
+        
+        /* Yükleme Barı Stilleri */
+        .progress-container {
+            width: 100%;
+            background-color: #333;
+            border-radius: 20px;
+            margin: 15px 0;
+            overflow: hidden;
+            position: relative;
+            height: 30px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+        .progress-bar {
+            width: 20%; /* 20 hedefte 4 destekçi var varsayımı (İstediğin gibi değiştirebilirsin) */
+            height: 100%;
+            background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+            border-radius: 20px;
+            position: relative;
+            transition: width 1s ease-in-out;
+        }
+        /* Barın içindeki parlayan efekt */
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent);
+            background-size: 30px 30px;
+            animation: move 2s linear infinite;
+            border-radius: 20px;
+        }
+        @keyframes move {
+            0% { background-position: 0 0; }
+            100% { background-position: 30px 30px; }
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px black;
+        }
     </style>
 </head>
 <body>
     <h1>SafakStream Projesi</h1>
     
-    <p>SafakStream projesine hoş geldiniz! Bu bölümden projeye destek olabilirsiniz.</p>
-    
-    <p>🎯 <b>HEDEFİMİZ: 20 Destekçi</b><br><br>
-    20 destekçiye ulaştığımızda, sunucu ve altyapı masraflarını garanti altına alarak eklentilerin sürekliliğini sağlayacağım. Desteğiniz, projenin geleceği için büyük bir motivasyon kaynağıdır.</p>
+    <div class="card">
+        <h3>🎯 HEDEFİMİZ: 20 Destekçi</h3>
+        
+        <!-- Yükleme Barı -->
+        <div class="progress-container">
+            <div class="progress-text">4 / 20 Destekçi</div>
+            <div class="progress-bar"></div>
+        </div>
+
+        <p style="font-size: 14px; margin-top: 10px;">
+        20 destekçiye ulaştığımızda, sunucu ve altyapı masraflarını garanti altına alarak eklentilerin sürekliliğini sağlayacağım. Desteğiniz, projenin geleceği için büyük bir motivasyon kaynağıdır.
+        </p>
+    </div>
 
     <a href="https://github.com/SafakStream" class="btn github">🌐 GitHub Depomu Ziyaret Et</a>
     <a href="https://kreosus.com/safakstream" class="btn kreosus">☕ Kreosus Üzerinden Destek Ol</a>
