@@ -13,8 +13,8 @@ class HubPlugin : Plugin() {
         // Dişli çarka basıldığında çalışacak kod
         openSettings = {
             try {
-                // GitHub'daki o şık HTML sayfasını tarayıcıda aç
-                val url = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/index.html"
+                // HTML sayfasını tarayıcının web sayfası olarak açması için htmlpreview kullanıyoruz
+                val url = "https://htmlpreview.github.io/?https://github.com/SafakStream/SafakStream-Extensions/blob/main/index.html"
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
