@@ -105,7 +105,9 @@ class Dizibox : MainAPI() {
         val ogTitle = doc.selectFirst("meta[property=og:title]")?.attr("content") ?: ""
         val title = ogTitle.substringBefore(" izle").substringBefore(" |").trim()
         val poster = doc.selectFirst("meta[property=og:image]")?.attr("content") ?: ""
-        val description = doc.selectFirst("meta[property=og:description]")?.attr("content") ?: ""
+        // Tam aciklama: once <p class="mt-5 ..."> etiketini ara, yoksa meta'ya don
+        val description = doc.selectFirst("p.mt-5.max-w-3xl")?.text()?.trim()
+            ?: doc.selectFirst("meta[property=og:description]")?.attr("content") ?: ""
         val year = Regex("""\((\d{4})\)""").find(ogTitle)?.groupValues?.get(1)?.toIntOrNull()
 
         return if (isMovie) {
