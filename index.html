@@ -39,17 +39,18 @@
         
         /* Yükleme Barı Stilleri */
         .progress-container {
-            width: 3%;
+            width: 100%;
             background-color: #333;
             border-radius: 20px;
             margin: 15px 0;
             overflow: hidden;
             position: relative;
             height: 30px;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
         }
         .progress-bar {
-            width: 3%; /* 20 hedefte 4 destekçi var varsayımı (İstediğin gibi değiştirebilirsin) */
+            /* Sıfır olduğunda bile ufak bir ışık kalsın diye %3 yaptık */
+            width: 3%; 
             height: 100%;
             background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
             border-radius: 20px;
@@ -70,15 +71,21 @@
             0% { background-position: 0 0; }
             100% { background-position: 30px 30px; }
         }
+        /* Yazının her zaman ortada ve okunaklı durmasını sağlar */
         .progress-text {
             position: absolute;
-            width: 3%;
-            text-align: center;
-            line-height: 30px;
-            color: white;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
             font-weight: bold;
             font-size: 14px;
-            text-shadow: 1px 1px 2px black;
+            text-shadow: 1px 1px 3px black;
+            z-index: 10;
         }
     </style>
 </head>
@@ -90,8 +97,8 @@
         
         <!-- Yükleme Barı -->
         <div class="progress-container">
-            <div class="progress-text">0 / 20 Destekçi</div>
             <div class="progress-bar"></div>
+            <div class="progress-text">0 / 20 Destekçi</div>
         </div>
 
         <p style="font-size: 14px; margin-top: 10px;">
