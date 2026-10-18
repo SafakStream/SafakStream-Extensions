@@ -66,6 +66,14 @@ subprojects {
             iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/CNCVerse.png"
             version = 1
         }
+        // DiziBox özel metadata
+        if (project.name == "Dizibox") {
+            description = "DiziBox - Türkçe dizi ve film izleme platformu"
+            language = "tr"
+            tvTypes = listOf("TvSeries", "Movie")
+            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/Dizibox.png"
+            version = 1
+        }
     }
 
     android {
