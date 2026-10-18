@@ -177,7 +177,7 @@
             "SafakStream"
         ],
         "description": "MahsunSports \u00fczerinden canl\u0131 ma\u00e7 ve 7/24 spor kanallar\u0131n\u0131 izleyin.",
-        "fileSize": 12150,
+        "fileSize": 12149,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -185,7 +185,7 @@
         ],
         "iconUrl": "https://mahsunsports55.xyz/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-a2b2fe807fa266eca3a781f3171baeafb7edea03d0328c58254d3b428fa4ee02"
+        "fileHash": "sha256-49a663e5585d651abc3882f8eed36e5c364b17686afe8ba31d3e49121ddc757a"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/PapazSports.cs3",
