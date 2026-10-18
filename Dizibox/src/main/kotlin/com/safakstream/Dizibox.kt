@@ -31,7 +31,7 @@ class Dizibox : MainAPI() {
     override val supportedTypes       = setOf(TvType.TvSeries, TvType.Movie)
 
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    private val playerBase = "https://pilavyerplay.top"
+    private val defaultPlayerBase = "https://pilavyerplay.top"
 
     override val mainPage = mainPageOf(
         "${mainUrl}/rss.xml" to "Son Eklenenler"
@@ -167,13 +167,22 @@ class Dizibox : MainAPI() {
     ): Boolean {
         val doc = app.get(data, headers = mapOf("User-Agent" to userAgent)).document
 
-        // 1. data-pv ID'sini al (bolum/film sayfasinda)
+        // 1. data-pv ID'sini al
         val pvId = doc.selectFirst("div[data-pv]")?.attr("data-pv")
             ?: doc.select("div[data-pv]").firstOrNull()?.attr("data-pv")
             ?: return false
 
-        // 2. s.php'ye referer ile istek at
-        val playerUrl = "$playerBase/assets/js/s.php?s=$pvId"
+        // 2. Player base domainini script src'sinden dinamik al
+        //    Dizi: pilavyerplay.top | Film: play2.pilavyerplay.top
+        val scriptSrc = doc.select("script[src*=pilavyerplay]").firstOrNull()?.attr("src")
+        val dynamicBase = if (scriptSrc != null && scriptSrc.contains("/assets/js/")) {
+            scriptSrc.substringBefore("/assets/js/")
+        } else {
+            defaultPlayerBase
+        }
+
+        // 3. s.php'ye referer ile istek at
+        val playerUrl = "$dynamicBase/assets/js/s.php?s=$pvId"
         val playerHtml = app.get(
             playerUrl,
             headers = mapOf(
@@ -183,7 +192,7 @@ class Dizibox : MainAPI() {
             )
         ).text
 
-        // 3. window.__PLAYER__ JSON'unu parse et
+        // 4. window.__PLAYER__ JSON'unu parse et
         val playerJsonMatch = Regex("""window\.__PLAYER__\s*=\s*(\{.*?\});""", RegexOption.DOT_MATCHES_ALL)
             .find(playerHtml)?.groupValues?.get(1) ?: return false
 
@@ -191,32 +200,30 @@ class Dizibox : MainAPI() {
         val streamUrl = playerObj.optString("stream", "")
         if (streamUrl.isBlank()) return false
 
-        // 4. Altyazilari ekle
+        // 5. Altyazilari ekle
         val subsArray = playerObj.optJSONArray("subs")
         if (subsArray != null) {
             for (i in 0 until subsArray.length()) {
                 val sub = subsArray.getJSONObject(i)
                 val subUrl = sub.optString("src", "")
                 val subLang = sub.optString("lang", "tr")
-                val subLabel = sub.optString("label", subLang)
                 if (subUrl.isNotBlank()) {
                     subtitleCallback(SubtitleFile(subLang, subUrl))
                 }
             }
         }
 
-        // 5. stream.php'ye istek at (m3u8 kontrolu icin)
+        // 6. stream.php'ye istek at (m3u8 kontrolu icin)
         val m3u8Response = app.get(
             streamUrl,
             headers = mapOf(
                 "User-Agent" to userAgent,
                 "Referer" to playerUrl,
-                "Origin" to playerBase
+                "Origin" to dynamicBase
             )
         ).text
 
         if (!m3u8Response.contains("#EXTM3U")) {
-            // m3u8 degil, belki dogrudan mp4
             if (streamUrl.contains(".mp4")) {
                 callback(
                     newExtractorLink(
@@ -234,7 +241,7 @@ class Dizibox : MainAPI() {
             return false
         }
 
-        // 6. m3u8 linkini callback'e ver
+        // 7. m3u8 linkini callback'e ver
         callback(
             newExtractorLink(
                 source = this.name,
