@@ -129,24 +129,8 @@ class FilmmakinesiProvider : MainAPI() {
 
         document.select("div.video-parts a[data-video_url]").forEach { element ->
             val videoUrl = element.attr("data-video_url")
-            val sourceName = element.text().trim()
-
             if (videoUrl.isNotEmpty()) {
-                val linkName = when {
-                    videoUrl.contains("closeload") -> "$sourceName (Close)"
-                    videoUrl.contains("rapid") -> "$sourceName (Rapid)"
-                    else -> sourceName
-                }
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = linkName,
-                        url = videoUrl,
-                        type = ExtractorLinkType.VIDEO
-                    ) {
-                        this.referer = mainUrl
-                    }
-                )
+                loadExtractor(videoUrl, "$mainUrl/", subtitleCallback, callback)
                 found = true
             }
         }
@@ -155,16 +139,7 @@ class FilmmakinesiProvider : MainAPI() {
             document.select("div.after-player iframe").forEach { iframe ->
                 val src = iframe.attr("data-src").ifEmpty { iframe.attr("src") }
                 if (src.isNotEmpty()) {
-                    callback.invoke(
-                        newExtractorLink(
-                            source = this.name,
-                            name = this.name,
-                            url = fixUrl(src),
-                            type = ExtractorLinkType.VIDEO
-                        ) {
-                            this.referer = mainUrl
-                        }
-                    )
+                    loadExtractor(fixUrl(src), "$mainUrl/", subtitleCallback, callback)
                     found = true
                 }
             }
