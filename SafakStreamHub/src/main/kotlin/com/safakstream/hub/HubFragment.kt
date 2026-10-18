@@ -17,8 +17,8 @@ class HubFragment(private val plugin: Plugin) : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // XML layout dosyasını yükle
-        val id = plugin.resources!!.getIdentifier("fragment_hub", "layout", BuildConfig.LIBRARY_PACKAGE_NAME)
+        // XML layout dosyasını doğrudan paket adıyla yükle
+        val id = plugin.resources!!.getIdentifier("fragment_hub", "layout", "com.safakstream.hub")
         val layout = plugin.resources!!.getLayout(id)
         return inflater.inflate(layout, container, false)
     }
