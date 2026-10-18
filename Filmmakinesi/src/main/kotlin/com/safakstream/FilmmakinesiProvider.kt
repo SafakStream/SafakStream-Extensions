@@ -10,11 +10,15 @@ class FilmmakinesiProvider : MainAPI() {
     override var mainUrl = "https://filmmakinesi.to"
     override var name = "FilmMakinesi"
     override var lang = "tr"
-    override var hasQuickSearch = true
-    override var supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
+    
+    // DÜZELTME: Ana ekranda görünmesi için hasMainPage = true eklendi
+    override val hasMainPage = true
+    override val hasQuickSearch = true
+    override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    override var mainPage = listOf(
-        MainPageData("Son Eklenenler", "$mainUrl/")
+    // DÜZELTME: mainPageOf kullanımına geçildi
+    override val mainPage = mainPageOf(
+        "$mainUrl/" to "Son Eklenenler"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
