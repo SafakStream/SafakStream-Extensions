@@ -1,71 +1,39 @@
 package com.safakstream.hub
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
+import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.SettingsScreen
+import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.text
+import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.button
+import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.openBrowser
 
 @CloudstreamPlugin
 class HubPlugin : Plugin() {
+
     override fun load(context: Context) {
-        registerMainAPI(HubProvider())
-    }
-}
-
-class HubProvider : MainAPI() {
-    override var mainUrl = "https://github.com/SafakStream"
-    override var name = "SafakStream Destek"
-    override var lang = "tr"
-    override val hasMainPage = true
-    override val supportedTypes = setOf(TvType.Movie)
-
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val welcomeText = newMovieSearchResponse(
-            "SafakStream projesine hoş geldiniz! Bu bölümden projeye destek olabilirsiniz.",
-            "destek1"
-        )
-
-        val goalText = newMovieSearchResponse(
-            "🎯 HEDEFİMİZ: 20 Destekçi\n\n20 destekçiye ulaştığımızda, sunucu ve altyapı masraflarını garanti altına alarak eklentilerin sürekliliğini sağlayacağım. Desteğiniz, projenin geleceği için büyük bir motivasyon kaynağıdır.",
-            "destek2"
-        )
-
-        val githubButton = newMovieSearchResponse(
-            "🌐 GitHub Depomu Ziyaret Et",
-            "github"
-        )
-
-        val kreosusButton = newMovieSearchResponse(
-            "☕ Kreosus Üzerinden Destek Ol",
-            "kreosus"
-        )
-
-        val items = listOf(welcomeText, goalText, githubButton, kreosusButton)
-
-        return newHomePageResponse(
-            list = listOf(HomePageList("Destek Ol", items)),
-            hasNext = false
-        )
+        // Eklenti yüklendiğinde çalışacak kodlar
     }
 
-    override suspend fun load(url: String): LoadResponse? {
-        // Linki doğrudan Intent olarak fırlatıyoruz. (Android OS bunu yakalar)
-        when (url) {
-            "github" -> {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/SafakStream"))
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // Context'i uygulamanın kendisinden (statik olarak) alıyoruz
-                com.lagradost.cloudstream3.CloudstreamApp.context?.startActivity(intent)
+    override fun getSettings(): SettingsScreen {
+        val context = context ?: return super.getSettings()
+
+        return SettingsScreen("SafakStream Destek", context) {
+            
+            text("SafakStream projesine hoş geldiniz! Bu bölümden projeye destek olabilirsiniz.")
+            
+            text(
+                "🎯 HEDEFİMİZ: 20 Destekçi\n\n" +
+                "20 destekçiye ulaştığımızda, sunucu ve altyapı masraflarını garanti altına alarak eklentilerin sürekliliğini sağlayacağım. Desteğiniz, projenin geleceği için büyük bir motivasyon kaynağıdır."
+            )
+
+            button("🌐 GitHub Depomu Ziyaret Et") {
+                openBrowser("https://github.com/SafakStream")
             }
-            "kreosus" -> {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kreosus.com/safakstream"))
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                com.lagradost.cloudstream3.CloudstreamApp.context?.startActivity(intent)
+
+            button("☕ Kreosus Üzerinden Destek Ol") {
+                openBrowser("https://kreosus.com/safakstream")
             }
         }
-        
-        return null
     }
 }
