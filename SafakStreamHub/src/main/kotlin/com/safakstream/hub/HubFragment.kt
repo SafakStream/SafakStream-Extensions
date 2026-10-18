@@ -17,7 +17,7 @@ class HubFragment(private val plugin: Plugin) : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // XML dosyasını kendi paket adımızdan yüklüyoruz
+        // XML'i paket adından yükle
         val id = plugin.resources?.getIdentifier("fragment_hub", "layout", "com.safakstream.hub")
         if (id != null && id != 0) {
             val layout = plugin.resources?.getLayout(id)
@@ -31,9 +31,9 @@ class HubFragment(private val plugin: Plugin) : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Butonları ID'leri ile bul
-        val githubBtn = view.findViewById<Button>(plugin.resources!!.getIdentifier("btn_github", "id", "com.safakstream.hub"))
-        val kreosusBtn = view.findViewById<Button>(plugin.resources!!.getIdentifier("btn_kreosus", "id", "com.safakstream.hub"))
+        // Butonları ID ile bul
+        val githubBtn = view.findViewById<Button>(plugin.resources?.getIdentifier("btn_github", "id", "com.safakstream.hub") ?: 0)
+        val kreosusBtn = view.findViewById<Button>(plugin.resources?.getIdentifier("btn_kreosus", "id", "com.safakstream.hub") ?: 0)
 
         // Tıklama olayları
         githubBtn?.setOnClickListener {
