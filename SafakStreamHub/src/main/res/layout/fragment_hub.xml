@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainFragmentLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/textViewWelcome"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SafakStream projesine hoş geldiniz! Bu bölümden projeye destek olabilirsiniz."
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/textViewGoal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🎯 HEDEFİMİZ: 20 Destekçi\n\n20 destekçiye ulaştığımızda, sunucu ve altyapı masraflarını garanti altına alarak eklentilerin sürekliliğini sağlayacağım. Desteğiniz, projenin geleceği için büyük bir motivasyon kaynağıdır."
+        android:textSize="14sp"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/buttonGithub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🌐 GitHub Depomu Ziyaret Et"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/buttonKreosus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="☕ Kreosus Üzerinden Destek Ol" />
+
+</LinearLayout>
