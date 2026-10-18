@@ -209,6 +209,26 @@
         "fileHash": "sha256-55639abf8a1ef1e10608fffd3115e2e0c3d99fd10048f8d7daf058a9fe91d057"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamHub.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "SafakStreamHub",
+        "internalName": "SafakStreamHub",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "SafakStream projesi hakk\u0131nda bilgi, GitHub ba\u011flant\u0131s\u0131 ve Kreosus \u00fczerinden destek olma imkan\u0131 sunar.",
+        "fileSize": 3348,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            
+        ],
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/icon.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-ee52bd70421420965f54a1cb535db4bfcf7c25f10578e424a606af29902cd71e"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
         "status": 3,
         "version": 1,
