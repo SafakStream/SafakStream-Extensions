@@ -35,13 +35,13 @@ jobs:
           if response.status_code == 200:
               soup = BeautifulSoup(response.text, 'html.parser')
               
-              # "X / 20 destekçi" yazısını bul
+              # "X / 20 supporters" yazısını bul
               text = soup.get_text()
-              match = re.search(r'(\d+)\s*/\s*20\s*destekçi', text, re.IGNORECASE)
+              match = re.search(r'(\d+)\s*/\s*20\s*supporters', text, re.IGNORECASE)
               
               if match:
                   destekci_sayisi = match.group(1)
-                  print(f"Bulunan destekçi sayısı: {destekci_sayisi}")
+                  print(f"Bulunan supporters sayısı: {destekci_sayisi}")
                   
                   # index.html dosyasını oku
                   with open('index.html', 'r', encoding='utf-8') as f:
@@ -51,7 +51,7 @@ jobs:
                   content = re.sub(r'\d+\s*/\s*20\s*Destekçi', f'{destekci_sayisi} / 20 Destekçi', content)
                   
                   # Barın genişliğini (yüzdesini) güncelle
-                  yuzde = min(100, int(destekci_sayisi) * 5) # Her destekçi %5
+                  yuzde = min(100, int(destekci_sayisi) * 5) # Her supporters %5
                   content = re.sub(r'width:\s*\d+%;', f'width: {yuzde}%;', content)
                   
                   with open('index.html', 'w', encoding='utf-8') as f:
