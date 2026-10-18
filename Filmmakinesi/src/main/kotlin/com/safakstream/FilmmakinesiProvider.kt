@@ -88,11 +88,13 @@ class FilmmakinesiProvider : MainAPI() {
         val isSeries = url.contains("/dizi/")
 
         return if (isSeries) {
-            val episodes = document.select("div.season-episodes a, div.episode-list a").mapNotNull { ep ->
+            val episodes = document.select("div.bolum-list a.item-ep").mapNotNull { ep ->
                 val epHref = ep.attr("href").takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-                val epTitle = ep.text()
+                val epTitle = ep.selectFirst("div.ep-title")?.text() ?: "Bölüm"
+                val epName = ep.selectFirst("div.ep-details span")?.text()
+                
                 newEpisode(fixUrl(epHref)) {
-                    this.name = epTitle
+                    this.name = if (epName != null) "$epTitle - $epName" else epTitle
                 }
             }
 
