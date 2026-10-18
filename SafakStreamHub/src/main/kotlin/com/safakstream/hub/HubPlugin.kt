@@ -6,6 +6,7 @@ import android.net.Uri
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
+import com.lagradost.cloudstream3.app
 
 @CloudstreamPlugin
 class HubPlugin : Plugin() {
@@ -51,7 +52,8 @@ class HubProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val ctx = appContext 
+        // Cloudstream'in ana uygulama bağlamını alıyoruz
+        val ctx = com.lagradost.cloudstream3.CloudstreamApp.get().applicationContext
         
         when (url) {
             "github" -> {
