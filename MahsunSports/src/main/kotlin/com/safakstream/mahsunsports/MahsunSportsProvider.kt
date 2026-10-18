@@ -16,16 +16,15 @@ class MahsunSportsProvider : MainAPI() {
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Live)
 
+    // GÜNCEL SUNUCU ADRESLERİ
     private val baseUrls = listOf(
-        "https://andro.evrenesoglu155.click/checklist/",
-        "https://andro.evrenesoglu153.click/checklist/",
-        "https://andro.evrenesoglu151.click/checklist/",
-        "https://andro.evrenesoglu141.click/checklist/"
+        "https://andro.evrenesoglu157.click/checklist/",
+        "https://andro.evrenesoglu159.click/checklist/",
+        "https://andro.evrenesoglu161.click/checklist/",
+        "https://andro.evrenesoglu163.click/checklist/"
     )
 
     private val scriptUrl = "https://chatang0.com/script4.js"
-
-    // Hem detay sayfası hem de ana sayfa kartları için varsayılan poster
     private val defaultPoster = "https://placehold.co/600x900/0D0D10/FF9D00/png?text=MAHSUN+SPORTS&font=oswald"
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
