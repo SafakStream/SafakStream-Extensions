@@ -6,6 +6,7 @@
 
 [![Cloudstream](https://img.shields.io/badge/Cloudstream-4.x-blue?style=for-the-badge)](https://github.com/recloudstream/cloudstream)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green?style=for-the-badge)](LICENSE)
+[![Kreosus](https://img.shields.io/badge/Kreosus-Destek_Ol-ff004f?style=for-the-badge&logo=ko-fi&logoColor=white)](https://kreosus.com/safakstream)
 [![GitHub Stars](https://img.shields.io/github/stars/SafakStream/SafakStream-Extensions?style=for-the-badge&logo=github)](https://github.com/SafakStream/SafakStream-Extensions/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/SafakStream/SafakStream-Extensions?style=for-the-badge&logo=github)](https://github.com/SafakStream/SafakStream-Extensions/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/SafakStream/SafakStream-Extensions?style=for-the-badge&logo=git)](https://github.com/SafakStream/SafakStream-Extensions/commits/main)
@@ -61,6 +62,20 @@ Aşağıda depoda bulunan ve aktif olarak çalışan **15 eklentinin** güncel l
 | **YouTube** | YouTube içeriklerini Cloudstream üzerinden izleme | ✅ Aktif |
 
 > 🔔 Yeni eklentiler eklendikçe bu tablo güncellenecektir.
+
+---
+
+## ☕ Destek Ol
+
+Bu proje tamamen açık kaynaklıdır ve topluluk tarafından desteklenmektedir. Eklentileri faydalı buluyorsanız ve geliştirmeye devam etmeme katkı sağlamak isterseniz, Kreosus üzerinden bana gönüllü olarak destek olabilirsiniz!
+
+<div align="center">
+
+[![Kreosus ile Destek Ol](https://img.shields.io/badge/Kreosus-Destek_Ol-ff004f?style=for-the-badge&logo=ko-fi&logoColor=white)](https://kreosus.com/safakstream)
+
+*Desteğiniz, sunucu masraflarını karşılamamı ve projeyi daha hızlı güncellememi sağlar. Teşekkürler!*
+
+</div>
 
 ---
 
