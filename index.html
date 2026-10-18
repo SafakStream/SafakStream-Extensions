@@ -43,18 +43,20 @@
             background-color: #333;
             border-radius: 20px;
             margin: 15px 0;
-            overflow: hidden;
+            overflow: hidden; /* Taşan kısımları gizler */
             position: relative;
             height: 30px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
         }
         .progress-bar {
-            /* Sıfır olduğunda bile ufak bir ışık kalsın diye %3 yaptık */
-            width: 3%; 
+            /* Sıfır olduğunda minik yuvarlak bir ışık kalsın diye %4 yaptık */
+            width: 4%; 
             height: 100%;
             background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
             border-radius: 20px;
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
             transition: width 1s ease-in-out;
         }
         /* Barın içindeki parlayan efekt */
@@ -71,13 +73,10 @@
             0% { background-position: 0 0; }
             100% { background-position: 30px 30px; }
         }
-        /* Yazının her zaman ortada ve okunaklı durmasını sağlar */
+        /* Yazının her zaman tam ortada ve okunaklı durmasını sağlar */
         .progress-text {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
