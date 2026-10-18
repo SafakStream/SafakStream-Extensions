@@ -17,27 +17,41 @@ class HubFragment(private val plugin: Plugin) : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // XML layout dosyasını doğrudan paket adıyla yükle
-        val id = plugin.resources!!.getIdentifier("fragment_hub", "layout", "com.safakstream.hub")
-        val layout = plugin.resources!!.getLayout(id)
-        return inflater.inflate(layout, container, false)
+        // XML dosyasını kendi paket adımızdan yüklüyoruz
+        val id = plugin.resources?.getIdentifier("fragment_hub", "layout", "com.safakstream.hub")
+        if (id != null && id != 0) {
+            val layout = plugin.resources?.getLayout(id)
+            if (layout != null) {
+                return inflater.inflate(layout, container, false)
+            }
+        }
+        return super.onCreateView(inflater, container, savedInstanceState)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Butonları bul ve tıklama olaylarını ayarla
-        val githubButton = view.findViewById<Button>(R.id.buttonGithub)
-        val kreosusButton = view.findViewById<Button>(R.id.buttonKreosus)
+        // Butonları ID'leri ile bul
+        val githubBtn = view.findViewById<Button>(plugin.resources!!.getIdentifier("btn_github", "id", "com.safakstream.hub"))
+        val kreosusBtn = view.findViewById<Button>(plugin.resources!!.getIdentifier("btn_kreosus", "id", "com.safakstream.hub"))
 
-        githubButton.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/SafakStream"))
-            startActivity(intent)
+        // Tıklama olayları
+        githubBtn?.setOnClickListener {
+            openBrowser("https://github.com/SafakStream")
         }
 
-        kreosusButton.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kreosus.com/safakstream"))
+        kreosusBtn?.setOnClickListener {
+            openBrowser("https://kreosus.com/safakstream")
+        }
+    }
+
+    private fun openBrowser(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

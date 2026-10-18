@@ -1,38 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/mainFragmentLayout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:background="#121212">
 
     <TextView
-        android:id="@+id/textViewWelcome"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="SafakStream projesine hoş geldiniz! Bu bölümden projeye destek olabilirsiniz."
-        android:textSize="16sp"
+        android:text="SafakStream Projesi"
+        android:textColor="#ff004f"
+        android:textSize="22sp"
+        android:textStyle="bold"
         android:layout_marginBottom="16dp" />
 
     <TextView
-        android:id="@+id/textViewGoal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SafakStream projesine hoş geldiniz! Bu bölümden projeye destek olabilirsiniz."
+        android:textColor="#ffffff"
+        android:textSize="14sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="🎯 HEDEFİMİZ: 20 Destekçi\n\n20 destekçiye ulaştığımızda, sunucu ve altyapı masraflarını garanti altına alarak eklentilerin sürekliliğini sağlayacağım. Desteğiniz, projenin geleceği için büyük bir motivasyon kaynağıdır."
-        android:textSize="14sp"
+        android:textColor="#ffffff"
+        android:background="#1e1e1e"
+        android:padding="12dp"
+        android:textSize="13sp"
         android:layout_marginBottom="24dp" />
 
     <Button
-        android:id="@+id/buttonGithub"
+        android:id="@+id/btn_github"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="🌐 GitHub Depomu Ziyaret Et"
+        android:backgroundTint="#24292e"
+        android:textColor="#ffffff"
         android:layout_marginBottom="12dp" />
 
     <Button
-        android:id="@+id/buttonKreosus"
+        android:id="@+id/btn_kreosus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="☕ Kreosus Üzerinden Destek Ol" />
+        android:text="☕ Kreosus Üzerinden Destek Ol"
+        android:backgroundTint="#ff004f"
+        android:textColor="#ffffff" />
 
 </LinearLayout>
