@@ -129,6 +129,27 @@
         "fileHash": "sha256-f81c68a920b2582711219c22724ea57218cf75a480690a4fcd55c95fc61c1f66"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Filmmakinesi.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "Filmmakinesi",
+        "internalName": "Filmmakinesi",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "FilmMakinesi - T\u00fcrk\u00e7e Dublaj ve Altyaz\u0131l\u0131 Film & Dizi \u0130zleme Sitesi",
+        "fileSize": 16690,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "iconUrl": "https://www.google.com/s2/favicons?domain=filmmakinesi.to&sz=%size%",
+        "apiVersion": 1,
+        "fileHash": "sha256-44b1d965ce872d5b33cdec76b4b376a39799c5c8b458b5c5b80520bd3f471c9b"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/HDFilmCehennemi.cs3",
         "status": 1,
         "version": 1,
