@@ -29,7 +29,8 @@ include(
     "TrGoals",
     "Betmatik",
     "Dizibox",
-    "Filmmakinesi"
+    "Filmmakinesi",
+    "SafakStreamHub"
 )
 include("MahsunSports")
 include("PapazSports")
