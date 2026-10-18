@@ -11,12 +11,10 @@ class FilmmakinesiProvider : MainAPI() {
     override var name = "FilmMakinesi"
     override var lang = "tr"
     
-    // DÜZELTME: Ana ekranda görünmesi için hasMainPage = true eklendi
     override val hasMainPage = true
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    // DÜZELTME: mainPageOf kullanımına geçildi
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Son Eklenenler"
     )
@@ -99,8 +97,14 @@ class FilmmakinesiProvider : MainAPI() {
                 val epTitle = ep.selectFirst("div.ep-title")?.text() ?: "Bölüm"
                 val epName = ep.selectFirst("div.ep-details span")?.text()
                 
+                // SEZON DÜZELTMESİ: Başlıktan Sezon ve Bölüm numaralarını ayıklıyoruz
+                val seasonMatch = Regex("""(\d+)\. ?Sezon""").find(epTitle)?.groupValues?.get(1)?.toIntOrNull()
+                val episodeMatch = Regex("""(\d+)\. ?Bölüm""").find(epTitle)?.groupValues?.get(1)?.toIntOrNull()
+
                 newEpisode(fixUrl(epHref)) {
                     this.name = if (epName != null) "$epTitle - $epName" else epTitle
+                    this.season = seasonMatch
+                    this.episode = episodeMatch
                 }
             }
 
