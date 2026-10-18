@@ -6,7 +6,6 @@ import android.net.Uri
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
-import com.lagradost.cloudstream3.app
 
 @CloudstreamPlugin
 class HubPlugin : Plugin() {
@@ -52,19 +51,18 @@ class HubProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        // Cloudstream'in ana uygulama bağlamını alıyoruz
-        val ctx = com.lagradost.cloudstream3.CloudstreamApp.get().applicationContext
-        
+        // Linki doğrudan Intent olarak fırlatıyoruz. (Android OS bunu yakalar)
         when (url) {
             "github" -> {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/SafakStream"))
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ctx.startActivity(intent)
+                // Context'i uygulamanın kendisinden (statik olarak) alıyoruz
+                com.lagradost.cloudstream3.CloudstreamApp.context?.startActivity(intent)
             }
             "kreosus" -> {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kreosus.com/safakstream"))
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ctx.startActivity(intent)
+                com.lagradost.cloudstream3.CloudstreamApp.context?.startActivity(intent)
             }
         }
         
