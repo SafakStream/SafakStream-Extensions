@@ -2,8 +2,8 @@ name: Kreosus Destekci Sayisini Guncelle
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Her gün gece 00:00'da çalışır
-  workflow_dispatch: # Manuel de çalıştırabilmek için
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   update-progress:
@@ -44,17 +44,13 @@ jobs:
                   with open('index.html', 'r', encoding='utf-8') as f:
                       content = f.read()
                   
-                  # 1. Yaziyi guncelle (Sadece "0 / 20 Destekçi" kismini bulur)
-                  content = re.sub(r'>\s*\d+\s*/\s*20\s*Destekçi\s*<', f'> {destekci_sayisi} / 20 Destekçi <', content)
-                  
-                  # 2. Barin genisligini guncelle (Sadece .progress-bar icindeki width degerini bulur)
-                  yuzde = min(100, int(destekci_sayisi) * 5)
-                  content = re.sub(r'(\.progress-bar\s*\{[^}]*?width:\s*)\d+%;', rf'\g<1>{yuzde}%;', content, flags=re.DOTALL)
+                  # SADECE gizli div icindeki sayiyi degistir. Baska hicbir yere dokunma!
+                  content = re.sub(r'(<div id="bot-verisi" style="display: none;">)\d+(</div>)', rf'\g<1>{destekci_sayisi}\g<2>', content)
                   
                   with open('index.html', 'w', encoding='utf-8') as f:
                       f.write(content)
                   
-                  print("index.html basariyla guncellendi!")
+                  print("Gizli sayi basariyla guncellendi!")
               else:
                   print("Destekci sayisi bulunamadi.")
           else:
