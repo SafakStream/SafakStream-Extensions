@@ -22,20 +22,24 @@ jobs:
 
       - name: Kreosus Sayfasini Oku ve Guncelle
         run: |
-          python - << 'EOF'
+          python - << 'PYTHON_EOF'
           import requests
           from bs4 import BeautifulSoup
           import re
 
           url = "https://kreosus.com/safakstream"
-          headers = {'User-Agent': 'Mozilla/5.0'}
+          headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
           response = requests.get(url, headers=headers)
           
           if response.status_code == 200:
               soup = BeautifulSoup(response.text, 'html.parser')
-              text = soup.get_text()
               
-              match = re.search(r'(\d+)\s*/\s*20\s*supporters', text, re.IGNORECASE)
+              # Sayfadaki tüm metni al
+              text = soup.get_text(separator=' ')
+              
+              # "X / 20" formatını ara (destekçi veya supporters kelimesi olmasa bile)
+              # \d+ -> rakamları, \s* -> boşlukları, / 20 -> sabit kısmı temsil eder
+              match = re.search(r'(\d+)\s*/\s*20', text)
               
               if match:
                   destekci_sayisi = match.group(1)
@@ -44,18 +48,23 @@ jobs:
                   with open('index.html', 'r', encoding='utf-8') as f:
                       content = f.read()
                   
-                  # SADECE gizli div icindeki sayiyi degistir. Baska hicbir yere dokunma!
+                  # Sadece gizli div icindeki sayiyi degistir
                   content = re.sub(r'(<div id="bot-verisi" style="display: none;">)\d+(</div>)', rf'\g<1>{destekci_sayisi}\g<2>', content)
                   
                   with open('index.html', 'w', encoding='utf-8') as f:
                       f.write(content)
                   
-                  print("Gizli sayi basariyla guncellendi!")
+                  print("index.html basariyla guncellendi!")
               else:
-                  print("Destekci sayisi bulunamadi.")
+                  # Eger bulamazsa, sayfanin o kismini print et ki neyi kacirdigimizi gorelim
+                  print("HATA: 'X / 20' formati bulunamadi. Sayfadaki ilgili kisim:")
+                  # Sadece '20' gecen yerleri yazdir
+                  for line in text.split('\n'):
+                      if '20' in line:
+                          print(line.strip())
           else:
               print(f"Sayfa yuklenemedi: {response.status_code}")
-          EOF
+          PYTHON_EOF
 
       - name: Degisiklikleri Kaydet ve Gonder
         run: |
