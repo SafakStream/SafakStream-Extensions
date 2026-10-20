@@ -14,7 +14,6 @@
         .kreosus { background-color: #ff004f; }
         
         .progress-container { width: 100%; background-color: #333; border-radius: 20px; margin: 15px 0; overflow: hidden; position: relative; height: 30px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
-        /* Barin genisligi artik JS ile ayarlanacak */
         .progress-bar { width: 5%; height: 100%; background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%); border-radius: 20px; position: absolute; top: 0; left: 0; transition: width 1s ease-in-out; }
         .progress-bar::after { content: ''; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent); background-size: 30px 30px; animation: move 2s linear infinite; border-radius: 20px; }
         @keyframes move { 0% { background-position: 0 0; } 100% { background-position: 30px 30px; } }
@@ -31,7 +30,6 @@
 <body>
     <h1>SafakStream Projesi</h1>
     
-    <!-- GIZLI VERI: Botumuz sadece buradaki sayiyi degistirecek -->
     <div id="bot-verisi" style="display: none;">0</div>
 
     <div class="card">
@@ -57,21 +55,14 @@
         </ul>
     </div>
 
-    <!-- Tasarimi bozmadan guncelleyen JS kodu -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Botun biraktigi gizli sayiyi oku
             var count = parseInt(document.getElementById("bot-verisi").innerText.trim());
-            
             if (!isNaN(count)) {
-                // Yaziyi guncelle
                 document.getElementById("progress-text").innerText = count + " / 20 Destekçi";
-                
-                // Barin genisligini hesapla ve uygula (Her kisi %5)
                 var yuzde = count * 5;
-                if(yuzde > 100) yuzde = 100; // Maksimum %100 olsun
-                if(yuzde < 5) yuzde = 5; // 0 olsa bile ufak isik kalsin
-                
+                if(yuzde > 100) yuzde = 100;
+                if(yuzde < 5) yuzde = 5;
                 document.getElementById("progress-bar").style.width = yuzde + "%";
             }
         });
