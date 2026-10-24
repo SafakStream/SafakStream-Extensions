@@ -84,27 +84,6 @@
         "fileHash": "sha256-c6eba081dc78f9db89f0df9abb34e3d4bd82feeda9809e2be936dbc75c1e0cea"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziPal.cs3",
-        "status": 3,
-        "version": 1,
-        "name": "DiziPal",
-        "internalName": "DiziPal",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "DiziPal - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 19059,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "TvSeries",
-            "Movie"
-        ],
-        "iconUrl": "https://dizipal1822.com/assets/favicon/apple-touch-icon.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-fc7a2d94239acd3c4cc4f396e994b88935e442298046930e85da6b3f73e61a46"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Filmmakinesi.cs3",
         "status": 1,
         "version": 1,
