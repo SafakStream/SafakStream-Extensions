@@ -172,20 +172,20 @@ class DiziSol : MainAPI() {
 
             var added = false
             
-            // KRİTİK: Origin header'ı ekliyoruz (Cloudflare için gerekli)
+            // KRİTİK: Origin header Cloudflare için gerekli
             val videoHeaders = mapOf(
                 "Referer" to "https://dizisol.com/",
                 "Origin" to "https://dizisol.com",
                 "User-Agent" to ua
             )
 
-            // Ana kaynak
+            // Ana kaynak - M3U8 tipi kullan
             if (mainM3u8 != null) {
                 callback(newExtractorLink(
                     source = "DiziSol (Ana)",
                     name = "DiziSol Ana",
                     url = mainM3u8,
-                    type = ExtractorLinkType.VIDEO
+                    type = ExtractorLinkType.M3U8
                 ) {
                     this.headers = videoHeaders
                     this.quality = Qualities.Unknown.value
@@ -211,7 +211,7 @@ class DiziSol : MainAPI() {
                             source = "DiziSol ($provider)",
                             name = "DiziSol $provider",
                             url = m3u8,
-                            type = ExtractorLinkType.VIDEO
+                            type = ExtractorLinkType.M3U8
                         ) {
                             this.headers = videoHeaders
                             this.quality = Qualities.Unknown.value
