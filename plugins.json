@@ -197,7 +197,7 @@
             "SafakStream"
         ],
         "description": "SafakStream Cinema - Film ve Dizi \u0130zleme (dizisol.com)",
-        "fileSize": 34421,
+        "fileSize": 34979,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -206,7 +206,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png",
         "apiVersion": 1,
-        "fileHash": "sha256-fae3d71b154619b9f599ce60d9bebba636bfaed3154e2c5dec5cd5febc7396c3"
+        "fileHash": "sha256-392006923c6672c52f2caa2b117179b92403d87ebd2b18efcab49e3272f6ec12"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamHub.cs3",
