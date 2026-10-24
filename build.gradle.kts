@@ -82,6 +82,15 @@ subprojects {
             iconUrl = "https://dizipal1822.com/assets/favicon/apple-touch-icon.png"
             version = 1
         }
+
+        // DiziSol özel metadata
+        if (project.name == "DiziSol") {
+            description = "DiziSol - Film ve Dizi İzleme Platformu (dizisol.com)"
+            language = "tr"
+            tvTypes = listOf("TvSeries", "Movie")
+            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziSol.png"
+            version = 1
+        }
     }
 
     android {

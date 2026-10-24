@@ -29,7 +29,8 @@ include(
     "Betmatik",
     "Dizibox",
     "Filmmakinesi",
-    "SafakStreamHub"
+    "SafakStreamHub",
+    "MahsunSports",
+    "PapazSports",
+    "DiziSol"
 )
-include("MahsunSports")
-include("PapazSports")
