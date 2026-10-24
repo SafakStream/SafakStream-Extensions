@@ -48,6 +48,33 @@ class SafakStreamCinema : MainAPI() {
         else -> "https://image.tmdb.org/t/p/w500$path"
     }
 
+    // aiOverview temizleyici: dizisol.com, SEO metni, markdown kalintilarini sil
+    private fun cleanOverview(text: String?): String? {
+        if (text.isNullOrBlank()) return null
+        var t = text
+        // "dizisol.com" ve benzeri domainleri sil
+        t = t.replace(Regex("(?i)dizisol\\.com[^\\s]*"), "")
+        t = t.replace(Regex("(?i)www\\.[a-z0-9.-]+\\.[a-z]{2,}"), "")
+        // "### ..." markdown basliklarindan sonrasini kes
+        val mdIdx = t.indexOf("###")
+        if (mdIdx > 0) t = t.substring(0, mdIdx)
+        // "**" markdown kalin yazi
+        t = t.replace("**", "")
+        // "nasil bir film ve kimler izlemeli" gibi SEO sorularindan sonrasini kes
+        for (seo in listOf("nasil bir film ve kimler izlemeli", "nasıl bir film ve kimler izlemeli", "konusu nedir?", "konusu nedir")) {
+            val idx = t.indexOf(seo, ignoreCase = true)
+            if (idx > 0) {
+                t = t.substring(0, idx)
+                break
+            }
+        }
+        // Fazla bosluklari temizle
+        t = t.replace(Regex("\\s+"), " ").trim()
+        // Cok uzunsa kes
+        if (t.length > 1200) t = t.substring(0, 1200) + "..."
+        return t.ifBlank { null }
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         return try {
             val items = when (request.data) {
@@ -306,7 +333,7 @@ class SafakStreamCinema : MainAPI() {
             val title = safeStr(o, "titleTr", "title", "name", "original_name", "original_title")
                 ?: if (isTvByUrl) "Dizi #$tmdbId" else "Film #$tmdbId"
 
-            val overview = safeStr(o, "overview", "aiOverview")
+            val overview = cleanOverview(safeStr(o, "aiOverview", "overview"))
             val year = o.optInt("year", 0).takeIf { it > 0 }
             val rating = o.optDouble("rating", 0.0).takeIf { it > 0 }?.toInt()
             val poster = o.optString("poster").ifBlank { null }
@@ -354,7 +381,7 @@ class SafakStreamCinema : MainAPI() {
                     val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
                     tmdbId = data.optInt("id", 0)
                     title = safeStr(data, "titleTr", "name", "title", "original_name", "original_title")
-                    overview = safeStr(data, "overview", "aiOverview")
+                    overview = cleanOverview(safeStr(data, "aiOverview", "overview"))
                     val airDate = data.optString("first_air_date").ifBlank { data.optString("release_date") }
                     year = airDate.take(4).toIntOrNull()
                     val vote = data.optDouble("vote_average", 0.0)
