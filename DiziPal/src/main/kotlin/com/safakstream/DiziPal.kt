@@ -233,11 +233,10 @@ class DiziPal : MainAPI() {
                 }
             )
 
-            // 7. Altyazilari ekle (iframe HTML'inden)
+            // 7. Altyazilari indir ve base64 data URL olarak ver
             val subRegex = Regex(""""file":"([^"]+?\.vtt[^"]*?)","label":"([^"]+?)"""")
             for (match in subRegex.findAll(iframeHtml)) {
                 val subUrl = match.groupValues[1].replace("\\/", "/")
-                // Unicode escape karakterlerini (\u00fc gibi) normal harfe cevir
                 val subLabel = match.groupValues[2]
                     .replace("\\u0130", "İ")
                     .replace("\\u0131", "ı")
@@ -251,7 +250,24 @@ class DiziPal : MainAPI() {
                     .replace("\\u011e", "Ğ")
                     .replace("\\u00d6", "Ö")
                     .replace("\\u00dc", "Ü")
-                subtitleCallback.invoke(SubtitleFile(subLabel, subUrl))
+
+                try {
+                    // Altyaziyi dogru Referer ile indir
+                    val subBytes = app.get(
+                        subUrl,
+                        headers = mapOf(
+                            "User-Agent" to userAgent,
+                            "Referer" to "$iframeBase/"
+                        )
+                    ).body.bytes()
+
+                    // Base64 data URL olustur
+                    val base64 = android.util.Base64.encodeToString(subBytes, android.util.Base64.NO_WRAP)
+                    val dataUrl = "data:text/vtt;base64,$base64"
+                    subtitleCallback.invoke(SubtitleFile(subLabel, dataUrl))
+                } catch (e: Exception) {
+                    // Bir altyazi indirilemezse digerlerine devam et
+                }
             }
 
             return true
