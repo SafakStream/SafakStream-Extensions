@@ -8,6 +8,7 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URLEncoder
 
 class DiziSol : MainAPI() {
     override var mainUrl = "https://dizisol.com"
@@ -29,14 +30,14 @@ class DiziSol : MainAPI() {
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return newHomePageResponse(request.name, emptyList()) }
         val ssrJson = extractReactSsr(html) ?: return newHomePageResponse(request.name, emptyList())
         
-        // SSR'dan hazır sonuçları al (poster, başlık, yıl, özet dahil)
-        val items = extractResults(ssrJson, request.data.contains("film"))
+        val isMovie = request.data.contains("film")
+        val items = extractResults(ssrJson, isMovie)
         
         return newHomePageResponse(request.name, items, hasNext = false)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val encoded = URLEncoder.encode(query, "UTF-8")
         val url = "$mainUrl/api/movies/search?q=$encoded"
         val json = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return emptyList() }
         if (json.isBlank() || json == "[]") return emptyList()
@@ -48,7 +49,6 @@ class DiziSol : MainAPI() {
                 val tmdbId = o.optInt("tmdbId", 0)
                 if (tmdbId == 0) return@mapNotNull null
                 
-                // null düzeltmesi
                 val title = o.optString("titleTr").ifBlank { 
                     o.optString("title").ifBlank { 
                         o.optString("original_name").ifBlank { "Bilinmeyen" } 
@@ -63,7 +63,9 @@ class DiziSol : MainAPI() {
                     else -> "https://image.tmdb.org/t/p/w500$poster"
                 }
                 val isMovie = type == "movie"
-                val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
+                
+                // URL'e tipi ekliyoruz: "?type=movie" veya "?type=tv"
+                val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$type"
 
                 if (isMovie) {
                     newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.posterUrl = posterUrl; this.year = year }
@@ -77,14 +79,52 @@ class DiziSol : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
+        // URL'den tipi ve tmdbId'yi al
+        val typeParam = url.substringAfter("?type=", "").substringBefore("&")
+        val isTvByUrl = typeParam == "tv"
         val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull() ?: return null
-        val json = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return null }
+        
+        Log.d("DiziSol", "load: $url (tmdbId=$tmdbId, isTv=$isTvByUrl)")
+
+        // API'yi dene
+        var json: String? = null
+        try {
+            json = app.get(url.substringBefore("?type=").let { 
+                if (it.contains("?")) it else it 
+            }, headers = mapOf("User-Agent" to ua)).text
+            // Eğer API HTML döndürdüyse (Cloudflare), boş say
+            if (json.startsWith("<!DOCTYPE") || json.startsWith("<html")) {
+                json = null
+            }
+        } catch (e: Exception) {
+            json = null
+        }
+
+        // API başarısızsa veya geçersizse, SSR/HTML'den çekmeyi dene
+        if (json == null || json.isBlank()) {
+            // SSR HTML'den çek
+            val pageUrl = if (isTvByUrl) {
+                // Dizi ise slug gerekli ama elimizde yok, API ile id'den çekmeyi dene
+                "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
+            } else {
+                "$mainUrl/api/movies/by-tmdb/$tmdbId"
+            }
+            
+            json = try { 
+                val r = app.get(pageUrl, headers = mapOf("User-Agent" to ua)).text
+                if (r.startsWith("<!DOCTYPE") || r.startsWith("<html")) null else r
+            } catch (e: Exception) { null }
+        }
+
+        if (json == null || json.isBlank()) {
+            Log.e("DiziSol", "load: API'den veri alınamadı")
+            return null
+        }
 
         return try {
             val o = JSONObject(json)
-            val mediaType = o.optString("mediaType", "movie")
+            val mediaType = o.optString("mediaType", if (isTvByUrl) "tv" else "movie")
             
-            // null düzeltmesi
             val title = o.optString("titleTr").ifBlank { 
                 o.optString("title").ifBlank { 
                     o.optString("original_name").ifBlank { 
@@ -100,8 +140,11 @@ class DiziSol : MainAPI() {
             val rating = o.optDouble("rating", 0.0).takeIf { it > 0 }?.toInt()
             val poster = o.optString("poster").ifBlank { null }
             val genres = o.optString("genres").ifBlank { null }
+            
+            // Güvenlik: mediaType "tv" değilse ama URL'de tv varsa, tv kabul et
+            val finalIsTv = mediaType == "tv" || isTvByUrl
 
-            if (mediaType == "tv") {
+            if (finalIsTv) {
                 val episodes = loadEpisodesForSeries(tmdbId)
                 newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
@@ -115,7 +158,10 @@ class DiziSol : MainAPI() {
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
             }
-        } catch (e: Exception) { null }
+        } catch (e: Exception) {
+            Log.e("DiziSol", "load parse hata: ${e.message}")
+            null
+        }
     }
 
     private suspend fun loadEpisodesForSeries(tmdbId: Int): List<Episode> {
@@ -177,7 +223,6 @@ class DiziSol : MainAPI() {
 
             var added = false
             
-            // Cloudflare için Origin, Referer ve User-Agent gerekli
             val videoHeaders = mapOf(
                 "Referer" to "https://dizisol.com/",
                 "Origin" to "https://dizisol.com",
@@ -237,7 +282,6 @@ class DiziSol : MainAPI() {
         return html.substring(contentStart, end)
     }
 
-    // SSR JSON'undan "results" dizisini çıkar - TÜM bilgiler hazır!
     private fun extractResults(ssrJson: String, isMovie: Boolean): List<SearchResponse> {
         return try {
             val root = JSONObject(ssrJson)
@@ -254,7 +298,6 @@ class DiziSol : MainAPI() {
                         val tmdbId = o.optInt("id", 0)
                         if (tmdbId == 0) return@mapNotNull null
                         
-                        // Başlık: titleTr -> name -> title -> original_name
                         val title = o.optString("titleTr").ifBlank { 
                             o.optString("name").ifBlank { 
                                 o.optString("title").ifBlank { 
@@ -263,14 +306,14 @@ class DiziSol : MainAPI() {
                             } 
                         }
                         
-                        // Yıl: first_air_date (dizi) veya release_date (film)
                         val year = o.optString("first_air_date").take(4).toIntOrNull()
                             ?: o.optString("release_date").take(4).toIntOrNull()
                         
-                        // Poster hazır URL olarak geliyor
                         val poster = o.optString("poster_path").ifBlank { null }
                         
-                        val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
+                        // URL'e tipi ekle
+                        val typeStr = if (isMovie) "movie" else "tv"
+                        val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
 
                         if (isMovie) {
                             newMovieSearchResponse(title, finalUrl, TvType.Movie) {
