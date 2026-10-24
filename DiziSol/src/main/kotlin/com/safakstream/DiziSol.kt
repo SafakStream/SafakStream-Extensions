@@ -171,33 +171,29 @@ class DiziSol : MainAPI() {
             subEn?.let { subtitleCallback(SubtitleFile("English", it)) }
 
             var added = false
+            
+            // KRİTİK: Origin header'ı ekliyoruz (Cloudflare için gerekli)
             val videoHeaders = mapOf(
                 "Referer" to "https://dizisol.com/",
+                "Origin" to "https://dizisol.com",
                 "User-Agent" to ua
             )
 
-            // Ana kaynak için yönlendirmeyi çöz
+            // Ana kaynak
             if (mainM3u8 != null) {
-                try {
-                    // Cloudstream'in kendi get fonksiyonu ile yönlendirmeyi takip et
-                    val resolvedUrl = app.get(mainM3u8, headers = videoHeaders, allowRedirects = true).url
-                    Log.d("DiziSol", "Resolved main URL: $resolvedUrl")
-                    
-                    callback(newExtractorLink(
-                        source = "DiziSol (Ana)",
-                        name = "DiziSol Ana",
-                        url = resolvedUrl,
-                        type = ExtractorLinkType.VIDEO
-                    ) {
-                        this.headers = videoHeaders
-                        this.quality = Qualities.Unknown.value
-                    })
-                    added = true
-                } catch (e: Exception) {
-                    Log.e("DiziSol", "Resolve error: ${e.message}")
-                }
+                callback(newExtractorLink(
+                    source = "DiziSol (Ana)",
+                    name = "DiziSol Ana",
+                    url = mainM3u8,
+                    type = ExtractorLinkType.VIDEO
+                ) {
+                    this.headers = videoHeaders
+                    this.quality = Qualities.Unknown.value
+                })
+                added = true
             }
 
+            // Ek kaynaklar
             val sourcesArr = o.optJSONArray("sources")
             if (sourcesArr != null) {
                 for (i in 0 until sourcesArr.length()) {
@@ -211,23 +207,16 @@ class DiziSol : MainAPI() {
                     sEn?.let { subtitleCallback(SubtitleFile("English ($provider)", it)) }
 
                     if (m3u8 != null) {
-                        try {
-                            val resolvedUrl = app.get(m3u8, headers = videoHeaders, allowRedirects = true).url
-                            Log.d("DiziSol", "Resolved $provider URL: $resolvedUrl")
-                            
-                            callback(newExtractorLink(
-                                source = "DiziSol ($provider)",
-                                name = "DiziSol $provider",
-                                url = resolvedUrl,
-                                type = ExtractorLinkType.VIDEO
-                            ) {
-                                this.headers = videoHeaders
-                                this.quality = Qualities.Unknown.value
-                            })
-                            added = true
-                        } catch (e: Exception) {
-                            Log.e("DiziSol", "Resolve error for $provider: ${e.message}")
-                        }
+                        callback(newExtractorLink(
+                            source = "DiziSol ($provider)",
+                            name = "DiziSol $provider",
+                            url = m3u8,
+                            type = ExtractorLinkType.VIDEO
+                        ) {
+                            this.headers = videoHeaders
+                            this.quality = Qualities.Unknown.value
+                        })
+                        added = true
                     }
                 }
             }
