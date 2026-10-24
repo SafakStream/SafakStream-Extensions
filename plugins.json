@@ -84,27 +84,6 @@
         "fileHash": "sha256-c6eba081dc78f9db89f0df9abb34e3d4bd82feeda9809e2be936dbc75c1e0cea"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziSol.cs3",
-        "status": 3,
-        "version": 1,
-        "name": "DiziSol",
-        "internalName": "DiziSol",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "DiziSol - dizisol.com (Film, Dizi, Yerli/Yabanc\u0131)",
-        "fileSize": 24710,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "TvSeries",
-            "Movie"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziSol.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-13266b72b1dc050b89aaf93203af7d60ec8026d2be334dca8477d6ca54565954"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Filmmakinesi.cs3",
         "status": 1,
         "version": 1,
@@ -207,6 +186,27 @@
         "iconUrl": "https://www.papazsports1030.pro/lib/img/logo.png",
         "apiVersion": 1,
         "fileHash": "sha256-55639abf8a1ef1e10608fffd3115e2e0c3d99fd10048f8d7daf058a9fe91d057"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamCinema.cs3",
+        "status": 3,
+        "version": 1,
+        "name": "SafakStreamCinema",
+        "internalName": "SafakStreamCinema",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "SafakStream Cinema - Film ve Dizi \u0130zleme (dizisol.com)",
+        "fileSize": 24744,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "TvSeries",
+            "Movie"
+        ],
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-c353044d93abdd5c23b7383b0e4013bc6fea51094c5b42a0bc43a87ba4d9f26c"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamHub.cs3",
