@@ -145,61 +145,103 @@ class SafakStreamCinema : MainAPI() {
         }
     }
 
-    // === Diziler/Filmler — library-tmdb-ids + HTML poster parse ===
+    // === Diziler/Filmler — HTML'den doğrudan parse ===
     private suspend fun parseLibraryPage(pagePath: String): List<SearchResponse> {
         val url = "$mainUrl$pagePath"
-        val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return emptyList() }
-        val ssrJson = extractReactSsr(html) ?: return emptyList()
+        val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { 
+            Log.e("SafakStreamCinema", "parseLibraryPage fetch hata: ${e.message}")
+            return emptyList() 
+        }
+        
         val isMovie = pagePath.contains("film")
-        val tmdbIds = extractTmdbIds(ssrJson, pagePath)
-        val titleOverrides = extractTitleOverrides(ssrJson)
-
-        // HTML'den posterleri çıkar (aynı sırayla)
-        val posters = extractPostersFromHtml(html)
-        val slugs = extractSlugsFromHtml(html, isMovie)
-
-        return tmdbIds.mapIndexedNotNull { index, tmdbId ->
-            val override = titleOverrides[tmdbId]
-            val title = override?.first ?: "İçerik #$tmdbId"
-            val year = override?.second
-            val typeStr = if (isMovie) "movie" else "tv"
-            val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
-            val poster = posters.getOrNull(index)
-
-            if (isMovie) {
-                newMovieSearchResponse(title, finalUrl, TvType.Movie) {
-                    this.year = year
-                    this.posterUrl = poster
+        val prefix = if (isMovie) "/film/" else "/dizi/"
+        val ssrJson = extractReactSsr(html)
+        val tmdbIdMap = if (ssrJson != null) extractSlugToTmdbIdMap(ssrJson) else emptyMap()
+        
+        // Regex: <a href="(/film/SLUG|/dizi/SLUG)"...>...<img src="POSTER"...alt="TITLE..."
+        val pattern = Regex(
+            """<a[^>]*href="($prefix[^"]+)"[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]+)"""",
+            RegexOption.DOT_MATCHES_ALL
+        )
+        
+        val seen = mutableSetOf<String>()
+        val results = mutableListOf<SearchResponse>()
+        
+        for (match in pattern.findAll(html)) {
+            if (results.size >= 30) break
+            try {
+                val slug = match.groupValues[1]  // /film/clown-panic-122s3
+                if (!seen.add(slug)) continue  // Duplicate kontrolü
+                
+                val poster = match.groupValues[2]
+                val rawTitle = match.groupValues[3]
+                // "X izle afişi" → "X"
+                val title = rawTitle
+                    .removeSuffix(" izle afişi")
+                    .removeSuffix(" izle")
+                    .removeSuffix(" afişi")
+                    .trim()
+                val cleanTitle = decodeHtmlEntities(title)
+                
+                // Slug'dan TMDb ID'yi bulmaya çalış (varsa API URL'si üret, yoksa sayfa URL'si)
+                val tmdbId = tmdbIdMap[slug]
+                val finalUrl = if (tmdbId != null) {
+                    "$mainUrl/api/movies/by-tmdb/$tmdbId?type=" + (if (isMovie) "movie" else "tv")
+                } else {
+                    "$mainUrl$slug"
                 }
-            } else {
-                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) {
-                    this.year = year
-                    this.posterUrl = poster
+                
+                if (isMovie) {
+                    results.add(newMovieSearchResponse(cleanTitle, finalUrl, TvType.Movie) {
+                        this.posterUrl = poster
+                    })
+                } else {
+                    results.add(newTvSeriesSearchResponse(cleanTitle, finalUrl, TvType.TvSeries) {
+                        this.posterUrl = poster
+                    })
                 }
+            } catch (e: Exception) {
+                Log.e("SafakStreamCinema", "Library parse hata: ${e.message}")
             }
         }
+        
+        Log.d("SafakStreamCinema", "parseLibraryPage ($pagePath): ${results.size} sonuç")
+        return results
     }
 
-    // HTML'deki img src'lerini sırayla çıkar
-    private fun extractPostersFromHtml(html: String): List<String> {
-        val result = mutableListOf<String>()
-        val pattern = Regex("""<img[^>]*src="(https://image\.tmdb\.org[^"]+)"""")
-        pattern.findAll(html).forEach { match ->
-            result.add(match.groupValues[1])
-        }
-        return result
+    // SSR'dan "library-tmdb-ids" + "results" varsa slug -> tmdbId haritası çıkar
+    private fun extractSlugToTmdbIdMap(ssrJson: String): Map<String, Int> {
+        return try {
+            val root = JSONObject(ssrJson)
+            val queries = root.optJSONObject("state")?.optJSONArray("queries") ?: return emptyMap()
+            val map = mutableMapOf<String, Int>()
+            
+            for (i in 0 until queries.length()) {
+                val q = queries.getJSONObject(i)
+                val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
+                val resultsArr = data.optJSONArray("results") ?: continue
+                for (j in 0 until resultsArr.length()) {
+                    val o = resultsArr.getJSONObject(j)
+                    val id = o.optInt("id", 0)
+                    val slug = o.optString("slug").ifBlank { null }
+                        ?: o.optString("url_slug").ifBlank { null }
+                        ?: o.optString("canonical_slug").ifBlank { null }
+                    if (id > 0 && slug != null) {
+                        map[slug] = id
+                    }
+                }
+            }
+            map
+        } catch (e: Exception) { emptyMap() }
     }
 
-    // HTML'deki /dizi/ veya /film/ linklerini çıkar
-    private fun extractSlugsFromHtml(html: String, isMovie: Boolean): List<String> {
-        val result = mutableListOf<String>()
-        val prefix = if (isMovie) "/film/" else "/dizi/"
-        val pattern = Regex("""href="($prefix[^"?]+)"""")
-        pattern.findAll(html).forEach { match ->
-            result.add(match.groupValues[1])
-        }
-        return result.distinct()
-    }
+    private fun decodeHtmlEntities(s: String): String = s
+        .replace("&#x27;", "'")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
 
     override suspend fun search(query: String): List<SearchResponse> {
         val encoded = URLEncoder.encode(query, "UTF-8")
