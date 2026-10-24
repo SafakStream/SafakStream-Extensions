@@ -190,7 +190,7 @@ class DiziSol : MainAPI() {
                     source = "DiziSol (Ana)",
                     name = "DiziSol Ana",
                     url = mainM3u8,
-                    type = ExtractorLinkType.Web // M3U8 yerine Web (Redirect çözümü için)
+                    type = ExtractorLinkType.VIDEO // M3U8 yerine Web (Redirect çözümü için)
                 ) {
                     this.headers = videoHeaders
                     this.quality = Qualities.Unknown.value
@@ -215,7 +215,7 @@ class DiziSol : MainAPI() {
                             source = "DiziSol ($provider)",
                             name = "DiziSol $provider",
                             url = m3u8,
-                            type = ExtractorLinkType.Web // M3U8 yerine Web
+                            type = ExtractorLinkType.VIDEO // M3U8 yerine Web
                         ) {
                             this.headers = videoHeaders
                             this.quality = Qualities.Unknown.value
