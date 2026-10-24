@@ -17,6 +17,8 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONObject
 
 class DiziPal : MainAPI() {
@@ -29,10 +31,14 @@ class DiziPal : MainAPI() {
 
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+    // app.min.js icindeki "var S=..." degeri
+    private val appCKeyPassword = "3hPn4uCjTVtfYWcjIcoJQ4cL1WWk1qxXI39egLYOmNv6IblA7eKJz68uU3eLzux1biZLCms0quEjTYniGv5z1JcKbNIsDQFSeIZOBZJz4is6pD7UyWDggWWzTLBQbHcQFpBQdClnuQaMNUHtLHTpzCvZy33p6I7wFBvL4fnXBYH84aUIyWGTRvM2G5cfoNf4705tO2kv"
+
     override val mainPage = mainPageOf(
         "${mainUrl}/" to "Ana Sayfa"
     )
 
+    // ============ ANA SAYFA ============
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         if (page > 1) return newHomePageResponse(request.name, emptyList())
         val document = app.get(request.data, headers = mapOf("User-Agent" to userAgent)).document
@@ -72,6 +78,7 @@ class DiziPal : MainAPI() {
         return newHomePageResponse(request.name, items)
     }
 
+    // ============ ARAMA ============
     override suspend fun search(query: String): List<SearchResponse> {
         val response = app.post(
             "${mainUrl}/bg/searchcontent",
@@ -113,6 +120,7 @@ class DiziPal : MainAPI() {
         return results
     }
 
+    // ============ DETAY ============
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
 
@@ -165,12 +173,100 @@ class DiziPal : MainAPI() {
         }
     }
 
+    // ============ VİDEO LİNKLERİ ============
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        return false
+        try {
+            val document = app.get(data, headers = mapOf("User-Agent" to userAgent)).document
+
+            // 1. data-rm-k icindeki sifreli veriyi al
+            val encryptedJson = document.selectFirst("div[data-rm-k]")?.text() ?: return false
+            if (encryptedJson.isBlank()) return false
+            val jsonObj = JSONObject(encryptedJson)
+            val ciphertext = jsonObj.getString("ciphertext")
+            val iv = jsonObj.getString("iv")
+            val salt = jsonObj.getString("salt")
+
+            // 2. Sifreyi coz
+            val decrypted = decryptData(ciphertext, iv, salt, appCKeyPassword)
+            val iframeUrl = if (decrypted.startsWith("//")) "https:$decrypted" else decrypted
+
+            // 3. iframe HTML'ini indir
+            val iframeHtml = app.get(
+                iframeUrl,
+                headers = mapOf("User-Agent" to userAgent, "Referer" to "$mainUrl/")
+            ).text
+
+            // 4. playList parametresini cikar
+            val playListRegex = Regex("""openPlayer\('([^']+)'""")
+            val playList = playListRegex.find(iframeHtml)?.groupValues?.get(1) ?: return false
+
+            // 5. source2.php'ye istek at
+            val iframeBase = Regex("""^(https?://[^/]+)""").find(iframeUrl)?.groupValues?.get(1) ?: return false
+            val sourceUrl = "$iframeBase/source2.php?v=$playList"
+            val sourceJson = app.get(
+                sourceUrl,
+                headers = mapOf("User-Agent" to userAgent, "Referer" to iframeBase + "/")
+            ).text
+            val sourceObj = JSONObject(sourceJson)
+            val playlistArray = sourceObj.optJSONArray("playlist") ?: return false
+            if (playlistArray.length() == 0) return false
+            val sourcesArray = playlistArray.getJSONObject(0).optJSONArray("sources") ?: return false
+            if (sourcesArray.length() == 0) return false
+
+            // 6. m3u8 URL'sini al
+            val m3u8Url = sourcesArray.getJSONObject(0).getString("file")
+
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = this.name,
+                    url = m3u8Url,
+                    type = ExtractorLinkType.M3U8
+                ) {
+                    this.referer = "$iframeBase/"
+                    this.headers = mapOf("User-Agent" to userAgent, "Referer" to "$iframeBase/")
+                }
+            )
+
+            // 7. Altyazilari ekle (iframe HTML'inden)
+            val subRegex = Regex(""""file":"([^"]+\.vtt[^"]*)","label":"([^"]+)"""")
+            for (match in subRegex.findAll(iframeHtml)) {
+                val subUrl = match.groupValues[1].replace("\\/", "/")
+                val subLabel = match.groupValues[2]
+                subtitleCallback.invoke(SubtitleFile(subLabel, subUrl))
+            }
+
+            return true
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    // ============ YARDIMCI: Sifre Cozme ============
+    private fun decryptData(ciphertextB64: String, ivHex: String, saltHex: String, password: String): String {
+        val salt = hexToBytes(saltHex)
+        val iv = hexToBytes(ivHex)
+        val ciphertext = android.util.Base64.decode(ciphertextB64, android.util.Base64.DEFAULT)
+
+        val spec = javax.crypto.spec.PBEKeySpec(password.toCharArray(), salt, 999, 256)
+        val factory = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+        val key = factory.generateSecret(spec).encoded
+
+        val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(
+            javax.crypto.Cipher.DECRYPT_MODE,
+            javax.crypto.spec.SecretKeySpec(key, "AES"),
+            javax.crypto.spec.IvParameterSpec(iv)
+        )
+        return String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+    }
+
+    private fun hexToBytes(hex: String): ByteArray {
+        return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 }
