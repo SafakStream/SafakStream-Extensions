@@ -42,15 +42,22 @@ class SafakStreamCinema : MainAPI() {
         return null
     }
 
+    private fun posterUrl(path: String?): String? = when {
+        path == null -> null
+        path.startsWith("http") -> path
+        else -> "https://image.tmdb.org/t/p/w500$path"
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         return try {
-            when (request.data) {
-                "top10" -> newHomePageResponse(request.name, parseTop10())
-                "turkishTV", "turkishMovies" -> newHomePageResponse(request.name, parseTmdbRaf(request.data))
-                else -> newHomePageResponse(request.name, parseLibraryPage(request.data))
+            val items = when (request.data) {
+                "top10" -> parseTop10()
+                "turkishTV", "turkishMovies" -> parseTmdbRaf(request.data)
+                else -> parseLibraryPage(request.data)
             }
+            newHomePageResponse(request.name, items)
         } catch (e: Exception) {
-            Log.e("SafakStreamCinema", "getMainPage hata (${request.data}): ${e.message}")
+            Log.e("SafakStreamCinema", "getMainPage hata (${request.data}): ${e.message}", e)
             newHomePageResponse(request.name, emptyList())
         }
     }
@@ -60,27 +67,22 @@ class SafakStreamCinema : MainAPI() {
         val html = app.get(mainUrl, headers = mapOf("User-Agent" to ua)).text
         val idx = html.indexOf("Bugünün En İyi")
         if (idx == -1) return emptyList()
-        
+
         val section = html.substring(idx, minOf(html.length, idx + 15000))
-        // Regex: <a href="/film/SLUG"...>...<img src="POSTER"...alt="TITLE izle afişi"
         val pattern = Regex("""<a[^>]*href="(/film/[^"]+)"[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]+)"""", RegexOption.DOT_MATCHES_ALL)
-        
+
         return pattern.findAll(section).take(10).mapNotNull { match ->
             try {
                 val slug = match.groupValues[1]
                 val poster = match.groupValues[2]
                 val rawTitle = match.groupValues[3]
-                // "X izle afişi" → "X"
                 val title = rawTitle.removeSuffix(" izle afişi").removeSuffix(" izle").trim()
-                // HTML entity decode (&amp; → &, &#x27; → ', vs.)
                 val cleanTitle = title
                     .replace("&#x27;", "'")
                     .replace("&amp;", "&")
                     .replace("&quot;", "\"")
                     .replace("&#39;", "'")
-                
-                // Slug'dan tmdbId çıkarılamaz, ama /film/<slug> URL'si load() için yeterli
-                // Ancak load() tmdbId bekliyor, o yüzden bu kartlar için normal search response kullanacağız
+
                 newMovieSearchResponse(cleanTitle, "$mainUrl$slug", TvType.Movie) {
                     this.posterUrl = poster
                 }
@@ -96,32 +98,31 @@ class SafakStreamCinema : MainAPI() {
         val html = app.get(mainUrl, headers = mapOf("User-Agent" to ua)).text
         val ssrJson = extractReactSsr(html) ?: return emptyList()
         val isMovie = rafName == "turkishMovies"
-        
+
         return try {
             val root = JSONObject(ssrJson)
             val queries = root.optJSONObject("state")?.optJSONArray("queries") ?: return emptyList()
-            
+
             for (i in 0 until queries.length()) {
                 val q = queries.getJSONObject(i)
                 val qKey = q.optJSONArray("queryKey") ?: continue
-                // queryKey: ["tmdb", "turkishMovies", "tr-TR"] veya ["tmdb", "turkishTV", "tr-TR"]
                 if (qKey.length() >= 2 && qKey.optString(0) == "tmdb" && qKey.optString(1) == rafName) {
                     val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
                     val resultsArr = data.optJSONArray("results") ?: continue
-                    
+
                     return (0 until resultsArr.length()).mapNotNull { idx ->
                         try {
                             val o = resultsArr.getJSONObject(idx)
                             val tmdbId = o.optInt("id", 0)
                             if (tmdbId == 0) return@mapNotNull null
-                            
+
                             val title = safeStr(o, "titleTr", "name", "title", "original_name") ?: "İçerik #$tmdbId"
                             val year = o.optString("first_air_date").take(4).toIntOrNull()
                                 ?: o.optString("release_date").take(4).toIntOrNull()
-                            val poster = o.optString("poster_path").ifBlank { null }
+                            val poster = posterUrl(o.optString("poster_path").ifBlank { null })
                             val typeStr = if (isMovie) "movie" else "tv"
                             val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
-                            
+
                             if (isMovie) {
                                 newMovieSearchResponse(title, finalUrl, TvType.Movie) {
                                     this.posterUrl = poster
@@ -144,7 +145,7 @@ class SafakStreamCinema : MainAPI() {
         }
     }
 
-    // === Diziler/Filmler — library-tmdb-ids ===
+    // === Diziler/Filmler — library-tmdb-ids + HTML poster parse ===
     private suspend fun parseLibraryPage(pagePath: String): List<SearchResponse> {
         val url = "$mainUrl$pagePath"
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return emptyList() }
@@ -153,19 +154,51 @@ class SafakStreamCinema : MainAPI() {
         val tmdbIds = extractTmdbIds(ssrJson, pagePath)
         val titleOverrides = extractTitleOverrides(ssrJson)
 
-        return tmdbIds.mapNotNull { tmdbId ->
+        // HTML'den posterleri çıkar (aynı sırayla)
+        val posters = extractPostersFromHtml(html)
+        val slugs = extractSlugsFromHtml(html, isMovie)
+
+        return tmdbIds.mapIndexedNotNull { index, tmdbId ->
             val override = titleOverrides[tmdbId]
             val title = override?.first ?: "İçerik #$tmdbId"
             val year = override?.second
             val typeStr = if (isMovie) "movie" else "tv"
             val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
+            val poster = posters.getOrNull(index)
 
             if (isMovie) {
-                newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.year = year }
+                newMovieSearchResponse(title, finalUrl, TvType.Movie) {
+                    this.year = year
+                    this.posterUrl = poster
+                }
             } else {
-                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) { this.year = year }
+                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) {
+                    this.year = year
+                    this.posterUrl = poster
+                }
             }
         }
+    }
+
+    // HTML'deki img src'lerini sırayla çıkar
+    private fun extractPostersFromHtml(html: String): List<String> {
+        val result = mutableListOf<String>()
+        val pattern = Regex("""<img[^>]*src="(https://image\.tmdb\.org[^"]+)"""")
+        pattern.findAll(html).forEach { match ->
+            result.add(match.groupValues[1])
+        }
+        return result
+    }
+
+    // HTML'deki /dizi/ veya /film/ linklerini çıkar
+    private fun extractSlugsFromHtml(html: String, isMovie: Boolean): List<String> {
+        val result = mutableListOf<String>()
+        val prefix = if (isMovie) "/film/" else "/dizi/"
+        val pattern = Regex("""href="($prefix[^"?]+)"""")
+        pattern.findAll(html).forEach { match ->
+            result.add(match.groupValues[1])
+        }
+        return result.distinct()
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -180,23 +213,18 @@ class SafakStreamCinema : MainAPI() {
                 val o = arr.getJSONObject(i)
                 val tmdbId = o.optInt("tmdbId", 0)
                 if (tmdbId == 0) return@mapNotNull null
-                
+
                 val title = safeStr(o, "titleTr", "title", "name", "original_name") ?: "İçerik #$tmdbId"
                 val year = o.optInt("year", 0).takeIf { it > 0 }
                 val type = o.optString("type", "movie")
                 val poster = o.optString("poster").ifBlank { null }
-                val posterUrl = when {
-                    poster == null -> null
-                    poster.startsWith("http") -> poster
-                    else -> "https://image.tmdb.org/t/p/w500$poster"
-                }
                 val isMovie = type == "movie"
                 val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$type"
 
                 if (isMovie) {
-                    newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.posterUrl = posterUrl; this.year = year }
+                    newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.posterUrl = posterUrl(poster); this.year = year }
                 } else {
-                    newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) { this.posterUrl = posterUrl; this.year = year }
+                    newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) { this.posterUrl = posterUrl(poster); this.year = year }
                 }
             }
         } catch (e: Exception) { emptyList() }
@@ -205,16 +233,14 @@ class SafakStreamCinema : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        // Eğer URL /film/<slug> veya /dizi/<slug> formatındaysa (Top10 kartları), sayfa HTML'inden çek
         if (url.contains("/film/") || url.contains("/dizi/")) {
             return loadFromPage(url)
         }
-        
-        // Aksi halde /api/movies/by-tmdb/<tmdbId>?type=<type> formatındadır
+
         val typeParam = url.substringAfter("?type=", "").substringBefore("&")
         val isTvByUrl = typeParam == "tv"
         val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull() ?: return null
-        
+
         var json: String? = null
         try {
             json = app.get(url, headers = mapOf("User-Agent" to ua)).text
@@ -223,7 +249,7 @@ class SafakStreamCinema : MainAPI() {
 
         if (json == null || json.isBlank()) {
             val pageUrl = if (isTvByUrl) "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0" else "$mainUrl/api/movies/by-tmdb/$tmdbId"
-            json = try { 
+            json = try {
                 val r = app.get(pageUrl, headers = mapOf("User-Agent" to ua)).text
                 if (r.startsWith("<!DOCTYPE") || r.startsWith("<html")) null else r
             } catch (e: Exception) { null }
@@ -234,16 +260,16 @@ class SafakStreamCinema : MainAPI() {
         return try {
             val o = JSONObject(json)
             val mediaType = o.optString("mediaType", if (isTvByUrl) "tv" else "movie")
-            
-            val title = safeStr(o, "titleTr", "title", "name", "original_name", "original_title") 
+
+            val title = safeStr(o, "titleTr", "title", "name", "original_name", "original_title")
                 ?: if (isTvByUrl) "Dizi #$tmdbId" else "Film #$tmdbId"
-            
+
             val overview = safeStr(o, "overview", "aiOverview")
             val year = o.optInt("year", 0).takeIf { it > 0 }
             val rating = o.optDouble("rating", 0.0).takeIf { it > 0 }?.toInt()
             val poster = o.optString("poster").ifBlank { null }
             val genres = o.optString("genres").ifBlank { null }
-            
+
             val finalIsTv = mediaType == "tv" || isTvByUrl
 
             if (finalIsTv) {
@@ -263,26 +289,22 @@ class SafakStreamCinema : MainAPI() {
         } catch (e: Exception) { null }
     }
 
-    // HTML sayfasından load (Top10 ve doğrudan /film/<slug> veya /dizi/<slug> linkleri için)
     private suspend fun loadFromPage(url: String): LoadResponse? {
         val isTv = url.contains("/dizi/")
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return null }
-        
-        // __react_ssr__ içinden tmdbId ve detayları çek
         val ssrJson = extractReactSsr(html) ?: return null
-        
+
         return try {
             val root = JSONObject(ssrJson)
             val queries = root.optJSONObject("state")?.optJSONArray("queries") ?: return null
-            
+
             var tmdbId = 0
             var title: String? = null
             var overview: String? = null
             var year: Int? = null
             var rating: Int? = null
             var poster: String? = null
-            
-            // "tmdb details" sorgusunu bul
+
             for (i in 0 until queries.length()) {
                 val q = queries.getJSONObject(i)
                 val qKey = q.optJSONArray("queryKey") ?: continue
@@ -295,21 +317,16 @@ class SafakStreamCinema : MainAPI() {
                     year = airDate.take(4).toIntOrNull()
                     val vote = data.optDouble("vote_average", 0.0)
                     rating = vote.takeIf { it > 0 }?.toInt()
-                    val posterPath = data.optString("poster_path").ifBlank { null }
-                    poster = when {
-                        posterPath == null -> null
-                        posterPath.startsWith("http") -> posterPath
-                        else -> "https://image.tmdb.org/t/p/w500$posterPath"
-                    }
+                    poster = posterUrl(data.optString("poster_path").ifBlank { null })
                     break
                 }
             }
-            
+
             if (tmdbId == 0) return null
-            
+
             val apiUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=" + (if (isTv) "tv" else "movie")
             val finalTitle = title ?: "İçerik #$tmdbId"
-            
+
             if (isTv) {
                 val episodes = loadEpisodesForSeries(tmdbId)
                 newTvSeriesLoadResponse(finalTitle, apiUrl, TvType.TvSeries, episodes) {
@@ -344,10 +361,10 @@ class SafakStreamCinema : MainAPI() {
                 val epUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?season=$season&episode=$ep"
                 val epJson = try { app.get(epUrl, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { break }
                 if (epJson.isBlank() || epJson.startsWith("<")) break
-                
+
                 val epObj = try { JSONObject(epJson) } catch (e: Exception) { break }
                 if (epObj.optInt("id", 0) == 0) break
-                
+
                 val epTitle = "$ep. Bölüm"
                 val epOverview = epObj.optString("overview").ifBlank { "" }
                 val epPoster = epObj.optString("backdrop").ifBlank { epObj.optString("poster") }.ifBlank { null }
@@ -407,7 +424,7 @@ class SafakStreamCinema : MainAPI() {
                     val src = sourcesArr.getJSONObject(i)
                     val provider = src.optString("provider", "ek-$i")
                     val m3u8 = src.optString("m3u8Url").ifBlank { null }
-                    
+
                     val sTr = src.optString("subtitleTr").ifBlank { null }
                     val sEn = src.optString("subtitleEn").ifBlank { null }
                     sTr?.let { subtitleCallback(SubtitleFile("Türkçe ($provider)", it)) }
