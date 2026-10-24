@@ -51,7 +51,7 @@ class SafakStreamCinema : MainAPI() {
     // aiOverview temizleyici: dizisol.com, SEO metni, markdown kalintilarini sil
     private fun cleanOverview(text: String?): String? {
         if (text.isNullOrBlank()) return null
-        var t = text
+        var t: String = text
         // "dizisol.com" ve benzeri domainleri sil
         t = t.replace(Regex("(?i)dizisol\\.com[^\\s]*"), "")
         t = t.replace(Regex("(?i)www\\.[a-z0-9.-]+\\.[a-z]{2,}"), "")
