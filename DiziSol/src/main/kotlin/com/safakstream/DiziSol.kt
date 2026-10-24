@@ -269,8 +269,8 @@ class DiziSol : MainAPI() {
                     name = "DiziSol Ana",
                     url = mainM3u8,
                     type = ExtractorLinkType.M3U8,
-                    headers = videoHeaders
                 ) {
+                    this.headers = videoHeaders
                     this.quality = Qualities.Unknown.value
                 })
                 added = true
@@ -296,9 +296,9 @@ class DiziSol : MainAPI() {
                             name = "DiziSol $provider",
                             url = m3u8,
                             type = ExtractorLinkType.M3U8,
-                            headers = videoHeaders
                         ) {
-                            this.quality = Qualities.Unknown.value
+                            this.headers = videoHeaders
+                    this.quality = Qualities.Unknown.value
                         })
                         added = true
                     }
