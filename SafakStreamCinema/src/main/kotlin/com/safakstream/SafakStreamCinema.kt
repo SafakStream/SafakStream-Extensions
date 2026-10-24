@@ -10,9 +10,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
 
-class DiziSol : MainAPI() {
+class SafakStreamCinema : MainAPI() {
     override var mainUrl = "https://dizisol.com"
-    override var name = "DiziSol"
+    override var name = "SafakStream Cinema"
     override val hasMainPage = true
     override var lang = "tr"
     override val hasQuickSearch = true
@@ -202,8 +202,8 @@ class DiziSol : MainAPI() {
                 // Yönlendirmeyi çöz
                 val resolvedUrl = resolveStreamUrl(mainM3u8)
                 callback(newExtractorLink(
-                    source = "DiziSol (Ana)",
-                    name = "DiziSol Ana",
+                    source = "SafakStream (Ana)",
+                    name = "SafakStream Ana",
                     url = resolvedUrl,
                     type = ExtractorLinkType.M3U8
                 ) {
@@ -229,8 +229,8 @@ class DiziSol : MainAPI() {
                     if (m3u8 != null) {
                         val resolved = resolveStreamUrl(m3u8)
                         callback(newExtractorLink(
-                            source = "DiziSol ($provider)",
-                            name = "DiziSol $provider",
+                            source = "SafakStream ($provider)",
+                            name = "SafakStream $provider",
                             url = resolved,
                             type = ExtractorLinkType.M3U8
                         ) {
@@ -250,7 +250,7 @@ class DiziSol : MainAPI() {
         return try {
             val response = app.get(url, headers = videoHeaders, allowRedirects = true)
             val finalUrl = response.url
-            Log.d("DiziSol", "resolveStreamUrl: $url -> $finalUrl")
+            Log.d("SafakStreamCinema", "resolveStreamUrl: $url -> $finalUrl")
             // Eğer sonuç .m3u8 ile bitiyorsa veya bir playlist içeriyorsa, son URL'yi döndür
             if (finalUrl.contains(".m3u8") || finalUrl != url) {
                 finalUrl
@@ -266,7 +266,7 @@ class DiziSol : MainAPI() {
                 }
             }
         } catch (e: Exception) {
-            Log.e("DiziSol", "resolveStreamUrl hata: ${e.message}")
+            Log.e("SafakStreamCinema", "resolveStreamUrl hata: ${e.message}")
             url
         }
     }
