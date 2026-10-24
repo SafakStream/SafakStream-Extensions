@@ -93,7 +93,7 @@
             "SafakStream"
         ],
         "description": "DiziSol - dizisol.com (Film, Dizi, Yerli/Yabanc\u0131)",
-        "fileSize": 22948,
+        "fileSize": 24710,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -102,7 +102,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziSol.png",
         "apiVersion": 1,
-        "fileHash": "sha256-af2057f518508036a571bd95158e7af689e985a8d162a3800ec366e1de6627a9"
+        "fileHash": "sha256-13266b72b1dc050b89aaf93203af7d60ec8026d2be334dca8477d6ca54565954"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Filmmakinesi.cs3",
