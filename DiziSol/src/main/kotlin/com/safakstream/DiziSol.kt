@@ -26,39 +26,44 @@ class DiziSol : MainAPI() {
     private val ua = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        // /diziler veya /filmler sayfasını HTML olarak al
         val url = "$mainUrl${request.data}"
         Log.d("DiziSol", "getMainPage: $url")
-        val html = app.get(url, headers = mapOf("User-Agent" to ua)).text
-
-        // __react_ssr__ JSON'unu bul
-        val ssrJson = extractReactSsr(html)
-        if (ssrJson == null) {
-            Log.e("DiziSol", "getMainPage: __react_ssr__ bulunamadı")
+        
+        val html = try {
+            app.get(url, headers = mapOf("User-Agent" to ua)).text
+        } catch (e: Exception) {
+            Log.e("DiziSol", "getMainPage fetch hatasi: ${e.message}")
             return newHomePageResponse(request.name, emptyList())
         }
 
-        // library-tmdb-ids sorgusundan tmdbId listesini al
-        val tmdbIds = extractTmdbIds(ssrJson, request.data)
-        Log.d("DiziSol", "getMainPage: ${tmdbIds.size} tmdbId bulundu")
+        val ssrJson = extractReactSsr(html) ?: return newHomePageResponse(request.name, emptyList())
 
-        // title-overrides ve tmdb detay bilgilerini al
+        val tmdbIds = extractTmdbIds(ssrJson, request.data)
         val titleOverrides = extractTitleOverrides(ssrJson)
 
-        // Her tmdbId için SearchResponse oluştur
         val items = tmdbIds.mapNotNull { tmdbId ->
             val override = titleOverrides[tmdbId]
             val title = override?.first ?: "TMDb #$tmdbId"
             val year = override?.second
             val isMovie = request.data.contains("film")
             val type = if (isMovie) TvType.Movie else TvType.TvSeries
-            newMovieSearchResponse(
-                name = title,
-                url = "$mainUrl/api/movies/by-tmdb/$tmdbId" + (if (type == TvType.Movie) "" else "?season=0&episode=0"),
-                type = type
-            ) {
-                this.posterUrl = null // SSR'da poster yok, detay sayfasında alınacak
-                this.year = year
+            
+            val finalUrl = if (isMovie) {
+                "$mainUrl/api/movies/by-tmdb/$tmdbId"
+            } else {
+                "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
+            }
+
+            if (isMovie) {
+                newMovieSearchResponse(title, finalUrl, TvType.Movie) {
+                    this.posterUrl = null 
+                    this.year = year
+                }
+            } else {
+                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) {
+                    this.posterUrl = null
+                    this.year = year
+                }
             }
         }
 
@@ -70,6 +75,7 @@ class DiziSol : MainAPI() {
         val encoded = java.net.URLEncoder.encode(query, "UTF-8")
         val url = "$mainUrl/api/movies/search?q=$encoded"
         Log.d("DiziSol", "search: $url")
+        
         val json = try {
             app.get(url, headers = mapOf("User-Agent" to ua)).text
         } catch (e: Exception) {
@@ -85,6 +91,7 @@ class DiziSol : MainAPI() {
                 val o = arr.getJSONObject(i)
                 val tmdbId = o.optInt("tmdbId", 0)
                 if (tmdbId == 0) return@mapNotNull null
+                
                 val title = o.optString("titleTr").ifBlank { o.optString("title") }
                 val year = o.optInt("year", 0).takeIf { it > 0 }
                 val type = o.optString("type", "movie")
@@ -125,7 +132,6 @@ class DiziSol : MainAPI() {
     // ============ LOAD ============
     override suspend fun load(url: String): LoadResponse? {
         Log.d("DiziSol", "load: $url")
-        // URL formatı: /api/movies/by-tmdb/<tmdbId>[?season=X&episode=Y]
         val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull() ?: return null
 
         val json = try {
@@ -146,7 +152,6 @@ class DiziSol : MainAPI() {
             val genres = o.optString("genres").ifBlank { null }
 
             if (mediaType == "tv") {
-                // Dizi: bölümleri çek
                 val episodes = loadEpisodesForSeries(tmdbId)
                 newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                     this.posterUrl = poster
@@ -171,8 +176,6 @@ class DiziSol : MainAPI() {
     }
 
     private suspend fun loadEpisodesForSeries(tmdbId: Int): List<Episode> {
-        // Önce season 1 episode 1 ile sezon sayısını öğrenelim (veya SSR'dan alalım)
-        // Basit yaklaşım: bilinen sezonları dene, boş gelen kadar
         val episodes = mutableListOf<Episode>()
         var season = 1
         while (season <= 20) {
@@ -184,8 +187,10 @@ class DiziSol : MainAPI() {
             }
             if (seasonJson.isBlank() || seasonJson.startsWith("<")) break
             val seasonObj = try { JSONObject(seasonJson) } catch (e: Exception) { break }
+            
+            // Eğer sezon yoksa (id 0 ise) döngüden çık
+            if (seasonObj.optInt("id", 0) == 0) break
 
-            // Bu sezon için episode'ları dene
             var ep = 1
             var foundInSeason = false
             while (ep <= 100) {
@@ -194,11 +199,17 @@ class DiziSol : MainAPI() {
                     app.get(epUrl, headers = mapOf("User-Agent" to ua)).text
                 } catch (e: Exception) { break }
                 if (epJson.isBlank() || epJson.startsWith("<")) break
+                
                 val epObj = try { JSONObject(epJson) } catch (e: Exception) { break }
                 val epId = epObj.optInt("id", 0)
                 if (epId == 0) break
-                val epTitle = epObj.optString("title").ifBlank { "$season. Sezon $ep. Bölüm" }
-                val epOverview = epObj.optString("overview").ifBlank { null }
+                
+                // DÜZELTME 1: Bölüm başlığını daha temiz yap
+                val epTitle = "$ep. Bölüm"
+                
+                // DÜZELTME 2: null yerine boş string kullan
+                val epOverview = epObj.optString("overview").ifBlank { "" }
+                
                 val epPoster = epObj.optString("backdrop").ifBlank { epObj.optString("poster") }.ifBlank { null }
 
                 episodes.add(newEpisode(epUrl) {
@@ -214,7 +225,7 @@ class DiziSol : MainAPI() {
             if (!foundInSeason) break
             season++
         }
-        Log.d("DiziSol", "loadEpisodesForSeries: ${episodes.size} bölüm, $season sezon")
+        Log.d("DiziSol", "loadEpisodesForSeries: ${episodes.size} bölüm")
         return episodes
     }
 
@@ -236,7 +247,6 @@ class DiziSol : MainAPI() {
         return try {
             val o = JSONObject(json)
             val mainM3u8 = o.optString("m3u8Url").ifBlank { null }
-            val mainSource = o.optString("sourceUrl").ifBlank { null }
             val subTr = o.optString("subtitleTr").ifBlank { null }
             val subEn = o.optString("subtitleEn").ifBlank { null }
 
@@ -246,13 +256,20 @@ class DiziSol : MainAPI() {
 
             var added = false
 
+            // Video kaynakları için gerekli başlıklar (403 hatasını çözer)
+            val videoHeaders = mapOf(
+                "Referer" to "https://dizisol.com/",
+                "User-Agent" to ua
+            )
+
             // Ana kaynak
             if (mainM3u8 != null) {
                 callback(newExtractorLink(
                     source = "DiziSol (Ana)",
                     name = "DiziSol Ana",
                     url = mainM3u8,
-                    type = ExtractorLinkType.M3U8
+                    type = ExtractorLinkType.M3U8,
+                    headers = videoHeaders
                 ) {
                     this.quality = Qualities.Unknown.value
                 })
@@ -266,12 +283,20 @@ class DiziSol : MainAPI() {
                     val src = sourcesArr.getJSONObject(i)
                     val provider = src.optString("provider", "ek-$i")
                     val m3u8 = src.optString("m3u8Url").ifBlank { null }
+                    
+                    // Her ek kaynağın kendi altyazıları da olabilir
+                    val sTr = src.optString("subtitleTr").ifBlank { null }
+                    val sEn = src.optString("subtitleEn").ifBlank { null }
+                    sTr?.let { subtitleCallback(SubtitleFile("Türkçe ($provider)", it)) }
+                    sEn?.let { subtitleCallback(SubtitleFile("English ($provider)", it)) }
+
                     if (m3u8 != null) {
                         callback(newExtractorLink(
                             source = "DiziSol ($provider)",
                             name = "DiziSol $provider",
                             url = m3u8,
-                            type = ExtractorLinkType.M3U8
+                            type = ExtractorLinkType.M3U8,
+                            headers = videoHeaders
                         ) {
                             this.quality = Qualities.Unknown.value
                         })
@@ -289,7 +314,6 @@ class DiziSol : MainAPI() {
 
     // ============ YARDIMCI FONKSİYONLAR ============
 
-    // __react_ssr__ script'inin içeriğini çıkar
     private fun extractReactSsr(html: String): String? {
         val marker = "<script id=\"__react_ssr__\" type=\"application/json\">"
         val start = html.indexOf(marker)
@@ -300,7 +324,6 @@ class DiziSol : MainAPI() {
         return html.substring(contentStart, end)
     }
 
-    // library-tmdb-ids sorgusundan tmdbId'leri çıkar
     private fun extractTmdbIds(ssrJson: String, pagePath: String): List<Int> {
         return try {
             val root = JSONObject(ssrJson)
@@ -327,7 +350,6 @@ class DiziSol : MainAPI() {
         }
     }
 
-    // title-overrides sorgusundan tmdbId -> (title, year) map
     private fun extractTitleOverrides(ssrJson: String): Map<Int, Pair<String?, Int?>> {
         return try {
             val root = JSONObject(ssrJson)
