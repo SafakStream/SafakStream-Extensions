@@ -6,9 +6,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -31,63 +28,10 @@ class DiziSol : MainAPI() {
         val url = "$mainUrl${request.data}"
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return newHomePageResponse(request.name, emptyList()) }
         val ssrJson = extractReactSsr(html) ?: return newHomePageResponse(request.name, emptyList())
-        val tmdbIds = extractTmdbIds(ssrJson, request.data)
-        val isMovie = request.data.contains("film")
-        val type = if (isMovie) TvType.Movie else TvType.TvSeries
-
-        // Her TMDb ID için detayları paralel olarak çek
-        val items = coroutineScope {
-            tmdbIds.map { tmdbId ->
-                async {
-                    try {
-                        val typePath = if (isMovie) "movie" else "tv"
-                        val detailUrl = "$mainUrl/api/tmdb/$typePath/$tmdbId?language=tr-TR"
-                        val detailJson = app.get(detailUrl, headers = mapOf("User-Agent" to ua)).text
-                        val o = JSONObject(detailJson)
-                        
-                        // Başlık: titleTr -> name -> title -> original_name
-                        val title = o.optString("titleTr").ifBlank { 
-                            o.optString("name").ifBlank { 
-                                o.optString("title").ifBlank { 
-                                    o.optString("original_name").ifBlank { 
-                                        o.optString("original_title").ifBlank { "Bilinmeyen" } 
-                                    } 
-                                } 
-                            } 
-                        }
-                        
-                        val year = o.optString("first_air_date").take(4).toIntOrNull()
-                            ?: o.optString("release_date").take(4).toIntOrNull()
-                            ?: o.optInt("year", 0).takeIf { it > 0 }
-                        
-                        val posterPath = o.optString("poster_path").ifBlank { null }
-                        val posterUrl = when {
-                            posterPath == null -> null
-                            posterPath.startsWith("http") -> posterPath
-                            else -> "https://image.tmdb.org/t/p/w500$posterPath"
-                        }
-                        
-                        val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
-
-                        if (isMovie) {
-                            newMovieSearchResponse(title, finalUrl, TvType.Movie) {
-                                this.posterUrl = posterUrl
-                                this.year = year
-                            }
-                        } else {
-                            newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) {
-                                this.posterUrl = posterUrl
-                                this.year = year
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("DiziSol", "Ana sayfa detay hatası ($tmdbId): ${e.message}")
-                        null
-                    }
-                }
-            }.awaitAll().filterNotNull()
-        }
-
+        
+        // SSR'dan hazır sonuçları al (poster, başlık, yıl, özet dahil)
+        val items = extractResults(ssrJson, request.data.contains("film"))
+        
         return newHomePageResponse(request.name, items, hasNext = false)
     }
 
@@ -104,7 +48,7 @@ class DiziSol : MainAPI() {
                 val tmdbId = o.optInt("tmdbId", 0)
                 if (tmdbId == 0) return@mapNotNull null
                 
-                // null düzeltmesi: titleTr boşsa title, o da boşsa "Bilinmeyen"
+                // null düzeltmesi
                 val title = o.optString("titleTr").ifBlank { 
                     o.optString("title").ifBlank { 
                         o.optString("original_name").ifBlank { "Bilinmeyen" } 
@@ -293,24 +237,59 @@ class DiziSol : MainAPI() {
         return html.substring(contentStart, end)
     }
 
-    private fun extractTmdbIds(ssrJson: String, pagePath: String): List<Int> {
+    // SSR JSON'undan "results" dizisini çıkar - TÜM bilgiler hazır!
+    private fun extractResults(ssrJson: String, isMovie: Boolean): List<SearchResponse> {
         return try {
             val root = JSONObject(ssrJson)
             val queries = root.optJSONObject("state")?.optJSONArray("queries") ?: return emptyList()
             for (i in 0 until queries.length()) {
                 val q = queries.getJSONObject(i)
-                val qKey = q.optJSONArray("queryKey") ?: continue
-                if (qKey.length() >= 2 && qKey.optString(0) == "library-tmdb-ids") {
-                    val pageMatch = qKey.optString(2, "")
-                    if (pageMatch == pagePath || pagePath.contains(pageMatch)) {
-                        val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
-                        val isMovie = pagePath.contains("film")
-                        val arr = if (isMovie) data.optJSONArray("movies") else data.optJSONArray("tv")
-                        if (arr != null) return (0 until arr.length()).map { arr.optInt(it, 0) }.filter { it > 0 }
-                    }
+                val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
+                val resultsArr = data.optJSONArray("results") ?: continue
+                if (resultsArr.length() == 0) continue
+                
+                return (0 until resultsArr.length()).mapNotNull { idx ->
+                    try {
+                        val o = resultsArr.getJSONObject(idx)
+                        val tmdbId = o.optInt("id", 0)
+                        if (tmdbId == 0) return@mapNotNull null
+                        
+                        // Başlık: titleTr -> name -> title -> original_name
+                        val title = o.optString("titleTr").ifBlank { 
+                            o.optString("name").ifBlank { 
+                                o.optString("title").ifBlank { 
+                                    o.optString("original_name").ifBlank { "Bilinmeyen" } 
+                                } 
+                            } 
+                        }
+                        
+                        // Yıl: first_air_date (dizi) veya release_date (film)
+                        val year = o.optString("first_air_date").take(4).toIntOrNull()
+                            ?: o.optString("release_date").take(4).toIntOrNull()
+                        
+                        // Poster hazır URL olarak geliyor
+                        val poster = o.optString("poster_path").ifBlank { null }
+                        
+                        val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
+
+                        if (isMovie) {
+                            newMovieSearchResponse(title, finalUrl, TvType.Movie) {
+                                this.posterUrl = poster
+                                this.year = year
+                            }
+                        } else {
+                            newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) {
+                                this.posterUrl = poster
+                                this.year = year
+                            }
+                        }
+                    } catch (e: Exception) { null }
                 }
             }
             emptyList()
-        } catch (e: Exception) { emptyList() }
+        } catch (e: Exception) {
+            Log.e("DiziSol", "extractResults hata: ${e.message}")
+            emptyList()
+        }
     }
 }
