@@ -26,14 +26,7 @@ class DiziSol : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = "$mainUrl${request.data}"
-        Log.d("DiziSol", "getMainPage: $url")
-        
-        val html = try {
-            app.get(url, headers = mapOf("User-Agent" to ua)).text
-        } catch (e: Exception) {
-            return newHomePageResponse(request.name, emptyList())
-        }
-
+        val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return newHomePageResponse(request.name, emptyList()) }
         val ssrJson = extractReactSsr(html) ?: return newHomePageResponse(request.name, emptyList())
         val tmdbIds = extractTmdbIds(ssrJson, request.data)
         val titleOverrides = extractTitleOverrides(ssrJson)
@@ -43,8 +36,6 @@ class DiziSol : MainAPI() {
             val title = override?.first ?: "TMDb #$tmdbId"
             val year = override?.second
             val isMovie = request.data.contains("film")
-            val type = if (isMovie) TvType.Movie else TvType.TvSeries
-            
             val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
 
             if (isMovie) {
@@ -185,17 +176,26 @@ class DiziSol : MainAPI() {
                 "User-Agent" to ua
             )
 
+            // Ana kaynak için yönlendirmeyi çöz
             if (mainM3u8 != null) {
-                callback(newExtractorLink(
-                    source = "DiziSol (Ana)",
-                    name = "DiziSol Ana",
-                    url = mainM3u8,
-                    type = ExtractorLinkType.VIDEO // M3U8 yerine Web (Redirect çözümü için)
-                ) {
-                    this.headers = videoHeaders
-                    this.quality = Qualities.Unknown.value
-                })
-                added = true
+                try {
+                    // Cloudstream'in kendi get fonksiyonu ile yönlendirmeyi takip et
+                    val resolvedUrl = app.get(mainM3u8, headers = videoHeaders, allowRedirects = true).url
+                    Log.d("DiziSol", "Resolved main URL: $resolvedUrl")
+                    
+                    callback(newExtractorLink(
+                        source = "DiziSol (Ana)",
+                        name = "DiziSol Ana",
+                        url = resolvedUrl,
+                        type = ExtractorLinkType.VIDEO
+                    ) {
+                        this.headers = videoHeaders
+                        this.quality = Qualities.Unknown.value
+                    })
+                    added = true
+                } catch (e: Exception) {
+                    Log.e("DiziSol", "Resolve error: ${e.message}")
+                }
             }
 
             val sourcesArr = o.optJSONArray("sources")
@@ -211,16 +211,23 @@ class DiziSol : MainAPI() {
                     sEn?.let { subtitleCallback(SubtitleFile("English ($provider)", it)) }
 
                     if (m3u8 != null) {
-                        callback(newExtractorLink(
-                            source = "DiziSol ($provider)",
-                            name = "DiziSol $provider",
-                            url = m3u8,
-                            type = ExtractorLinkType.VIDEO // M3U8 yerine Web
-                        ) {
-                            this.headers = videoHeaders
-                            this.quality = Qualities.Unknown.value
-                        })
-                        added = true
+                        try {
+                            val resolvedUrl = app.get(m3u8, headers = videoHeaders, allowRedirects = true).url
+                            Log.d("DiziSol", "Resolved $provider URL: $resolvedUrl")
+                            
+                            callback(newExtractorLink(
+                                source = "DiziSol ($provider)",
+                                name = "DiziSol $provider",
+                                url = resolvedUrl,
+                                type = ExtractorLinkType.VIDEO
+                            ) {
+                                this.headers = videoHeaders
+                                this.quality = Qualities.Unknown.value
+                            })
+                            added = true
+                        } catch (e: Exception) {
+                            Log.e("DiziSol", "Resolve error for $provider: ${e.message}")
+                        }
                     }
                 }
             }
