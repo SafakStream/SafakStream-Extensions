@@ -88,7 +88,7 @@ class SafakStreamCinema : MainAPI() {
                 Log.e("SafakStreamCinema", "Top10 parse hata: ${e.message}")
                 null
             }
-        }
+        }.toList()
     }
 
     // === Türk Dizileri/Filmleri — SSR results ===
