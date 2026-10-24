@@ -74,10 +74,17 @@ subprojects {
             iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/Dizibox.png"
             version = 1
         }
+        // DiziPal özel metadata
+        if (project.name == "DiziPal") {
+            description = "DiziPal - Türkçe dizi ve film izleme platformu"
+            language = "tr"
+            tvTypes = listOf("TvSeries", "Movie")
+            iconUrl = "https://dizipal1822.com/assets/favicon/apple-touch-icon.png"
+            version = 1
+        }
     }
 
     android {
-        // ↓↓↓ DEĞİŞTİRİLDİ: Dinamik namespace ↓↓↓
         namespace = "com.safakstream.${project.name.lowercase()}"
         compileSdk = 36
 
@@ -111,7 +118,6 @@ subprojects {
         val implementation by configurations
         val cloudstream by configurations
 
-        // CloudStream stub'ları
         cloudstream("com.lagradost:cloudstream3:pre-release")
 
         implementation(kotlin("stdlib"))
@@ -120,7 +126,6 @@ subprojects {
         implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.16.0")
 
-        // ↓↓↓ YENİ EKLENENLER ↓↓↓
         implementation("androidx.appcompat:appcompat:1.6.1")
         implementation("androidx.core:core-ktx:1.12.0")
         implementation("com.google.android.material:material:1.11.0")

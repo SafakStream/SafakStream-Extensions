@@ -28,6 +28,7 @@ include(
     "TrGoals",
     "Betmatik",
     "Dizibox",
+    "DiziPal",
     "Filmmakinesi",
     "SafakStreamHub"
 )
