@@ -24,8 +24,12 @@ class DiziSol : MainAPI() {
     )
 
     private val ua = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    private val videoHeaders = mapOf(
+        "Referer" to "https://dizisol.com/",
+        "Origin" to "https://dizisol.com",
+        "User-Agent" to ua
+    )
 
-    // JSON'daki null veya "null" string'lerini guvenli sekilde okuyan yardimci
     private fun safeStr(o: JSONObject, vararg keys: String): String? {
         for (key in keys) {
             if (!o.has(key) || o.isNull(key)) continue
@@ -39,10 +43,8 @@ class DiziSol : MainAPI() {
         val url = "$mainUrl${request.data}"
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return newHomePageResponse(request.name, emptyList()) }
         val ssrJson = extractReactSsr(html) ?: return newHomePageResponse(request.name, emptyList())
-        
         val isMovie = request.data.contains("film")
         val items = extractResults(ssrJson, isMovie)
-        
         return newHomePageResponse(request.name, items, hasNext = false)
     }
 
@@ -88,8 +90,6 @@ class DiziSol : MainAPI() {
         val isTvByUrl = typeParam == "tv"
         val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull() ?: return null
         
-        Log.d("DiziSol", "load: $url (tmdbId=$tmdbId, isTv=$isTvByUrl)")
-
         var json: String? = null
         try {
             json = app.get(url, headers = mapOf("User-Agent" to ua)).text
@@ -135,10 +135,7 @@ class DiziSol : MainAPI() {
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
             }
-        } catch (e: Exception) {
-            Log.e("DiziSol", "load parse hata: ${e.message}")
-            null
-        }
+        } catch (e: Exception) { null }
     }
 
     private suspend fun loadEpisodesForSeries(tmdbId: Int): List<Episode> {
@@ -199,18 +196,15 @@ class DiziSol : MainAPI() {
             subEn?.let { subtitleCallback(SubtitleFile("English", it)) }
 
             var added = false
-            
-            val videoHeaders = mapOf(
-                "Referer" to "https://dizisol.com/",
-                "Origin" to "https://dizisol.com",
-                "User-Agent" to ua
-            )
 
+            // Ana kaynak
             if (mainM3u8 != null) {
+                // Yönlendirmeyi çöz
+                val resolvedUrl = resolveStreamUrl(mainM3u8)
                 callback(newExtractorLink(
                     source = "DiziSol (Ana)",
                     name = "DiziSol Ana",
-                    url = mainM3u8,
+                    url = resolvedUrl,
                     type = ExtractorLinkType.M3U8
                 ) {
                     this.headers = videoHeaders
@@ -219,6 +213,7 @@ class DiziSol : MainAPI() {
                 added = true
             }
 
+            // Ek kaynaklar
             val sourcesArr = o.optJSONArray("sources")
             if (sourcesArr != null) {
                 for (i in 0 until sourcesArr.length()) {
@@ -232,10 +227,11 @@ class DiziSol : MainAPI() {
                     sEn?.let { subtitleCallback(SubtitleFile("English ($provider)", it)) }
 
                     if (m3u8 != null) {
+                        val resolved = resolveStreamUrl(m3u8)
                         callback(newExtractorLink(
                             source = "DiziSol ($provider)",
                             name = "DiziSol $provider",
-                            url = m3u8,
+                            url = resolved,
                             type = ExtractorLinkType.M3U8
                         ) {
                             this.headers = videoHeaders
@@ -247,6 +243,45 @@ class DiziSol : MainAPI() {
             }
             added
         } catch (e: Exception) { false }
+    }
+
+    // m3u8 URL'sini takip ederek gerçek URL'yi al
+    private suspend fun resolveStreamUrl(url: String): String {
+        return try {
+            val response = app.get(url, headers = videoHeaders, allowRedirects = true)
+            val finalUrl = response.url
+            Log.d("DiziSol", "resolveStreamUrl: $url -> $finalUrl")
+            // Eğer sonuç .m3u8 ile bitiyorsa veya bir playlist içeriyorsa, son URL'yi döndür
+            if (finalUrl.contains(".m3u8") || finalUrl != url) {
+                finalUrl
+            } else {
+                // Aynı URL'ye döndüyse, içeriği kontrol et
+                val body = response.text
+                if (body.startsWith("#EXTM3U")) {
+                    url
+                } else {
+                    // Base64 m3u8 olabilir (s4.dizisol.com/?m3u8=...)
+                    val decoded = decodeM3u8IfBase64(body)
+                    if (decoded != null) decoded else url
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DiziSol", "resolveStreamUrl hata: ${e.message}")
+            url
+        }
+    }
+
+    // Eğer m3u8 içeriği base64 ise decode et, içindeki m3u8 URL'sini al
+    private fun decodeM3u8IfBase64(content: String): String? {
+        return try {
+            if (content.startsWith("#EXTM3U")) return null
+            val decoded = String(android.util.Base64.decode(content.trim(), android.util.Base64.DEFAULT))
+            if (decoded.startsWith("#EXTM3U")) {
+                // İçindeki ilk m3u8 URL'sini bul (eğer varsa)
+                val lines = decoded.lines()
+                lines.firstOrNull { it.contains(".m3u8") || it.contains(".mp4") }
+            } else null
+        } catch (e: Exception) { null }
     }
 
     private fun extractReactSsr(html: String): String? {
@@ -276,10 +311,8 @@ class DiziSol : MainAPI() {
                         if (tmdbId == 0) return@mapNotNull null
                         
                         val title = safeStr(o, "titleTr", "name", "title", "original_name") ?: "İçerik #$tmdbId"
-                        
                         val year = o.optString("first_air_date").take(4).toIntOrNull()
                             ?: o.optString("release_date").take(4).toIntOrNull()
-                        
                         val poster = o.optString("poster_path").ifBlank { null }
                         val typeStr = if (isMovie) "movie" else "tv"
                         val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
@@ -299,9 +332,6 @@ class DiziSol : MainAPI() {
                 }
             }
             emptyList()
-        } catch (e: Exception) {
-            Log.e("DiziSol", "extractResults hata: ${e.message}")
-            emptyList()
-        }
+        } catch (e: Exception) { emptyList() }
     }
 }
