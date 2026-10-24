@@ -6,6 +6,9 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -29,21 +32,62 @@ class DiziSol : MainAPI() {
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return newHomePageResponse(request.name, emptyList()) }
         val ssrJson = extractReactSsr(html) ?: return newHomePageResponse(request.name, emptyList())
         val tmdbIds = extractTmdbIds(ssrJson, request.data)
-        val titleOverrides = extractTitleOverrides(ssrJson)
+        val isMovie = request.data.contains("film")
+        val type = if (isMovie) TvType.Movie else TvType.TvSeries
 
-        val items = tmdbIds.mapNotNull { tmdbId ->
-            val override = titleOverrides[tmdbId]
-            val title = override?.first ?: "TMDb #$tmdbId"
-            val year = override?.second
-            val isMovie = request.data.contains("film")
-            val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
+        // Her TMDb ID için detayları paralel olarak çek
+        val items = coroutineScope {
+            tmdbIds.map { tmdbId ->
+                async {
+                    try {
+                        val typePath = if (isMovie) "movie" else "tv"
+                        val detailUrl = "$mainUrl/api/tmdb/$typePath/$tmdbId?language=tr-TR"
+                        val detailJson = app.get(detailUrl, headers = mapOf("User-Agent" to ua)).text
+                        val o = JSONObject(detailJson)
+                        
+                        // Başlık: titleTr -> name -> title -> original_name
+                        val title = o.optString("titleTr").ifBlank { 
+                            o.optString("name").ifBlank { 
+                                o.optString("title").ifBlank { 
+                                    o.optString("original_name").ifBlank { 
+                                        o.optString("original_title").ifBlank { "Bilinmeyen" } 
+                                    } 
+                                } 
+                            } 
+                        }
+                        
+                        val year = o.optString("first_air_date").take(4).toIntOrNull()
+                            ?: o.optString("release_date").take(4).toIntOrNull()
+                            ?: o.optInt("year", 0).takeIf { it > 0 }
+                        
+                        val posterPath = o.optString("poster_path").ifBlank { null }
+                        val posterUrl = when {
+                            posterPath == null -> null
+                            posterPath.startsWith("http") -> posterPath
+                            else -> "https://image.tmdb.org/t/p/w500$posterPath"
+                        }
+                        
+                        val finalUrl = if (isMovie) "$mainUrl/api/movies/by-tmdb/$tmdbId" else "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
 
-            if (isMovie) {
-                newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.posterUrl = null; this.year = year }
-            } else {
-                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) { this.posterUrl = null; this.year = year }
-            }
+                        if (isMovie) {
+                            newMovieSearchResponse(title, finalUrl, TvType.Movie) {
+                                this.posterUrl = posterUrl
+                                this.year = year
+                            }
+                        } else {
+                            newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) {
+                                this.posterUrl = posterUrl
+                                this.year = year
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("DiziSol", "Ana sayfa detay hatası ($tmdbId): ${e.message}")
+                        null
+                    }
+                }
+            }.awaitAll().filterNotNull()
         }
+
         return newHomePageResponse(request.name, items, hasNext = false)
     }
 
@@ -59,7 +103,13 @@ class DiziSol : MainAPI() {
                 val o = arr.getJSONObject(i)
                 val tmdbId = o.optInt("tmdbId", 0)
                 if (tmdbId == 0) return@mapNotNull null
-                val title = o.optString("titleTr").ifBlank { o.optString("title") }
+                
+                // null düzeltmesi: titleTr boşsa title, o da boşsa "Bilinmeyen"
+                val title = o.optString("titleTr").ifBlank { 
+                    o.optString("title").ifBlank { 
+                        o.optString("original_name").ifBlank { "Bilinmeyen" } 
+                    } 
+                }
                 val year = o.optInt("year", 0).takeIf { it > 0 }
                 val type = o.optString("type", "movie")
                 val poster = o.optString("poster").ifBlank { null }
@@ -89,8 +139,19 @@ class DiziSol : MainAPI() {
         return try {
             val o = JSONObject(json)
             val mediaType = o.optString("mediaType", "movie")
-            val title = o.optString("titleTr").ifBlank { o.optString("title") }
-            val overview = o.optString("overview").ifBlank { o.optString("aiOverview") }
+            
+            // null düzeltmesi
+            val title = o.optString("titleTr").ifBlank { 
+                o.optString("title").ifBlank { 
+                    o.optString("original_name").ifBlank { 
+                        o.optString("original_title").ifBlank { "Bilinmeyen" } 
+                    } 
+                } 
+            }
+            
+            val overview = o.optString("overview").ifBlank { 
+                o.optString("aiOverview").ifBlank { null } 
+            }
             val year = o.optInt("year", 0).takeIf { it > 0 }
             val rating = o.optDouble("rating", 0.0).takeIf { it > 0 }?.toInt()
             val poster = o.optString("poster").ifBlank { null }
@@ -172,14 +233,13 @@ class DiziSol : MainAPI() {
 
             var added = false
             
-            // KRİTİK: Origin header Cloudflare için gerekli
+            // Cloudflare için Origin, Referer ve User-Agent gerekli
             val videoHeaders = mapOf(
                 "Referer" to "https://dizisol.com/",
                 "Origin" to "https://dizisol.com",
                 "User-Agent" to ua
             )
 
-            // Ana kaynak - M3U8 tipi kullan
             if (mainM3u8 != null) {
                 callback(newExtractorLink(
                     source = "DiziSol (Ana)",
@@ -193,7 +253,6 @@ class DiziSol : MainAPI() {
                 added = true
             }
 
-            // Ek kaynaklar
             val sourcesArr = o.optJSONArray("sources")
             if (sourcesArr != null) {
                 for (i in 0 until sourcesArr.length()) {
@@ -253,32 +312,5 @@ class DiziSol : MainAPI() {
             }
             emptyList()
         } catch (e: Exception) { emptyList() }
-    }
-
-    private fun extractTitleOverrides(ssrJson: String): Map<Int, Pair<String?, Int?>> {
-        return try {
-            val root = JSONObject(ssrJson)
-            val queries = root.optJSONObject("state")?.optJSONArray("queries") ?: return emptyMap()
-            for (i in 0 until queries.length()) {
-                val q = queries.getJSONObject(i)
-                val qKey = q.optJSONArray("queryKey") ?: continue
-                if (qKey.length() >= 1 && qKey.optString(0) == "title-overrides") {
-                    val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
-                    val result = mutableMapOf<Int, Pair<String?, Int?>>()
-                    listOf("movie", "tv").forEach { type ->
-                        val obj = data.optJSONObject(type) ?: return@forEach
-                        val keys = obj.keys()
-                        while (keys.hasNext()) {
-                            val key = keys.next()
-                            val tid = key.toIntOrNull() ?: continue
-                            val entry = obj.optJSONObject(key) ?: continue
-                            result[tid] = entry.optString("titleTr").ifBlank { null } to entry.optInt("year", 0).takeIf { it > 0 }
-                        }
-                    }
-                    return result
-                }
-            }
-            emptyMap()
-        } catch (e: Exception) { emptyMap() }
     }
 }
