@@ -25,6 +25,16 @@ class DiziSol : MainAPI() {
 
     private val ua = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
+    // JSON'daki null veya "null" string'lerini guvenli sekilde okuyan yardimci
+    private fun safeStr(o: JSONObject, vararg keys: String): String? {
+        for (key in keys) {
+            if (!o.has(key) || o.isNull(key)) continue
+            val v = o.optString(key, "").trim()
+            if (v.isNotEmpty() && !v.equals("null", ignoreCase = true)) return v
+        }
+        return null
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = "$mainUrl${request.data}"
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return newHomePageResponse(request.name, emptyList()) }
@@ -49,11 +59,7 @@ class DiziSol : MainAPI() {
                 val tmdbId = o.optInt("tmdbId", 0)
                 if (tmdbId == 0) return@mapNotNull null
                 
-                val title = o.optString("titleTr").ifBlank { 
-                    o.optString("title").ifBlank { 
-                        o.optString("original_name").ifBlank { "Bilinmeyen" } 
-                    } 
-                }
+                val title = safeStr(o, "titleTr", "title", "name", "original_name") ?: "İçerik #$tmdbId"
                 val year = o.optInt("year", 0).takeIf { it > 0 }
                 val type = o.optString("type", "movie")
                 val poster = o.optString("poster").ifBlank { null }
@@ -64,7 +70,6 @@ class DiziSol : MainAPI() {
                 }
                 val isMovie = type == "movie"
                 
-                // URL'e tipi ekliyoruz: "?type=movie" veya "?type=tv"
                 val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$type"
 
                 if (isMovie) {
@@ -79,69 +84,41 @@ class DiziSol : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        // URL'den tipi ve tmdbId'yi al
         val typeParam = url.substringAfter("?type=", "").substringBefore("&")
         val isTvByUrl = typeParam == "tv"
         val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull() ?: return null
         
         Log.d("DiziSol", "load: $url (tmdbId=$tmdbId, isTv=$isTvByUrl)")
 
-        // API'yi dene
         var json: String? = null
         try {
-            json = app.get(url.substringBefore("?type=").let { 
-                if (it.contains("?")) it else it 
-            }, headers = mapOf("User-Agent" to ua)).text
-            // Eğer API HTML döndürdüyse (Cloudflare), boş say
-            if (json.startsWith("<!DOCTYPE") || json.startsWith("<html")) {
-                json = null
-            }
-        } catch (e: Exception) {
-            json = null
-        }
+            json = app.get(url, headers = mapOf("User-Agent" to ua)).text
+            if (json.startsWith("<!DOCTYPE") || json.startsWith("<html")) json = null
+        } catch (e: Exception) { json = null }
 
-        // API başarısızsa veya geçersizse, SSR/HTML'den çekmeyi dene
         if (json == null || json.isBlank()) {
-            // SSR HTML'den çek
-            val pageUrl = if (isTvByUrl) {
-                // Dizi ise slug gerekli ama elimizde yok, API ile id'den çekmeyi dene
-                "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0"
-            } else {
-                "$mainUrl/api/movies/by-tmdb/$tmdbId"
-            }
-            
+            val pageUrl = if (isTvByUrl) "$mainUrl/api/movies/by-tmdb/$tmdbId?season=0&episode=0" else "$mainUrl/api/movies/by-tmdb/$tmdbId"
             json = try { 
                 val r = app.get(pageUrl, headers = mapOf("User-Agent" to ua)).text
                 if (r.startsWith("<!DOCTYPE") || r.startsWith("<html")) null else r
             } catch (e: Exception) { null }
         }
 
-        if (json == null || json.isBlank()) {
-            Log.e("DiziSol", "load: API'den veri alınamadı")
-            return null
-        }
+        if (json == null || json.isBlank()) return null
 
         return try {
             val o = JSONObject(json)
             val mediaType = o.optString("mediaType", if (isTvByUrl) "tv" else "movie")
             
-            val title = o.optString("titleTr").ifBlank { 
-                o.optString("title").ifBlank { 
-                    o.optString("original_name").ifBlank { 
-                        o.optString("original_title").ifBlank { "Bilinmeyen" } 
-                    } 
-                } 
-            }
+            val title = safeStr(o, "titleTr", "title", "name", "original_name", "original_title") 
+                ?: if (isTvByUrl) "Dizi #$tmdbId" else "Film #$tmdbId"
             
-            val overview = o.optString("overview").ifBlank { 
-                o.optString("aiOverview").ifBlank { null } 
-            }
+            val overview = safeStr(o, "overview", "aiOverview")
             val year = o.optInt("year", 0).takeIf { it > 0 }
             val rating = o.optDouble("rating", 0.0).takeIf { it > 0 }?.toInt()
             val poster = o.optString("poster").ifBlank { null }
             val genres = o.optString("genres").ifBlank { null }
             
-            // Güvenlik: mediaType "tv" değilse ama URL'de tv varsa, tv kabul et
             val finalIsTv = mediaType == "tv" || isTvByUrl
 
             if (finalIsTv) {
@@ -298,20 +275,12 @@ class DiziSol : MainAPI() {
                         val tmdbId = o.optInt("id", 0)
                         if (tmdbId == 0) return@mapNotNull null
                         
-                        val title = o.optString("titleTr").ifBlank { 
-                            o.optString("name").ifBlank { 
-                                o.optString("title").ifBlank { 
-                                    o.optString("original_name").ifBlank { "Bilinmeyen" } 
-                                } 
-                            } 
-                        }
+                        val title = safeStr(o, "titleTr", "name", "title", "original_name") ?: "İçerik #$tmdbId"
                         
                         val year = o.optString("first_air_date").take(4).toIntOrNull()
                             ?: o.optString("release_date").take(4).toIntOrNull()
                         
                         val poster = o.optString("poster_path").ifBlank { null }
-                        
-                        // URL'e tipi ekle
                         val typeStr = if (isMovie) "movie" else "tv"
                         val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
 
