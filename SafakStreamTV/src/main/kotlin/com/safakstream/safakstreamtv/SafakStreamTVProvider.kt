@@ -33,12 +33,12 @@ class SafakStreamTVProvider : MainAPI() {
         val group: String
     )
 
-    // ŞİMDİLİK SADECE SHOW TV TESTİ İÇİN (http olarak güncellendi)
+    // SADECE SHOW TV TESTİ (200 OK ALDIĞIMIZ DOĞRULANMIŞ LİNK)
     private val channels = listOf(
         Channel(
             name = "Show TV",
             logo = "https://i.ibb.co/Rv0rWhZ/show.png",
-            url = "http://rmtftbjjne.turknet.ercdn.net/bpeytmniqyp/showtv/showtv_720p.m3u8",
+            url = "https://rmtftbjlne.turknet.ercdn.net/bpeytmniqyp/showtv/showtv_720p.m3u8",
             group = "ULUSAL"
         )
     )
