@@ -345,8 +345,8 @@ class SafakStreamCinema : MainAPI() {
                     
                     // SSR'daki supplement alanından bölümleri çıkar (tek istek, hızlı!)
                     if (isTv) {
-                        val supplement = root.optJSONObject("initial")?.optString("supplement").ifBlank { null }
-                        if (supplement != null) {
+                        val supplement: String = root.optJSONObject("initial")?.optString("supplement")?.ifBlank { null } ?: ""
+                        if (supplement.isNotEmpty()) {
                             val epPattern = Regex("""href="(/dizi/[^"]+/(\d+)-sezon-(\d+)-bolum)"[^>]*>([^<]+)</a>""")
                             epPattern.findAll(supplement).forEach { m ->
                                 val season = m.groupValues[2].toIntOrNull() ?: 0
