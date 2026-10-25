@@ -22,30 +22,31 @@ class SafakStreamTV : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get("$mainUrl/tr").document
-        val home = document.select("a").mapNotNull { it.toSearchResult() }.distinctBy { it.url }
+        // Sitedeki kanal listesini bulmak için <li> etiketleri içindeki <a> linklerini alıyoruz
+        val home = document.select("li > a").mapNotNull { it.toSearchResult() }.distinctBy { it.url }
         return newHomePageResponse(HomePageList("Canlı TV Kanalları", home))
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
         val href = this.attr("href")
-        if (!href.contains("/tr/") || href == "/tr" || href.contains("javascript")) return null
+        // Sadece kanal sayfalarına giden linkleri alalım (örneğin /trt1-izle gibi)
+        if (!href.startsWith("/") || href == "/" || href.contains("javascript")) return null
         
-        val title = this.text().trim().ifEmpty { 
-            this.selectFirst("img")?.attr("alt")?.trim() ?: return null 
-        }
-        val poster = this.selectFirst("img")?.attr("src") ?: ""
+        // Kanal adı <a> etiketinin içindeki metindir
+        val title = this.text().trim()
+        if (title.isEmpty()) return null
         
+        // Poster için site yapısında genellikle bir resim yok, şimdilik boş bırakıyoruz
         return newMovieSearchResponse(
             name = title,
             url = fixUrl(href),
             type = TvType.Movie
-        ) {
-            this.posterUrl = fixUrlNull(poster)
-        }
+        )
     }
 
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url).document
+        // Kanal sayfasındaki başlığı alıyoruz (genellikle h1 etiketindedir)
         val title = document.selectFirst("h1")?.text()?.trim() ?: "Canlı Yayın"
         
         return newMovieLoadResponse(
@@ -65,6 +66,7 @@ class SafakStreamTV : MainAPI() {
         try {
             val document = app.get(data).document
             val html = document.html()
+            // HTML içinde m3u8 linki arayalım (Örn: https://...m3u8)
             val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
             val match = m3u8Regex.find(html)
             
