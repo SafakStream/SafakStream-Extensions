@@ -96,6 +96,13 @@ subprojects {
     android {
         namespace = "com.safakstream.${project.name.lowercase()}"
 
+        // Assets klasörünü .cs3 paketine dahil etme (SafakStreamTV için kritik)
+        sourceSets {
+            getByName("main") {
+                assets.srcDirs("src/main/assets")
+            }
+        }
+
         // Termux'taki aapt2, android-36 platformundaki android.jar'ı okuyamıyor.
         // SafakStreamTV için compileSdk/targetSdk 34'e düşürüldü.
         if (project.name == "SafakStreamTV") {
