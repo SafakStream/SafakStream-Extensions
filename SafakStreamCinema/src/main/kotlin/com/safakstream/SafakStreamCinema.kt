@@ -325,6 +325,7 @@ class SafakStreamCinema : MainAPI() {
             var rating: Int? = null
             var poster: String? = null
             var trailerUrl: String? = null
+            val episodesFromSsr = mutableListOf<Episode>()
 
             for (i in 0 until queries.length()) {
                 val q = queries.getJSONObject(i)
@@ -341,6 +342,24 @@ class SafakStreamCinema : MainAPI() {
                     poster = posterUrl(data.optString("poster_path").ifBlank { null })
                     val key = extractTrailerKeyFromJson(data)
                     if (key != null) trailerUrl = "https://www.youtube.com/watch?v=$key"
+                    
+                    // SSR'daki supplement alanından bölümleri çıkar (tek istek, hızlı!)
+                    if (isTv) {
+                        val supplement = root.optJSONObject("initial")?.optString("supplement").ifBlank { null }
+                        if (supplement != null) {
+                            val epPattern = Regex("""href="(/dizi/[^"]+/(\d+)-sezon-(\d+)-bolum)"[^>]*>([^<]+)</a>""")
+                            epPattern.findAll(supplement).forEach { m ->
+                                val season = m.groupValues[2].toIntOrNull() ?: 0
+                                val episode = m.groupValues[3].toIntOrNull() ?: 0
+                                val epApiUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?season=$season&episode=$episode"
+                                episodesFromSsr.add(newEpisode(epApiUrl) {
+                                    this.name = "$episode. Bölüm"
+                                    this.season = season
+                                    this.episode = episode
+                                })
+                            }
+                        }
+                    }
                     break
                 }
             }
@@ -351,7 +370,7 @@ class SafakStreamCinema : MainAPI() {
             val browserUrl = if (isTv) "https://www.themoviedb.org/tv/$tmdbId" else "https://www.themoviedb.org/movie/$tmdbId"
 
             if (isTv) {
-                val episodes = loadEpisodesForSeries(tmdbId)
+                val episodes = if (episodesFromSsr.isNotEmpty()) episodesFromSsr else loadEpisodesForSeries(tmdbId)
                 newTvSeriesLoadResponse(finalTitle, browserUrl, TvType.TvSeries, episodes) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
                     this.score = rating?.let { Score.from10(it.toDouble()) }
