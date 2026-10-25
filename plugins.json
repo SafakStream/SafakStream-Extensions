@@ -197,7 +197,7 @@
             "SafakStream"
         ],
         "description": "SafakStream Cinema - Binlerce film ve diziyi Full HD kalitesinde, T\u00fcrk\u00e7e altyaz\u0131 ve dublaj se\u00e7enekleriyle ke\u015ffedin.",
-        "fileSize": 35055,
+        "fileSize": 36082,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -206,7 +206,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png",
         "apiVersion": 1,
-        "fileHash": "sha256-bb69815786a5cbb3f7ff656d92c69fe705ab209a30a833b498cfcde66e416ce6"
+        "fileHash": "sha256-ab09879705ae54e535ab8b4650d37b1e9f3bd518d1268cb4a2f04750c43aabe5"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamHub.cs3",
