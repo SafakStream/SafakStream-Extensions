@@ -36,10 +36,11 @@ class SafakStreamTVProvider : MainAPI() {
     companion object {
         private var cachedChannels: List<Channel>? = null
         
+        // M3U içeriği doğrudan buraya gömüldü
         private val M3U_CONTENT = listOf(
 "#EXTM3U",
         "#EXTINF:-1 tvg-name=\"ATV\" tvg-id=\"ATV.tr\" tvg-logo=\"https://i.ibb.co/DwFJ0vn/atv.png\" group-title=\"ULUSAL\",ATV",
-        "about:blank",
+        "http://116.202.238.88/ATV_TR/tracks-v1a1/index.m3u8",
         "#EXTINF:-1 tvg-name=\"FOX\" tvg-id=\"Fox.tr\" tvg-logo=\"https://i.ibb.co/QvTPfhs/now.png\" group-title=\"ULUSAL\",NOW",
         "http://116.202.238.88/FOXTV_TR/index.m3u8",
         "#EXTINF:-1 tvg-name=\"TRT 1\" tvg-id=\"TRT1.tr\" tvg-logo=\"https://i.ibb.co/thr6mVk/trt-1.png\" group-title=\"ULUSAL\",TRT 1",
@@ -55,7 +56,7 @@ class SafakStreamTVProvider : MainAPI() {
         "#EXTINF:-1 tvg-name=\"TV 8\" tvg-id=\"TV8.tr\" tvg-logo=\"https://i.ibb.co/Kr5SFY1/tv8.png\" group-title=\"ULUSAL\",TV 8",
         "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788",
         "#EXTINF:-1 tvg-name=\"SHOW TV\" tvg-id=\"ShowTV.tr\" tvg-logo=\"https://i.ibb.co/Rv0rWhZ/show.png\" group-title=\"ULUSAL\",SHOW TV",
-        "https://ciner.daioncdn.net/showtv/showtv.m3u8?ce=3&app=4bc856ef-4c68-4a94-bc87-37dfaaa66558",
+        "https://rmtftbjjne.turknet.ercdn.net/bpeytmniqyp/showtv/showtv_720p.m3u8",
         "#EXTINF:-1 tvg-name=\"TV8 International\" tvg-id=\"TV8International.tr\" tvg-logo=\"https://i.ibb.co/ykSLX8Q/tv8-int.png\" group-title=\"ULUSAL\",TV 8 INT",
         "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788",
         "#EXTINF:-1 tvg-name=\"TRT Turk\" tvg-id=\"TRTTurk.tr\" tvg-logo=\"https://i.ibb.co/zN1BK38/trt-turk.png\" group-title=\"ULUSAL\",TRT TURK",
@@ -148,6 +149,8 @@ class SafakStreamTVProvider : MainAPI() {
         "https://live.artidijitalmedya.com/artidijital_anadolunet/anadolunet/playlist.m3u8",
         "#EXTINF:-1 tvg-id=\"BenguturkTV.tr\",BENGÜTÜRK TV (720p) [Not 24/7]",
         "https://tv.ensonhaber.com/benguturk/benguturk.m3u8",
+        "#EXTINF:-1 tvg-id=\"ATV.tr\",ATV (720p)",
+        "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/atv/atv.m3u8",
         "#EXTINF:-1 tvg-id=\"BloombergHT.tr\",Bloomberg HT (720p) [Not 24/7]",
         "https://tv.ensonhaber.com/bloomberght/bloomberght.m3u8",
         "#EXTINF:-1 tvg-id=\"BirTV.tr\",Bir TV (720p)",
@@ -470,25 +473,6 @@ class SafakStreamTVProvider : MainAPI() {
     ): Boolean {
         val ch = findChannelByUrl(data) ?: return false
 
-        // ATV icin token'siz (temiz) dogrudan CDN linki kullaniyoruz
-        if (ch.name == "ATV") {
-            val cleanUrl = "https://trkvz.daioncdn.net/atv/atv_1080p.m3u8"
-            callback.invoke(
-                newExtractorLink(
-                    source = this.name,
-                    name = ch.name,
-                    url = cleanUrl,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = "https://www.atv.com.tr/"
-                    this.headers = mapOf("Origin" to "https://www.atv.com.tr")
-                    this.quality = Qualities.Unknown.value
-                }
-            )
-            return true
-        }
-
-        // Diger kanallar icin
         callback.invoke(
             newExtractorLink(
                 source = this.name,
@@ -496,7 +480,9 @@ class SafakStreamTVProvider : MainAPI() {
                 url = ch.url,
                 type = ExtractorLinkType.M3U8
             ) {
-                this.referer = ""
+                // Referer'ı canlitv.you olarak ayarlıyoruz (güvenlik duvarı için)
+                this.referer = "https://www.canlitv.you/"
+                this.headers = mapOf("Origin" to "https://www.canlitv.you")
                 this.quality = Qualities.Unknown.value
             }
         )
