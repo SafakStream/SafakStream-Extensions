@@ -25,6 +25,7 @@ class SafakStreamCinema : MainAPI() {
         "/filmler" to "Filmler",
         "turkishTV" to "Türk Dizileri",
         "turkishMovies" to "Türk Filmleri",
+        "random" to "🎲 Rastgele",
     )
 
     private val ua = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
@@ -108,6 +109,7 @@ class SafakStreamCinema : MainAPI() {
             val items = when (request.data) {
                 "top10" -> parseTop10()
                 "turkishTV", "turkishMovies" -> parseTmdbRaf(request.data)
+                "random" -> parseRandom()
                 else -> parseLibraryPage(request.data)
             }
             newHomePageResponse(request.name, items)
@@ -197,6 +199,35 @@ class SafakStreamCinema : MainAPI() {
             } catch (e: Exception) { }
         }
         return results
+    }
+
+    private suspend fun parseRandom(): List<SearchResponse> {
+        val allItems = mutableListOf<SearchResponse>()
+        try {
+            val diziHtml = app.get("$mainUrl/diziler", headers = mapOf("User-Agent" to ua)).text
+            val pattern = Regex("""<a[^>]*href="(/dizi/[^"]+)"[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]+)"""", RegexOption.DOT_MATCHES_ALL)
+            pattern.findAll(diziHtml).take(20).forEach { match ->
+                try {
+                    val slug = match.groupValues[1]
+                    val poster = match.groupValues[2]
+                    val title = decodeHtmlEntities(match.groupValues[3].removeSuffix(" izle afişi").removeSuffix(" izle").trim())
+                    allItems.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = poster })
+                } catch (e: Exception) { }
+            }
+        } catch (e: Exception) { }
+        try {
+            val filmHtml = app.get("$mainUrl/filmler", headers = mapOf("User-Agent" to ua)).text
+            val pattern = Regex("""<a[^>]*href="(/film/[^"]+)"[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]+)"""", RegexOption.DOT_MATCHES_ALL)
+            pattern.findAll(filmHtml).take(20).forEach { match ->
+                try {
+                    val slug = match.groupValues[1]
+                    val poster = match.groupValues[2]
+                    val title = decodeHtmlEntities(match.groupValues[3].removeSuffix(" izle afişi").removeSuffix(" izle").trim())
+                    allItems.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { this.posterUrl = poster })
+                } catch (e: Exception) { }
+            }
+        } catch (e: Exception) { }
+        return allItems.shuffled().take(15)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
