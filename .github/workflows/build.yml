@@ -39,11 +39,21 @@ jobs:
           distribution: 'zulu'
           java-version: 17
 
+      - name: Clean Gradle caches
+        run: |
+          cd $GITHUB_WORKSPACE/src
+          echo "Removing Gradle caches..."
+          rm -rf ~/.gradle/caches
+          rm -rf .gradle
+          rm -rf build
+          rm -rf SafakStreamCinema/build
+          echo "Caches cleared"
+
       - name: Build Plugins
         run: |
           cd $GITHUB_WORKSPACE/src
           chmod +x gradlew
-          ./gradlew make makePluginsJson
+          ./gradlew clean make makePluginsJson
           ./gradlew ensureJarCompatibility
           cp -f **/build/*.cs3 $GITHUB_WORKSPACE/builds/ || true
           cp -f **/build/*.jar $GITHUB_WORKSPACE/builds/ || true
