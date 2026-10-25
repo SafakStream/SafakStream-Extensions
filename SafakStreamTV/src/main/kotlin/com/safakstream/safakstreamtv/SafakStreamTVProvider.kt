@@ -7,6 +7,7 @@ import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
@@ -473,6 +474,37 @@ class SafakStreamTVProvider : MainAPI() {
     ): Boolean {
         val ch = findChannelByUrl(data) ?: return false
 
+        // ATV için resmi siteden dinamik link çekme
+        if (ch.name == "ATV") {
+            try {
+                val res = app.get("https://www.atv.com.tr/canli-yayin", headers = mapOf(
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ))
+                // Sayfa içindeki m3u8 linkini regex ile bul
+                val m3u8Regex = Regex("""(https?://[^"']+?\.m3u8[^"']*)""")
+                val m3u8Url = m3u8Regex.find(res.text)?.value
+
+                if (m3u8Url != null) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = ch.name,
+                            url = m3u8Url,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = "https://www.atv.com.tr/"
+                            this.headers = mapOf("Origin" to "https://www.atv.com.tr")
+                            this.quality = Qualities.Unknown.value
+                        }
+                    )
+                    return true
+                }
+            } catch (e: Exception) {
+                // Hata olursa statik linke düşecek
+            }
+        }
+
+        // Diğer kanallar için statik link kullanımı
         callback.invoke(
             newExtractorLink(
                 source = this.name,
