@@ -83,12 +83,12 @@ subprojects {
             version = 1
         }
 
-        // DiziSol özel metadata
-        if (project.name == "DiziSol") {
-            description = "DiziSol - Film ve Dizi İzleme Platformu (dizisol.com)"
+        // SafakStream Cinema özel metadata
+        if (project.name == "SafakStreamCinema") {
+            description = "SafakStream Cinema - Binlerce film ve diziyi Full HD kalitesinde, Türkçe altyazı ve dublaj seçenekleriyle keşfedin."
             language = "tr"
             tvTypes = listOf("TvSeries", "Movie")
-            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziSol.png"
+            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png"
             version = 1
         }
     }
