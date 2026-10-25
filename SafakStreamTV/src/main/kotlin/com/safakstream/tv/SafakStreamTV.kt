@@ -1,8 +1,17 @@
 package com.safakstream.tv
 
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
+import com.lagradost.cloudstream3.plugins.Plugin
 import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
+
+@CloudstreamPlugin
+class SafakStreamTVPlugin : Plugin() {
+    override fun load(context: android.content.Context) {
+        registerMainAPI(SafakStreamTV())
+    }
+}
 
 class SafakStreamTV : MainAPI() {
     override var mainUrl = "https://www.canlitv.you"
@@ -26,7 +35,6 @@ class SafakStreamTV : MainAPI() {
         }
         val poster = this.selectFirst("img")?.attr("src") ?: ""
         
-        // Hata veren newLiveSearchResponse yerine newMovieSearchResponse kullanıyoruz
         return newMovieSearchResponse(
             name = title,
             url = fixUrl(href),
