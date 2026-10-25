@@ -263,6 +263,43 @@ class SafakStreamCinema : MainAPI() {
         if (url.contains("/film/") || url.contains("/dizi/")) {
             return loadFromPage(url)
         }
+        
+        // API URL'si ise, önce slug bulmayı dene (hızlı SSR için)
+        if (url.contains("/api/movies/by-tmdb/")) {
+            try {
+                val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull()
+                val typeParam = url.substringAfter("?type=", "").substringBefore("&")
+                val isTvApi = typeParam == "tv"
+                if (tmdbId != null) {
+                    val apiJson = app.get(url, headers = mapOf("User-Agent" to ua)).text
+                    if (!apiJson.startsWith("<")) {
+                        val o = JSONObject(apiJson)
+                        val titleForSearch = safeStr(o, "titleTr", "title", "name", "original_name")
+                        if (titleForSearch != null) {
+                            val searchUrl = "$mainUrl/api/movies/search?q=" + URLEncoder.encode(titleForSearch, "UTF-8")
+                            val searchJson = try { app.get(searchUrl, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { null }
+                            if (searchJson != null && !searchJson.startsWith("<") && searchJson != "[]") {
+                                val arr = JSONArray(searchJson)
+                                for (i in 0 until arr.length()) {
+                                    val s = arr.getJSONObject(i)
+                                    if (s.optInt("tmdbId", 0) == tmdbId) {
+                                        val slug = s.optString("slug").ifBlank { null }
+                                        if (slug != null) {
+                                            val pageUrl = "$mainUrl/" + (if (isTvApi) "dizi/" else "film/") + slug
+                                            Log.d("SafakStreamCinema", "Slug bulundu: $pageUrl")
+                                            val result = loadFromPage(pageUrl)
+                                            if (result != null) return result
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SafakStreamCinema", "Slug arama hatası: ${e.message}")
+            }
+        }
         val typeParam = url.substringAfter("?type=", "").substringBefore("&")
         val isTvByUrl = typeParam == "tv"
         val tmdbId = url.substringAfterLast("/").substringBefore("?").toIntOrNull() ?: return null
