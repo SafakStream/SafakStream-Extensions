@@ -33,409 +33,25 @@ class SafakStreamTVProvider : MainAPI() {
         val group: String
     )
 
-    companion object {
-        private var cachedChannels: List<Channel>? = null
-        
-        // M3U içeriği doğrudan buraya gömüldü
-        private val M3U_CONTENT = listOf(
-"#EXTM3U",
-        "#EXTINF:-1 tvg-name=\"ATV\" tvg-id=\"ATV.tr\" tvg-logo=\"https://i.ibb.co/DwFJ0vn/atv.png\" group-title=\"ULUSAL\",ATV",
-        "http://116.202.238.88/ATV_TR/tracks-v1a1/index.m3u8",
-        "#EXTINF:-1 tvg-name=\"FOX\" tvg-id=\"Fox.tr\" tvg-logo=\"https://i.ibb.co/QvTPfhs/now.png\" group-title=\"ULUSAL\",NOW",
-        "http://116.202.238.88/FOXTV_TR/index.m3u8",
-        "#EXTINF:-1 tvg-name=\"TRT 1\" tvg-id=\"TRT1.tr\" tvg-logo=\"https://i.ibb.co/thr6mVk/trt-1.png\" group-title=\"ULUSAL\",TRT 1",
-        "https://tv-trt1.medya.trt.com.tr/master_720.m3u8",
-        "#EXTINF:-1 tvg-name=\"CNBC-E\" tvg-id=\"CNBC-E.tr\" tvg-logo=\"https://i.ibb.co/5FjLh2Z/cnbc-e.png\" group-title=\"ULUSAL\",CNBC-E",
-        "https://raw.githubusercontent.com/tecotv2025/tecotv/refs/heads/main/playlist/CNBC_E.m3u8",
-        "#EXTINF:-1 tvg-name=\"TGRT HABER HD\" tvg-id=\"TGRTHaber.tr\" tvg-logo=\"https://i.ibb.co/K5frjVY/tgrt-haber.png\" group-title=\"HABER\",TGRT HABER HD",
-        "https://canli.tgrthaber.com/tgrt.m3u8",
-        "#EXTINF:-1 tvg-name=\"STAR TV\" tvg-id=\"StarTV.tr\" tvg-logo=\"https://i.ibb.co/hY3Z8zx/star-tv.png\" group-title=\"ULUSAL\",STAR TV",
-        "https://raw.githubusercontent.com/ipstreet312/freeiptv/refs/heads/master/ressources/tur/star.m3u8",
-        "#EXTINF:-1 tvg-name=\"EURO D\" tvg-id=\"EuroD.tr\" tvg-logo=\"https://i.ibb.co/jMQTJmh/euro-d.png\" group-title=\"ULUSAL\",EURO D",
-        "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/track_4_1000/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"TV 8\" tvg-id=\"TV8.tr\" tvg-logo=\"https://i.ibb.co/Kr5SFY1/tv8.png\" group-title=\"ULUSAL\",TV 8",
-        "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788",
-        "#EXTINF:-1 tvg-name=\"SHOW TV\" tvg-id=\"ShowTV.tr\" tvg-logo=\"https://i.ibb.co/Rv0rWhZ/show.png\" group-title=\"ULUSAL\",SHOW TV",
-        "https://rmtftbjjne.turknet.ercdn.net/bpeytmniqyp/showtv/showtv_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"TV8 International\" tvg-id=\"TV8International.tr\" tvg-logo=\"https://i.ibb.co/ykSLX8Q/tv8-int.png\" group-title=\"ULUSAL\",TV 8 INT",
-        "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788",
-        "#EXTINF:-1 tvg-name=\"TRT Turk\" tvg-id=\"TRTTurk.tr\" tvg-logo=\"https://i.ibb.co/zN1BK38/trt-turk.png\" group-title=\"ULUSAL\",TRT TURK",
-        "https://tv-trtturk.medya.trt.com.tr/master_720.m3u8",
-        "#EXTINF:-1 tvg-name=\"TRT 2\" tvg-id=\"TRT2.tr\" tvg-logo=\"https://i.ibb.co/0JcxnSL/trt-2.png\" group-title=\"ULUSAL\",TRT 2",
-        "https://tv-trt2.medya.trt.com.tr/master_720.m3u8",
-        "#EXTINF:-1 tvg-name=\"SHOW MAX\" tvg-id=\"ShowMax.tr\" tvg-logo=\"https://i.ibb.co/qJnvXJQ/show-max.png\" group-title=\"ULUSAL\",SHOW MAX",
-        "https://raw.githubusercontent.com/rideordie16/YouTube/main/ch/showmax.m3u8",
-        "#EXTINF:-1 tvg-name=\"BEYAZ TV\" tvg-id=\"BeyazTV.tr\" tvg-logo=\"https://i.ibb.co/1mftzTP/beyaz-tv.png\" group-title=\"ULUSAL\",BEYAZ TV",
-        "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8",
-        "#EXTINF:-1 tvg-name=\"TEVE2\" tvg-id=\"Teve2.tr\" tvg-logo=\"https://i.ibb.co/JRpJc2P/teve2.png\" group-title=\"ULUSAL\",TEVE 2",
-        "https://live.duhnet.tv/S2/HLS_LIVE/teve2np/track_4_1000/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"KANAL 7 AVRUPA\" tvg-logo=\"https://i.ibb.co/F4P8ddm/kanal-7-avrupa.png\" group-title=\"ULUSAL\",KANAL 7 AVRUPA",
-        "https://livetv.radyotvonline.net/kanal7live/kanal7avr/chunklist.m3u8",
-        "#EXTINF:-1 tvg-name=\"360\" tvg-id=\"360.tr\" tvg-logo=\"https://i.ibb.co/s3gJCGL/360.png\" group-title=\"ULUSAL\",360",
-        "https://turkmedya-live.ercdn.net/tv360/tv360_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"TV 4\" tvg-id=\"TV4.tr\" tvg-logo=\"https://i.postimg.cc/FKkHW8KK/tv4.png\" group-title=\"ULUSAL\",TV 4",
-        "https://turkmedya-live.ercdn.net/tv4/tv4_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"BIR TV\" tvg-id=\"\" tvg-logo=\"https://i.ibb.co/dDdPMWq/birtv.png\" group-title=\"ULUSAL\",BIR TV",
-        "https://edge1.socialsmart.tv/birtv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"Tivi 6\" tvg-id=\"Tivi6.tr\" tvg-logo=\"https://i.ibb.co/9H3DMWz/tivi6.png\" group-title=\"ULUSAL\",TIVI 6",
-        "https://live.artidijitalmedya.com/artidijital_tivi6/tivi6/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"LIFE TV\" tvg-id=\"\" tvg-logo=\"https://i.ibb.co/9hCVNks/life-tv.png\" group-title=\"ULUSAL\",LIFE TV",
-        "https://live.artidijitalmedya.com/artidijital_lifetv/lifetv/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"TJK TV\" tvg-id=\"TJKTV.tr\" tvg-logo=\"https://i.ibb.co/PrkXrRn/tjk-tv.png\" group-title=\"SPOR\",TJK TV",
-        "https://tjktv-live.tjk.org/tjktv_1080p.m3u8",
-        "#EXTINF:-1 tvg-name=\"FB TV\" tvg-id=\"FBTV.tr\" tvg-logo=\"https://i.ibb.co/315SYpK/fb-tv.png\" group-title=\"SPOR\",FB TV",
-        "https://1hskrdto.rocketcdn.com/fenerbahcetv.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"TRT AVAZ\" tvg-id=\"TRTAvaz.tr\" tvg-logo=\"https://i.ibb.co/Mnhmxsn/trt-avaz.png\" group-title=\"BELGESEL\",TRT AVAZ",
-        "https://tv-trtavaz.medya.trt.com.tr/master_720.m3u8",
-        "#EXTINF:-1 tvg-name=\"TRT HABER\" tvg-id=\"TRTHaber.tr\" tvg-logo=\"https://i.ibb.co/NCvRHC3/trt-haber.png\" group-title=\"HABER\",TRT HABER",
-        "https://tv-trthaber.medya.trt.com.tr/master_720.m3u8",
-        "#EXTINF:-1 tvg-name=\"NTV\" tvg-id=\"NTV.tr\" tvg-logo=\"https://i.ibb.co/gRR1zpm/ntv.png\" group-title=\"HABER\",NTV",
-        "https://dogus.daioncdn.net/ntv/ntv_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"HABER GLOBAL\" tvg-id=\"HaberGlobal.tr\" tvg-logo=\"https://i.ibb.co/4ZpZWkf/haber-global.png\" group-title=\"HABER\",HABER GLOBAL",
-        "https://tv.ensonhaber.com/haberglobal/haberglobal_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"HALK TV\" tvg-id=\"HalkTV.tr\" tvg-logo=\"https://i.ibb.co/DYhmg6k/halk-tv.png\" group-title=\"HABER\",HALK TV",
-        "https://halktv.daioncdn.net/halktv/halktv_1080p.m3u8?app=c86957d3-74a7-44da-9ad2-dc358c769609",
-        "#EXTINF:-1 tvg-name=\"TV 100\" tvg-id=\"TV100.tr\" tvg-logo=\"https://i.ibb.co/zZnBCWt/tv100.png\" group-title=\"HABER\",TV 100",
-        "https://tv100.daioncdn.net/tv100/tv100_1080p.m3u8?app=web",
-        "#EXTINF:-1 tvg-name=\"BENGUTURK TV\" tvg-id=\"BenguturkTV.tr\" tvg-logo=\"https://i.ibb.co/CHWhMvQ/bengu-turk.png\" group-title=\"HABER\",BENGU TURK",
-        "https://tv.ensonhaber.com/benguturk/benguturk_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"Akit TV\" tvg-id=\"AkitTV.tr\" tvg-logo=\"https://i.ibb.co/MBwzD2b/akit-tv.png\" group-title=\"HABER\",AKIT TV",
-        "https://akittv-live.ercdn.net/akittv/akittv_720p.m3u8",
-        "#EXTINF:-1 tvg-name=\"KRAL POP\" tvg-id=\"Kral.Pop.Radyo.tr\" tvg-logo=\"https://i.ibb.co/vk0bKz0/kral-pop.png\" group-title=\"MUZIK\",KRAL POP",
-        "http://dygvideo.dygdigital.com/live/hls/kralpop",
-        "#EXTINF:-1 tvg-name=\"TURKHABER\" tvg-id=\"TurkHaberTV.tr\" tvg-logo=\"https://i.ibb.co/ySv65wg/turk-haber.png\" group-title=\"HABER\",TURKHABER",
-        "https://edge1.socialsmart.tv/turkhaber/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"Number 1 TV\" tvg-id=\"Number1TV.tr\" tvg-logo=\"https://i.ibb.co/sybLTBG/nr1.png\" group-title=\"MUZIK\",NR1",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e17cd6360b_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"TVNET\" tvg-id=\"TVNET.tr\" tvg-logo=\"https://i.ibb.co/2jtzN6F/tvnet.png\" group-title=\"HABER\",TVNET",
-        "https://mn-nl.mncdn.com/tvnet/tvnet/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"NR1 FASHION ONE\" tvg-id=\"\" tvg-logo=\"https://i.ibb.co/HV0x9JZ/fashion-one.png\" group-title=\"MUZIK\",NR1 FASHION ONE",
-        "http://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2ee6997cb_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"Number 1 Ask\" tvg-id=\"Number1Ask.tr\" tvg-logo=\"https://i.ibb.co/5cJ0KtQ/nr1-ask.png\" group-title=\"MUZIK\",NR1 ASK",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e18f9cea15_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"Number 1 Dance\" tvg-id=\"Number1Dance.tr\" tvg-logo=\"https://i.ibb.co/kXFSFTN/nr1-dance.png\" group-title=\"MUZIK\",NR1 DANCE",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2aa8acf44_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"Number 1 Damar\" tvg-id=\"Number1Damar.tr\" tvg-logo=\"https://i.ibb.co/2yCF7ms/nr1-damar.png\" group-title=\"MUZIK\",NR1 DAMAR",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e198784bdc_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"TRT Muzik\" tvg-id=\"TRTMuzik.tr\" tvg-logo=\"https://i.ibb.co/4gbPpzC/trt-muzik.png\" group-title=\"MUZIK\",TRT MUZIK",
-        "https://tv-trtmuzik.medya.trt.com.tr/master_720.m3u8",
-        "#EXTINF:-1 tvg-name=\"TATLISES TV\" tvg-id=\"Tatlıses.Tv.tr\" tvg-logo=\"https://i.ibb.co/yRy9zwt/tatlises-tv.png\" group-title=\"MUZIK\",TATLISES TV",
-        "https://live.artidijitalmedya.com/artidijital_tatlisestv/tatlisestv/chunks.m3u8",
-        "#EXTINF:-1 tvg-name=\"POWER TURK TAPTAZE\" tvg-id=\"\" tvg-logo=\"https://i.ibb.co/F5K5xs9/powerturk-taptaze.png\" group-title=\"MUZIK\",POWER TURK TAPTAZE",
-        "http://livetv.powerapp.com.tr/pturktaptaze/taptaze.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-name=\"Dream Turk\" tvg-id=\"DreamTurk.tr\" tvg-logo=\"https://i.ibb.co/fxRrKmB/dream-turk.png\" group-title=\"MUZIK\",DREAM TURK",
-        "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"4UTV.tr\",4U TV (720p)",
-        "https://hls.4utv.live/hls/stream.m3u8",
-        "#EXTINF:-1 tvg-id=\"360.tr\",360 TV (720p) [Not 24/7]",
-        "https://turkmedya-live.ercdn.net/tv360/tv360.m3u8",
-        "#EXTINF:-1 tvg-id=\"AfroturkTV.tr\",Afroturk TV (1080p)",
-        "https://edge.socialsmart.tv/naturaltv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"AkitTV.tr\",Akit TV (720p)",
-        "https://akittv-live.ercdn.net/akittv/akittv.m3u8",
-        "#EXTINF:-1 tvg-id=\"AlZahraTVTurkic.tr\",Al-Zahra TV Turkic (720p) [Not 24/7]",
-        "https://live.al-zahratv.com/live/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"ArasTV.tr\",ARAS TV (576p) [Not 24/7]",
-        "http://1.rtmp.org/tv217/yayin.stream/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"AlmahriahTV.tr\",Almahriah TV (576p)",
-        "https://starmenajo.com/hls/almahriah/index.m3u8",
-        "#EXTINF:-1 tvg-id=\"AlanyaPostaTV.tr\",Alanya Posta TV (1080p)",
-        "https://api-tv3.yayin.com.tr/postatv/postatv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"AltasTV.tr\",Altas TV (1080p)",
-        "https://edge1.socialsmart.tv/altastv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"AksuTV.tr\",Aksu TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_aksutv/aksutv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"AnadoluNetTV.tr\",Anadolu Net TV (1080p)",
-        "https://live.artidijitalmedya.com/artidijital_anadolunet/anadolunet/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"BenguturkTV.tr\",BENGÜTÜRK TV (720p) [Not 24/7]",
-        "https://tv.ensonhaber.com/benguturk/benguturk.m3u8",
-        "#EXTINF:-1 tvg-id=\"ATV.tr\",ATV (720p)",
-        "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/atv/atv.m3u8",
-        "#EXTINF:-1 tvg-id=\"BloombergHT.tr\",Bloomberg HT (720p) [Not 24/7]",
-        "https://tv.ensonhaber.com/bloomberght/bloomberght.m3u8",
-        "#EXTINF:-1 tvg-id=\"BirTV.tr\",Bir TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_birtv/birtv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"CanTV.tr\",Can TV (720p)",
-        "http://canbroadcast.com:7000/canlican/tv.m3u8",
-        "#EXTINF:-1 tvg-id=\"BloombergHT.tr\",Bloomberg HT (720p)",
-        "https://ciner.daioncdn.net/bloomberght/bloomberght.m3u8",
-        "#EXTINF:-1 tvg-id=\"ASTV.tr\",Bursa AS TV (900p)",
-        "https://live.artidijitalmedya.com/artidijital_astv/astv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"BRTV.tr\",BRTV (720p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_brtv/brtv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"CayTV.tr@SD\",Cay TV (720p)",
-        "https://edge1.socialsmart.tv/caytv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"CiftciTV.tr\",Çiftçi TV (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"DenizPostasiTV.tr\",Deniz Postası TV (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_denizpostasi/denizpostasi/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"DHA.tr\",DHA (720p) [Not 24/7]",
-        "https://603c568fccdf5.streamlock.net/live/dhaweb1_C5efC/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"DimTV.tr\",DİM TV (720p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_dimtv/dimtv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"DostTV.tr\",Dost TV (576p)",
-        "https://dost.stream.emsal.im/tv/live.m3u8",
-        "#EXTINF:-1 tvg-id=\"DreamTurk.tr\",Dream Türk (720p)",
-        "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"ErzurumWebTV.tr\",Erzurum Web TV (720p)",
-        "https://win29.yayin.com.tr/erzurumwebtv/erzurumwebtv/iptvdelisi.m3u8",
-        "#EXTINF:-1 tvg-id=\"ESTV.tr\",ES TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_estv/estv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"ERTV.tr\",Er TV (1080p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_ertv_new/ertv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"ETVManisa.tr\",ETV Manisa (1080p) [Not 24/7]",
-        "https://edge1.socialsmart.tv/manisaetv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"ETVKayseri.tr\",ETV Kayseri (720p)",
-        "https://live.artidijitalmedya.com/artidijital_etv/etv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"EuroD.tr\",Euro D (720p)",
-        "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"FinansTurkTV.tr\",Finans Turk TV (720p)",
-        "https://yayin30.haber100.com/live/finansturk/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"FortunaTV.tr\",Fortuna TV",
-        "https://edge1.socialsmart.tv/ftvturk/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"GoncaTV.tr\",Gonca TV (720p)",
-        "https://edge1.socialsmart.tv/goncatv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"GRT.tr\",GRT (900p)",
-        "https://live.artidijitalmedya.com/artidijital_grt/grt1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"GuneydoguTV.tr\",Guneydogu TV (720p)",
-        "https://edge1.socialsmart.tv/gtv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"GZT.tr\",GZT (1080p)",
-        "https://mn-nl.mncdn.com/gzttv/gzttv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"HaberGlobal.tr\",Haber Global (720p) [Not 24/7]",
-        "https://tv.ensonhaber.com/haberglobal/haberglobal.m3u8",
-        "#EXTINF:-1 tvg-id=\"Haber61TV.tr\",Haber61 TV (720p) [Not 24/7]",
-        "https://cdn-haber61tv.yayin.com.tr/haber61tv/smil:haber61tv.smil/index.m3u8",
-        "#EXTINF:-1 tvg-id=\"HaberturkTV.tr\",Habertürk TV (720p) [Not 24/7]",
-        "https://tv.ensonhaber.com/haberturk/haberturk.m3u8",
-        "#EXTINF:-1 tvg-id=\"HalkTV.tr\",Halk TV (1080p)",
-        "https://halktv-live.daioncdn.net/halktv/halktv.m3u8",
-        "#EXTINF:-1 tvg-id=\"HelwaTV.tr\",Helwa TV (1080p)",
-        "https://raw.githubusercontent.com/ipstreet312/freeiptv/master/ressources/dzflix/helwa.m3u8",
-        "#EXTINF:-1 tvg-id=\"Kanal7.tr\",Kanal 7 (1080p) [Not 24/7]",
-        "https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8",
-        "#EXTINF:-1 tvg-id=\"Kanal7Avrupa.tr\",Kanal 7 Avrupa (720p) [Not 24/7]",
-        "https://livetv.radyotvonline.net/kanal7live/kanal7avr/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Kanal32.tr\",Kanal 32 (720p) [Not 24/7]",
-        "https://edge1.socialsmart.tv/kanal32/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"\",KANAL 58 (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_kanal58/kanal58/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Kanal23.tr\",Kanal 23 (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_kanal23/kanal23/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Kanal68.tr\",Kanal 68 (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_kanal68/kanal68/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Kanal26.tr\",Kanal 26 (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_kanal26/kanal26/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KanalHayat.tr\",Kanal Hayat (1080p)",
-        "https://tbn02a.ltnschedule.com/hls/nx21i.m3u8",
-        "#EXTINF:-1 tvg-id=\"KanalFirat.tr\",Kanal Firat (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_kanalfirat/kanalfirat/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KanalDDrama.tr\",Kanal D Drama (1080p)",
-        "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01602-themahqfrance-vivekanald-samsungspain/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KanalUrfa.tr\",Kanal Urfa (576p) [Not 24/7]",
-        "https://edge1.socialsmart.tv/kanalurfa/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KardelenTV.tr\",Kardelen TV (1080p)",
-        "https://edge1.socialsmart.tv/kardelentv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KanalZ.tr\",Kanal Z (1080p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_kanalz/kanalz/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KayTV.tr\",Kay TV (900p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_kaytv/kaytv1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KayTV.tr\",Kay TV (576p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_kaytv/kaytv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KentTurk.tr\",Kent Türk TV (1080p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_kentturktv/kentturktv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KentTurk.tr\",Kent Türk TV (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_38kenttv/38kenttv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KonyaOlayTV.tr\",Konya Olay TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_konyaolaytv/konyaolaytv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"KralPopTV.tr\",KRAL Pop TV (720p)",
-        "https://dogus-live.daioncdn.net/kralpoptv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"LalegulTV.tr\",Lalegul TV (1080p)",
-        "https://lbl.netmedya.net/hls/lalegultv.m3u8",
-        "#EXTINF:-1 tvg-id=\"LineTV.tr\",Line TV (720p) [Not 24/7]",
-        "https://edge1.socialsmart.tv/linetv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"LifeTV.tr\",Life TV (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_lifetv/lifetv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"MedMuzik.tr\",Med Muzik (1080p)",
-        "http://54.36.110.140/live3/live3.m3u8",
-        "#EXTINF:-1 tvg-id=\"MaviKaradenizTV.tr\",MaviKaradeniz (1080p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_mavikaradeniz/mavikaradeniz/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"MekameleenTV.tr\",Mekameleen TV (1080p)",
-        "https://mn-nl.mncdn.com/mekameleen/smil:mekameleentv.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"MeltemTV.tr\",Meltem TV (1080p)",
-        "https://vhxyrsly.rocketcdn.com/meltemtv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"MercanTV.tr\",Mercan TV (576p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_mercantv/mercantv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"MTurkTV.tr\",MTürk TV (1080p)",
-        "https://edge1.socialsmart.tv/muglaturk/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"NationalGeographicWild.tr\",National Geographic Wild",
-        "https://tv.arectv13.sbs/live/natgeowild.m3u8",
-        "#EXTINF:-1 tvg-id=\"NOWTV.tr\",NOW TV",
-        "http://116.202.238.88/FOXTV_TR/index.m3u8",
-        "#EXTINF:-1 tvg-id=\"Number1Damar.tr\",Number 1 Damar (720p)",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e198784bdc_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Number1Ask.tr\",Number 1 Ask (720p)",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e18f9cea15_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Number1Dance.tr\",Number 1 Dance (720p)",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2aa8acf44_1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Number1TV.tr\",Number 1 TV (720p)",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e17cd59e8b.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"On4TV.tr\",On4 TV (1080p)",
-        "https://edge1.socialsmart.tv/on4/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"NOWTV.tr\",NOW TV (720p)",
-        "https://uycyyuuzyh.turknet.ercdn.net/nphindgytw/nowtv/nowtv.m3u8",
-        "#EXTINF:-1 tvg-id=\"OlayTurkTV.tr\",Olay Türk TV Kayseri (720p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_olayturk/olayturk/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"On6.tr\",On 6 (1080p)",
-        "https://live.artidijitalmedya.com/artidijital_kanal16/kanal16/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"OncuTV.tr\",Öncü TV (1024p) [Not 24/7]",
-        "https://edge1.socialsmart.tv/oncurtv/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerDance.tr\",Power Dance (1080p)",
-        "https://livetv.powerapp.com.tr/dance/dance.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerLove.tr\",Power Love (1080p)",
-        "https://livetv.powerapp.com.tr/plove/love.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTurkSlow.tr\",Power Türk Slow (1080p)",
-        "https://livetv.powerapp.com.tr/pturkslow/slow.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTurkAkustik.tr\",Power Türk Akustik (1080p)",
-        "https://livetv.powerapp.com.tr/pturkakustik/akustik.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTurkTV.tr\",Power Turk (1080p) [Not 24/7]",
-        "https://livetv.powerapp.com.tr/powerturkTV/powerturkhd.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTV.tr\",Power TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_powertv/powertv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTV.tr\",Power TV (1080p)",
-        "https://livetv.powerapp.com.tr/powerTV/powerhd.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTurkTaptaze.tr\",Power Türk Taptaze (1080p)",
-        "https://livetv.powerapp.com.tr/pturktaptaze/taptaze.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"BricveSatrancTV.tr\",Satranç TV (480p) [Not 24/7]",
-        "http://139.162.182.79/live/test/index.m3u8",
-        "#EXTINF:-1 tvg-id=\"PowerTurkTV.tr\",PowerTürk TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_powerturktv/powerturktv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"SemerkandTV.tr\",Semerkand TV (1080p) [Not 24/7]",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtisvwurbfcyslive/broadcast_58d915bd40efc.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Sat7Turk.cy\",Sat7 Türk (1080p)",
-        "https://live.artidijitalmedya.com/artidijital_sat7turk/sat7turk/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TatlisesTV.tr\",Tatlises TV (1080p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_tatlisestv/tatlisestv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"SunRTV.tr\",Sun RTV (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_sunrtv/sunrtv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TBMMTV.tr\",TBMM TV (720p)",
-        "https://meclistv-live.ercdn.net/meclistv/meclistv.m3u8",
-        "#EXTINF:-1 tvg-id=\"TempoTV.tr\",Tempo TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_tempotv/tempotv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TGRTHaber.tr\",TGRT Haber (360p) [Not 24/7]",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtsxxkzwwuqtglive/broadcast_5fe4598be8e5d.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TGRTHaber.tr\",TGRT Haber (720p)",
-        "https://canli.tgrthaber.com/tgrt.m3u8",
-        "#EXTINF:-1 tvg-id=\"TJKTV.tr\",TJK TV (1080p)",
-        "https://tjktv-live.tjk.org/tjktv.m3u8",
-        "#EXTINF:-1 tvg-id=\"24TV.tr\",TR24 TV (720p) [Not 24/7]",
-        "https://tv.ensonhaber.com/tv24/tv24.m3u8",
-        "#EXTINF:-1 tvg-id=\"Tivi6.tr\",Tivi 6 (720p)",
-        "https://live.artidijitalmedya.com/artidijital_tivi6/tivi6/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TMB.tr\",TMB",
-        "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/tmb-tv.m3u8",
-        "#EXTINF:-1 tvg-id=\"TrakyaTurk.tr\",Trakya Türk TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_trakyaturk/trakyaturk/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TonTV.tr\",Ton TV (720p) [Not 24/7]",
-        "https://live.artidijitalmedya.com/artidijital_tontv/tontv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRT2.tr\",TRT 2 (720p)",
-        "https://tv-trt2.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTArabi.tr\",TRT Arabi (1080p) [Not 24/7]",
-        "https://tv-trtarabi.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTAvaz.tr\",TRT Avaz (720p)",
-        "https://tv-trtavaz.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRT3.tr\",TRT 3",
-        "https://tv-trt3.live.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTEBAIlkokul.tr\",TRT EBA Ilkokul (720p)",
-        "https://tv-e-okul00.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTHaber.tr\",TRT Haber (720p)",
-        "https://tv-trthaber.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTEBALise.tr\",TRT EBA Lise (720p)",
-        "https://tv-e-okul02.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"\",TRT EBA Ortaokul (720p)",
-        "https://tv-e-okul01.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTKurdi.tr\",TRT Kurdî (720p)",
-        "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTTurk.tr\",TRT Türk (720p)",
-        "https://tv-trtturk.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TRTWorld.tr\",TRT World (1080p) [Not 24/7]",
-        "https://tv-trtworld.medya.trt.com.tr/master.m3u8",
-        "#EXTINF:-1 tvg-id=\"TurkHaberTV.tr\",TürkHaber (720p)",
-        "https://edge1.socialsmart.tv/turkhaber/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TV1.tr\",TV 1 (720p)",
-        "https://edge1.socialsmart.tv/tv1/bant1/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"24TV.tr\",TV 24 (720p)",
-        "https://turkmedya-live.ercdn.net/tv24/tv24.m3u8",
-        "#EXTINF:-1 tvg-id=\"TV8.tr\",TV 8 (1080p)",
-        "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3",
-        "#EXTINF:-1 tvg-id=\"TV4.tr\",TV4 (720p)",
-        "https://turkmedya-live.ercdn.net/tv4/tv4.m3u8",
-        "#EXTINF:-1 tvg-id=\"TV100.tr\",TV 100 (1080p)",
-        "https://tv100-live.daioncdn.net/tv100/tv100_1080p.m3u8",
-        "#EXTINF:-1 tvg-id=\"TV264.tr\",TV 264 (1080p)",
-        "https://b01c02nl.mediatriple.net/videoonlylive/mtdxkkitgbrckilive/broadcast_5ee244263fd6d.smil/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TVDen.tr\",TV Den (576p) [Not 24/7]",
-        "http://canli.tvden.com.tr/hls/live.m3u8",
-        "#EXTINF:-1 tvg-id=\"TVNET.tr\",TVnet (720p)",
-        "https://mn-nl.mncdn.com/tvnet/tvnet/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"TYTTurk.tr\",TYT Turk",
-        "https://cdn-tytturk.yayin.com.tr/tytturk/index.m3u8",
-        "#EXTINF:-1 tvg-id=\"UrfaNatikTV.tr\",Urfa Natik TV (720p)",
-        "https://live.artidijitalmedya.com/artidijital_urfanatiktv/urfanatiktv/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"UUTV2.tr\",ÜÜ TV Üsküdar Üniversitesi TV (1080p) [Not 24/7]",
-        "https://uskudarunv.mediatriple.net/uskudarunv/uskudar2/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"Vizyon58TV.tr\",Vizyon 58 TV (720p) [Geo-blocked]",
-        "https://live.artidijitalmedya.com/artidijital_vizyon58/vizyon58/playlist.m3u8",
-        "#EXTINF:-1 tvg-id=\"ZarokTV.tr\",Zarok TV (720p)",
-        "https://zindikurmanci.zaroktv.com.tr/hls/stream.m3u8"
-        ).joinToString("\n")
-    }
-
-    private fun loadChannels(): List<Channel> {
-        cachedChannels?.let { return it }
-
-        val text = M3U_CONTENT
-        if (text.isBlank()) return emptyList()
-
-        val result = mutableListOf<Channel>()
-        var pendingName: String? = null
-        var pendingLogo: String = ""
-        var pendingGroup: String = "DIGER"
-
-        for (rawLine in text.lineSequence()) {
-            val line = rawLine.trim()
-            if (line.isEmpty()) continue
-
-            if (line.startsWith("#EXTINF")) {
-                pendingLogo = Regex("tvg-logo=\"([^\"]*)\"").find(line)?.groupValues?.getOrNull(1) ?: ""
-                pendingGroup = Regex("group-title=\"([^\"]*)\"").find(line)?.groupValues?.getOrNull(1) ?: "DIGER"
-                pendingName = line.substringAfterLast(",").trim().ifBlank { null }
-            } else if (!line.startsWith("#") && pendingName != null) {
-                result.add(Channel(pendingName!!, pendingLogo, line, pendingGroup))
-                pendingName = null
-                pendingLogo = ""
-                pendingGroup = "DIGER"
-            }
-        }
-
-        cachedChannels = result
-        return result
-    }
+    // ŞİMDİLİK SADECE SHOW TV TESTİ İÇİN
+    private val channels = listOf(
+        Channel(
+            name = "Show TV",
+            logo = "https://i.ibb.co/Rv0rWhZ/show.png",
+            url = "https://rmtftbjjne.turknet.ercdn.net/bpeytmniqyp/showtv/showtv_720p.m3u8",
+            group = "ULUSAL"
+        )
+    )
 
     override val mainPage = mainPageOf(
         "TUMU" to "Tüm Kanallar",
-        "ULUSAL" to "Ulusal Kanallar",
-        "HABER" to "Haber Kanalları",
-        "SPOR" to "Spor Kanalları",
-        "MUZIK" to "Müzik Kanalları",
-        "BELGESEL" to "Belgesel Kanalları",
-        "DIGER" to "Diğer Kanallar"
+        "ULUSAL" to "Ulusal Kanallar"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val all = loadChannels()
         val filtered = when (request.data) {
-            "TUMU" -> all
-            else -> all.filter { it.group == request.data }
+            "TUMU" -> channels
+            else -> channels.filter { it.group == request.data }
         }
         val items = filtered.map { ch ->
             newLiveSearchResponse(ch.name, stableUrl(ch), TvType.Live) {
@@ -450,7 +66,7 @@ class SafakStreamTVProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val q = query.lowercase().trim()
         if (q.isBlank()) return emptyList()
-        return loadChannels().filter { it.name.lowercase().contains(q) }.map { ch ->
+        return channels.filter { it.name.lowercase().contains(q) }.map { ch ->
             newLiveSearchResponse(ch.name, stableUrl(ch), TvType.Live) {
                 this.posterUrl = ch.logo
             }
@@ -480,7 +96,6 @@ class SafakStreamTVProvider : MainAPI() {
                 url = ch.url,
                 type = ExtractorLinkType.M3U8
             ) {
-                // Referer'ı canlitv.you olarak ayarlıyoruz (güvenlik duvarı için)
                 this.referer = "https://www.canlitv.you/"
                 this.headers = mapOf("Origin" to "https://www.canlitv.you")
                 this.quality = Qualities.Unknown.value
@@ -503,6 +118,6 @@ class SafakStreamTVProvider : MainAPI() {
         if (parts.size != 2) return null
         val chName = URLDecoder.decode(parts[0], "UTF-8")
         val chUrl = URLDecoder.decode(parts[1], "UTF-8")
-        return loadChannels().firstOrNull { it.name == chName && it.url == chUrl }
+        return channels.firstOrNull { it.name == chName && it.url == chUrl }
     }
 }
