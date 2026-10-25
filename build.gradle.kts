@@ -95,14 +95,25 @@ subprojects {
 
     android {
         namespace = "com.safakstream.${project.name.lowercase()}"
-        compileSdk = 36
+
+        // Termux'taki aapt2, android-36 platformundaki android.jar'ı okuyamıyor.
+        // SafakStreamTV için compileSdk/targetSdk 34'e düşürüldü.
+        if (project.name == "SafakStreamTV") {
+            compileSdk = 34
+        } else {
+            compileSdk = 36
+        }
 
         defaultConfig {
             minSdk = 21
         }
 
         lint {
-            targetSdk = 36
+            if (project.name == "SafakStreamTV") {
+                targetSdk = 34
+            } else {
+                targetSdk = 36
+            }
         }
 
         compileOptions {

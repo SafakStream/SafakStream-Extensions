@@ -32,5 +32,6 @@ include(
     "SafakStreamHub",
     "MahsunSports",
     "PapazSports",
-    "SafakStreamCinema"
+    "SafakStreamCinema",
+    "SafakStreamTV"
 )

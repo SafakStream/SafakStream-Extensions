@@ -45,3 +45,4 @@ betmatik_*.html
 bm_*.html
 *.log
 build/
+*.bak2
