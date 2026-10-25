@@ -150,8 +150,6 @@ class SafakStreamTVProvider : MainAPI() {
         "https://live.artidijitalmedya.com/artidijital_anadolunet/anadolunet/playlist.m3u8",
         "#EXTINF:-1 tvg-id=\"BenguturkTV.tr\",BENGÜTÜRK TV (720p) [Not 24/7]",
         "https://tv.ensonhaber.com/benguturk/benguturk.m3u8",
-        "#EXTINF:-1 tvg-id=\"ATV.tr\",ATV (720p)",
-        "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/atv/atv.m3u8",
         "#EXTINF:-1 tvg-id=\"BloombergHT.tr\",Bloomberg HT (720p) [Not 24/7]",
         "https://tv.ensonhaber.com/bloomberght/bloomberght.m3u8",
         "#EXTINF:-1 tvg-id=\"BirTV.tr\",Bir TV (720p)",
