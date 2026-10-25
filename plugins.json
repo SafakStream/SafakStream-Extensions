@@ -229,27 +229,6 @@
         "fileHash": "sha256-8be797bd62da6c5cb920a2f88732a9d5df828abfb84ce4b1879f1de03666c81d"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamTV.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "SafakStreamTV",
-        "internalName": "SafakStreamTV",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "SafakStream TV - Ulusal, haber, spor, m\u00fczik ve belgesel kanallar\u0131 (M3U listesi \u00fczerinden canl\u0131 yay\u0131n).",
-        "fileSize": 9757,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "LiveStream",
-            "Others"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/logo.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-e5724834e0cb4fdc395714e103ae3d6b1cfb31aedfe42e109c4514991e128300"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
         "status": 3,
         "version": 1,
