@@ -259,6 +259,7 @@ class SafakStreamCinema : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
+        Log.d("SafakStreamCinema", "load ÇAĞRILDI: $url")
         if (url.contains("/film/") || url.contains("/dizi/")) {
             return loadFromPage(url)
         }
@@ -313,6 +314,7 @@ class SafakStreamCinema : MainAPI() {
 
     private suspend fun loadFromPage(url: String): LoadResponse? {
         val isTv = url.contains("/dizi/")
+        Log.d("SafakStreamCinema", "loadFromPage ÇAĞRILDI: $url (isTv=$isTv)")
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return null }
         val ssrJson = extractReactSsr(html) ?: return null
         return try {
@@ -370,7 +372,9 @@ class SafakStreamCinema : MainAPI() {
             val browserUrl = if (isTv) "https://www.themoviedb.org/tv/$tmdbId" else "https://www.themoviedb.org/movie/$tmdbId"
 
             if (isTv) {
+                Log.d("SafakStreamCinema", "episodesFromSsr boyut: ${episodesFromSsr.size}")
                 val episodes = if (episodesFromSsr.isNotEmpty()) episodesFromSsr else loadEpisodesForSeries(tmdbId)
+                Log.d("SafakStreamCinema", "Kullanılan bölüm sayısı: ${episodes.size}")
                 newTvSeriesLoadResponse(finalTitle, browserUrl, TvType.TvSeries, episodes) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
                     this.score = rating?.let { Score.from10(it.toDouble()) }
