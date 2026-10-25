@@ -7,7 +7,6 @@ import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newLiveSearchResponse
@@ -37,11 +36,10 @@ class SafakStreamTVProvider : MainAPI() {
     companion object {
         private var cachedChannels: List<Channel>? = null
         
-        // M3U içeriği doğrudan buraya gömüldü
         private val M3U_CONTENT = listOf(
 "#EXTM3U",
         "#EXTINF:-1 tvg-name=\"ATV\" tvg-id=\"ATV.tr\" tvg-logo=\"https://i.ibb.co/DwFJ0vn/atv.png\" group-title=\"ULUSAL\",ATV",
-        "https://trkvz.daioncdn.net/atv/atv_1080p.m3u8?e=1792988604&st=uGHHw2avUTgQgs5Tzx2Rpg&sid=8v4fwf3rfxzo&app=d5eb593f-39d9-4b01-9cfd-4748e8332cf0&ce=3",
+        "about:blank",
         "#EXTINF:-1 tvg-name=\"FOX\" tvg-id=\"Fox.tr\" tvg-logo=\"https://i.ibb.co/QvTPfhs/now.png\" group-title=\"ULUSAL\",NOW",
         "http://116.202.238.88/FOXTV_TR/index.m3u8",
         "#EXTINF:-1 tvg-name=\"TRT 1\" tvg-id=\"TRT1.tr\" tvg-logo=\"https://i.ibb.co/thr6mVk/trt-1.png\" group-title=\"ULUSAL\",TRT 1",
@@ -472,37 +470,25 @@ class SafakStreamTVProvider : MainAPI() {
     ): Boolean {
         val ch = findChannelByUrl(data) ?: return false
 
-        // ATV için resmi siteden dinamik link çekme
+        // ATV icin token'siz (temiz) dogrudan CDN linki kullaniyoruz
         if (ch.name == "ATV") {
-            try {
-                val res = app.get("https://www.atv.com.tr/canli-yayin", headers = mapOf(
-                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ))
-                // Sayfa içindeki m3u8 linkini regex ile bul
-                val m3u8Regex = Regex("""(https?://[^"']+?\.m3u8[^"']*)""")
-                val m3u8Url = m3u8Regex.find(res.text)?.value
-
-                if (m3u8Url != null) {
-                    callback.invoke(
-                        newExtractorLink(
-                            source = this.name,
-                            name = ch.name,
-                            url = m3u8Url,
-                            type = ExtractorLinkType.M3U8
-                        ) {
-                            this.referer = "https://www.atv.com.tr/"
-                            this.headers = mapOf("Origin" to "https://www.atv.com.tr")
-                            this.quality = Qualities.Unknown.value
-                        }
-                    )
-                    return true
+            val cleanUrl = "https://trkvz.daioncdn.net/atv/atv_1080p.m3u8"
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = ch.name,
+                    url = cleanUrl,
+                    type = ExtractorLinkType.M3U8
+                ) {
+                    this.referer = "https://www.atv.com.tr/"
+                    this.headers = mapOf("Origin" to "https://www.atv.com.tr")
+                    this.quality = Qualities.Unknown.value
                 }
-            } catch (e: Exception) {
-                // Hata olursa aşağıdaki fallback'e düşecek
-            }
+            )
+            return true
         }
 
-        // Diğer kanallar (veya ATV dinamik çekilemezse) için statik link kullanımı
+        // Diger kanallar icin
         callback.invoke(
             newExtractorLink(
                 source = this.name,
