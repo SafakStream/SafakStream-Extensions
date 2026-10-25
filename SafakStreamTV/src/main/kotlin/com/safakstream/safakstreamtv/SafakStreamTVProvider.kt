@@ -41,7 +41,7 @@ class SafakStreamTVProvider : MainAPI() {
         private val M3U_CONTENT = listOf(
 "#EXTM3U",
         "#EXTINF:-1 tvg-name=\"ATV\" tvg-id=\"ATV.tr\" tvg-logo=\"https://i.ibb.co/DwFJ0vn/atv.png\" group-title=\"ULUSAL\",ATV",
-        "http://116.202.238.88/ATV_TR/tracks-v1a1/index.m3u8",
+        "https://trkvz.daioncdn.net/atv/atv_1080p.m3u8?e=1792988604&st=uGHHw2avUTgQgs5Tzx2Rpg&sid=8v4fwf3rfxzo&app=d5eb593f-39d9-4b01-9cfd-4748e8332cf0&ce=3",
         "#EXTINF:-1 tvg-name=\"FOX\" tvg-id=\"Fox.tr\" tvg-logo=\"https://i.ibb.co/QvTPfhs/now.png\" group-title=\"ULUSAL\",NOW",
         "http://116.202.238.88/FOXTV_TR/index.m3u8",
         "#EXTINF:-1 tvg-name=\"TRT 1\" tvg-id=\"TRT1.tr\" tvg-logo=\"https://i.ibb.co/thr6mVk/trt-1.png\" group-title=\"ULUSAL\",TRT 1",
@@ -498,11 +498,11 @@ class SafakStreamTVProvider : MainAPI() {
                     return true
                 }
             } catch (e: Exception) {
-                // Hata olursa statik linke düşecek
+                // Hata olursa aşağıdaki fallback'e düşecek
             }
         }
 
-        // Diğer kanallar için statik link kullanımı
+        // Diğer kanallar (veya ATV dinamik çekilemezse) için statik link kullanımı
         callback.invoke(
             newExtractorLink(
                 source = this.name,
