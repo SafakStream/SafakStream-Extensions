@@ -341,15 +341,16 @@ class SafakStreamCinema : MainAPI() {
 
             val finalIsTv = mediaType == "tv" || isTvByUrl
 
+            val browserUrl = if (finalIsTv) "https://www.themoviedb.org/tv/$tmdbId" else "https://www.themoviedb.org/movie/$tmdbId"
             if (finalIsTv) {
                 val episodes = loadEpisodesForSeries(tmdbId)
-                newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                newTvSeriesLoadResponse(title, browserUrl, TvType.TvSeries, episodes) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
                     this.tags = genres?.split(",")?.map { it.trim() } ?: emptyList()
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
             } else {
-                newMovieLoadResponse(title, url, TvType.Movie, url) {
+                newMovieLoadResponse(title, browserUrl, TvType.Movie, url) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
                     this.tags = genres?.split(",")?.map { it.trim() } ?: emptyList()
                     this.score = rating?.let { Score.from10(it.toDouble()) }
@@ -396,14 +397,15 @@ class SafakStreamCinema : MainAPI() {
             val apiUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=" + (if (isTv) "tv" else "movie")
             val finalTitle = title ?: "İçerik #$tmdbId"
 
+            val browserUrl = if (isTv) "https://www.themoviedb.org/tv/$tmdbId" else "https://www.themoviedb.org/movie/$tmdbId"
             if (isTv) {
                 val episodes = loadEpisodesForSeries(tmdbId)
-                newTvSeriesLoadResponse(finalTitle, apiUrl, TvType.TvSeries, episodes) {
+                newTvSeriesLoadResponse(finalTitle, browserUrl, TvType.TvSeries, episodes) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
             } else {
-                newMovieLoadResponse(finalTitle, apiUrl, TvType.Movie, apiUrl) {
+                newMovieLoadResponse(finalTitle, browserUrl, TvType.Movie, apiUrl) {
                     this.posterUrl = poster; this.year = year; this.plot = overview
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
