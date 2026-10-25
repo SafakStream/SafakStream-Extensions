@@ -23,8 +23,6 @@ class SafakStreamCinema : MainAPI() {
         "top10" to "Bugünün En İyi 10'u",
         "/diziler" to "Diziler",
         "/filmler" to "Filmler",
-        "turkishTV" to "Türk Dizileri",
-        "turkishMovies" to "Türk Filmleri",
         "random" to "🎲 Rastgele",
     )
 
@@ -108,7 +106,6 @@ class SafakStreamCinema : MainAPI() {
         return try {
             val items = when (request.data) {
                 "top10" -> parseTop10()
-                "turkishTV", "turkishMovies" -> parseTmdbRaf(request.data)
                 "random" -> parseRandom()
                 else -> parseLibraryPage(request.data)
             }
