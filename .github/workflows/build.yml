@@ -53,11 +53,25 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/src
           chmod +x gradlew
+          echo "=== STEP 1: Running gradlew clean make makePluginsJson ==="
           ./gradlew clean make makePluginsJson
+          echo "=== STEP 2: Listing all .cs3 files ==="
+          find . -name "*.cs3" -type f 2>/dev/null || echo "No .cs3 found"
+          echo "=== STEP 3: Listing all plugins.json files ==="
+          find . -name "plugins.json" -type f 2>/dev/null || echo "No plugins.json found"
+          echo "=== STEP 4: Content of plugins.json (first 500 chars) ==="
+          for f in $(find . -name "plugins.json" -type f 2>/dev/null); do
+            echo "--- $f ---"
+            head -c 500 "$f"
+            echo ""
+          done
           ./gradlew ensureJarCompatibility
+          echo "=== STEP 5: Copying .cs3 files ==="
           cp -f **/build/*.cs3 $GITHUB_WORKSPACE/builds/ || true
-          cp -f **/build/*.jar $GITHUB_WORKSPACE/builds/ || true
+          ls -la $GITHUB_WORKSPACE/builds/*.cs3 2>/dev/null || echo "No .cs3 copied"
+          echo "=== STEP 6: Copying plugins.json ==="
           cp -f build/plugins.json $GITHUB_WORKSPACE/builds/plugins.json || true
+          ls -la $GITHUB_WORKSPACE/builds/plugins.json 2>/dev/null || echo "No plugins.json copied"
 
       - name: Push builds
         run: |
