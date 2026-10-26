@@ -11,6 +11,8 @@ class HDFilmCehennemi : MainAPI() {
     override val hasMainPage = true
     override val hasDownloadSupport = true
 
+    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
     override val mainPage = mainPageOf(
         "category/film-izle-2" to "Son Eklenen Filmler",
         "yabancidiziizle-5" to "Son Eklenen Diziler",
@@ -18,7 +20,7 @@ class HDFilmCehennemi : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         val url = if (page <= 1) "$mainUrl/${request.data}" else "$mainUrl/${request.data}/page/$page/"
-        val document = app.get(url).document
+        val document = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
         val home = document.select("div.poster, a.poster").mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request, home)
     }
@@ -41,7 +43,8 @@ class HDFilmCehennemi : MainAPI() {
             searchUrl,
             headers = mapOf(
                 "X-Requested-With" to "fetch",
-                "Content-Type" to "application/json"
+                "Content-Type" to "application/json",
+                "User-Agent" to userAgent
             )
         ).text
 
@@ -71,7 +74,7 @@ class HDFilmCehennemi : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        val document = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
         val htmlText = document.html()
 
         val jsonLdRegex = Regex("<script type=\"application/ld\\+json\">(.*?)</script>", RegexOption.DOT_MATCHES_ALL)
@@ -101,7 +104,6 @@ class HDFilmCehennemi : MainAPI() {
         return if (isSeries) {
             val episodes = mutableListOf<Episode>()
 
-            // Bölümleri HTML'den çek
             val episodeElements = document.select("div.seasons-tab-content a.mini-poster")
             for (a in episodeElements) {
                 val epUrl = fixUrl(a.attr("href"))
@@ -145,18 +147,17 @@ class HDFilmCehennemi : MainAPI() {
         val document = app.get(
             data,
             headers = mapOf(
+                "User-Agent" to userAgent,
                 "Referer" to mainUrl,
-                "Origin" to mainUrl,
-                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "Origin" to mainUrl
             )
         ).document
 
-        // 1. Doğrudan iframe var mı?
         val iframeUrl = document.selectFirst("iframe")?.attr("data-src") 
             ?: document.selectFirst("iframe")?.attr("src")
 
         if (iframeUrl != null) {
-            val iframeDoc = app.get(fixUrl(iframeUrl)).text
+            val iframeDoc = app.get(fixUrl(iframeUrl), headers = mapOf("User-Agent" to userAgent)).text
             val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
                 ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
 
@@ -176,7 +177,6 @@ class HDFilmCehennemi : MainAPI() {
             }
         }
 
-        // 2. data-video ID'lerini topla
         val videoIds = mutableSetOf<String>()
         
         document.select("[data-video]").forEach { 
@@ -184,7 +184,6 @@ class HDFilmCehennemi : MainAPI() {
             if (id.isNotBlank()) videoIds.add(id)
         }
 
-        // 3. Her video ID'si için /video/ API'sine istek at
         for (videoId in videoIds) {
             try {
                 val response = app.get(
@@ -192,6 +191,7 @@ class HDFilmCehennemi : MainAPI() {
                     headers = mapOf(
                         "X-Requested-With" to "fetch",
                         "Content-Type" to "application/json",
+                        "User-Agent" to userAgent,
                         "Referer" to data,
                         "Origin" to mainUrl
                     )
@@ -202,7 +202,7 @@ class HDFilmCehennemi : MainAPI() {
                         ?: Regex("\"src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
 
                     if (iframeUrl2 != null) {
-                        val iframeDoc = app.get(fixUrl(iframeUrl2)).text
+                        val iframeDoc = app.get(fixUrl(iframeUrl2), headers = mapOf("User-Agent" to userAgent)).text
                         val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
                             ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
 
