@@ -238,7 +238,7 @@
             "SafakStream"
         ],
         "description": "SafakStream TV - Canl\u0131 TV Yay\u0131nlar\u0131",
-        "fileSize": 9004,
+        "fileSize": 9430,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -246,7 +246,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/master/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-82bd82459acc178649139dc4a70a2e70bd3322340fb7fdbff9f7f8391e827b5c"
+        "fileHash": "sha256-5bbe289f6cb32736d35a895c10525b841a6c0f2d18db5d8b2ecea551042644fc"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
