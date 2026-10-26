@@ -8,7 +8,7 @@ class HDFilmCehennemi : MainAPI() {
     override var lang = "tr"
     override val hasMainPage = true
     override val hasDownloadSupport = true
-    override val mainPage = mainPageOf("film-izle" to "Son Eklenen Filmler", "yabancidiziizle" to "Son Eklenen Diziler")
+    override val mainPage = mainPageOf("category/film-izle-2" to "Son Eklenen Filmler", "yabancidiziizle-5" to "Son Eklenen Diziler")
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         val url = if (page <= 1) "$mainUrl/${request.data}" else "$mainUrl/${request.data}/page/$page/"
         val document = app.get(url).document
