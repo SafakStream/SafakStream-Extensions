@@ -67,30 +67,34 @@ class SafakStreamTV : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-            val document = app.get(data).document
-            val html = document.html()
-            // HTML içinde m3u8 linki arayalım
-            val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
-            val match = m3u8Regex.find(html)
-            
-            if (match != null) {
-                val m3u8Url = match.value
+        // BURASI ARTIK KESİN: Doğrudan .m3u8 linklerini kullanıyoruz.
+        // Not: Bu linkler zamanla değişebilir, güncellenmesi gerekebilir.
+        val hardcodedLinks = mapOf(
+            "TRT 1 Canlı Yayın İzle" to "https://tv-trt1.medya.trt.com.tr/master.m3u8", // TRT'nin resmi linki (test edilecek)
+            "ATV" to "https://mttwmein.turknet.ercdn.net/lcpmvefbyo/atv/atv_720p.m3u8",
+            "Show TV" to "https://mttfbjine.turknet.ercdn.net/bpeytmnqyp/showtv/showtv_720p.m3u8"
+        )
+
+        val document = app.get(data).document
+        val pageTitle = document.selectFirst("h1")?.text()?.trim() ?: ""
+
+        var found = false
+        for ((key, link) in hardcodedLinks) {
+            if (pageTitle.contains(key, ignoreCase = true)) {
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
                         name = this.name,
-                        url = m3u8Url,
+                        url = link,
                         type = ExtractorLinkType.M3U8
                     ) {
                         this.referer = data
                     }
                 )
-                return true
+                found = true
+                break
             }
-        } catch (e: Exception) {
-            // Hata olursa yutalım
         }
-        return false
+        return found
     }
 }
