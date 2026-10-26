@@ -107,7 +107,6 @@ class HDFilmCehennemi : MainAPI() {
                 val epUrl = fixUrl(a.attr("href"))
                 val epName = a.selectFirst("h4.mini-poster-title")?.text()?.trim() ?: ""
                 
-                // "1. Sezon 1. Bölüm" gibi bir isimden sezon ve bölüm numaralarını çıkar
                 val seasonMatch = Regex("(\\d+)\\.\\s*Sezon").find(epName)
                 val episodeMatch = Regex("(\\d+)\\.\\s*Bölüm").find(epName)
                 
@@ -177,25 +176,16 @@ class HDFilmCehennemi : MainAPI() {
             }
         }
 
-        // 2. Sayfadaki tüm olası ID'leri topla
-        val possibleIds = mutableSetOf<String>()
+        // 2. data-video ID'lerini topla
+        val videoIds = mutableSetOf<String>()
         
         document.select("[data-video]").forEach { 
             val id = it.attr("data-video")
-            if (id.isNotBlank()) possibleIds.add(id)
-        }
-        
-        document.select("[data-action-target]").forEach { 
-            val id = it.attr("data-action-target")
-            if (id.isNotBlank()) possibleIds.add(id)
+            if (id.isNotBlank()) videoIds.add(id)
         }
 
-        Regex("\"([0-9]{4,8})\"").findAll(document.html()).forEach { 
-            possibleIds.add(it.groupValues[1])
-        }
-
-        // 3. Her ID için /video/ API'sine istek at
-        for (videoId in possibleIds) {
+        // 3. Her video ID'si için /video/ API'sine istek at
+        for (videoId in videoIds) {
             try {
                 val response = app.get(
                     "$mainUrl/video/$videoId/",
@@ -220,7 +210,7 @@ class HDFilmCehennemi : MainAPI() {
                             callback.invoke(
                                 newExtractorLink(
                                     source = this.name,
-                                    name = this.name,
+                                    name = "${this.name} - Kaynak ${videoIds.indexOf(videoId) + 1}",
                                     url = contentUrl,
                                     type = ExtractorLinkType.M3U8
                                 ) {
@@ -228,12 +218,12 @@ class HDFilmCehennemi : MainAPI() {
                                     this.quality = Qualities.Unknown.value
                                 }
                             )
-                            return true
                         }
                     }
                 }
             } catch (e: Exception) { }
         }
-        return false
+
+        return videoIds.isNotEmpty()
     }
 }
