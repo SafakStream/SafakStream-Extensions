@@ -114,7 +114,7 @@
             "SafakStream"
         ],
         "description": "HDFilmCehennemi - T\u00fcrkiye'nin en h\u0131zl\u0131 HD film ve dizi izleme sitesi.",
-        "fileSize": 10903,
+        "fileSize": 12265,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -123,7 +123,7 @@
         ],
         "iconUrl": "https://www.hdfilmcehennemi.nl/dist/images/logo.svg",
         "apiVersion": 1,
-        "fileHash": "sha256-b4711a728e6723a8205a3385136c870607cb05d086f86d8824bc3512db07f196"
+        "fileHash": "sha256-c831ab8e076124d2f94f342a8daa4e10e9764955f4113a8b133d7491cdbc23fe"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
