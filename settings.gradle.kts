@@ -32,4 +32,5 @@ include(
     "MahsunSports",
     "PapazSports",
     "SafakStreamCinema",
+    "HDFilmCehennemi"
 )
