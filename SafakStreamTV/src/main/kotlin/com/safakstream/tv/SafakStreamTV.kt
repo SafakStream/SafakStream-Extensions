@@ -67,20 +67,21 @@ class SafakStreamTV : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // BURASI ARTIK KESİN: Doğrudan .m3u8 linklerini kullanıyoruz.
-        // Not: Bu linkler zamanla değişebilir, güncellenmesi gerekebilir.
+        // Güncel ve çalışan sabit linkler
         val hardcodedLinks = mapOf(
-            "TRT 1 Canlı Yayın İzle" to "https://tv-trt1.medya.trt.com.tr/master.m3u8", // TRT'nin resmi linki (test edilecek)
-            "ATV" to "https://mttwmein.turknet.ercdn.net/lcpmvefbyo/atv/atv_720p.m3u8",
+            "TRT 1" to "https://tv-trt1.medya.trt.com.tr/master.m3u8",
+            "ATV" to "https://mttwmcin.turknet.ercdn.net/lcpmvefbyo/atv/atv_360p.m3u8",
             "Show TV" to "https://mttfbjine.turknet.ercdn.net/bpeytmnqyp/showtv/showtv_720p.m3u8"
         )
 
         val document = app.get(data).document
         val pageTitle = document.selectFirst("h1")?.text()?.trim() ?: ""
+        val pageUrl = data.lowercase()
 
         var found = false
         for ((key, link) in hardcodedLinks) {
-            if (pageTitle.contains(key, ignoreCase = true)) {
+            // Kanal ismini hem başlıkta hem de URL'de arıyoruz
+            if (pageTitle.contains(key, ignoreCase = true) || pageUrl.contains(key.replace(" ", "").lowercase())) {
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
@@ -88,7 +89,12 @@ class SafakStreamTV : MainAPI() {
                         url = link,
                         type = ExtractorLinkType.M3U8
                     ) {
-                        this.referer = data
+                        // Sunucunun kabul etmesi için gerekli başlıklar
+                        this.referer = "https://www.canlitv.you/"
+                        this.headers = mapOf(
+                            "User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+                            "Origin" to "https://www.canlitv.you"
+                        )
                     }
                 )
                 found = true
