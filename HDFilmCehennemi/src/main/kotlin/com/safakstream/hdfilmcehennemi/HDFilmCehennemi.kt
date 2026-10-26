@@ -144,37 +144,49 @@ class HDFilmCehennemi : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(
-            data,
-            headers = mapOf(
-                "User-Agent" to userAgent,
-                "Referer" to mainUrl,
-                "Origin" to mainUrl
-            )
-        ).document
+        val headers = mapOf(
+            "User-Agent" to userAgent,
+            "Referer" to data,
+            "Origin" to mainUrl,
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language" to "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
+        )
+
+        val document = app.get(data, headers = headers).document
 
         val iframeUrl = document.selectFirst("iframe")?.attr("data-src") 
             ?: document.selectFirst("iframe")?.attr("src")
 
         if (iframeUrl != null) {
-            val iframeDoc = app.get(fixUrl(iframeUrl), headers = mapOf("User-Agent" to userAgent)).text
-            val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
-                ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
+            val iframeDoc = app.get(fixUrl(iframeUrl), headers = headers).text
+            
+            val videoUrlRegex = Regex("(https?://[^\"'\\s]+\\.(?:m3u8|mp4|txt)[^\"'\\s]*)")
+            val videoUrls = videoUrlRegex.findAll(iframeDoc).map { it.groupValues[1] }.toList()
 
-            if (contentUrl != null) {
+            for (videoUrl in videoUrls) {
+                val isM3u8 = videoUrl.contains(".m3u8")
+                val isMp4 = videoUrl.contains(".mp4")
+                
+                val linkType = when {
+                    isM3u8 -> ExtractorLinkType.M3U8
+                    isMp4 -> ExtractorLinkType.VIDEO
+                    else -> ExtractorLinkType.M3U8
+                }
+
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
                         name = this.name,
-                        url = contentUrl,
-                        type = ExtractorLinkType.M3U8
+                        url = videoUrl,
+                        type = linkType
                     ) {
                         this.referer = mainUrl
                         this.quality = Qualities.Unknown.value
                     }
                 )
-                return true
             }
+            
+            if (videoUrls.isNotEmpty()) return true
         }
 
         val videoIds = mutableSetOf<String>()
@@ -188,12 +200,9 @@ class HDFilmCehennemi : MainAPI() {
             try {
                 val response = app.get(
                     "$mainUrl/video/$videoId/",
-                    headers = mapOf(
+                    headers = headers + mapOf(
                         "X-Requested-With" to "fetch",
-                        "Content-Type" to "application/json",
-                        "User-Agent" to userAgent,
-                        "Referer" to data,
-                        "Origin" to mainUrl
+                        "Content-Type" to "application/json"
                     )
                 ).text
 
@@ -202,17 +211,27 @@ class HDFilmCehennemi : MainAPI() {
                         ?: Regex("\"src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
 
                     if (iframeUrl2 != null) {
-                        val iframeDoc = app.get(fixUrl(iframeUrl2), headers = mapOf("User-Agent" to userAgent)).text
-                        val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
-                            ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
+                        val iframeDoc = app.get(fixUrl(iframeUrl2), headers = headers).text
+                        
+                        val videoUrlRegex = Regex("(https?://[^\"'\\s]+\\.(?:m3u8|mp4|txt)[^\"'\\s]*)")
+                        val videoUrls = videoUrlRegex.findAll(iframeDoc).map { it.groupValues[1] }.toList()
 
-                        if (contentUrl != null) {
+                        for (videoUrl in videoUrls) {
+                            val isM3u8 = videoUrl.contains(".m3u8")
+                            val isMp4 = videoUrl.contains(".mp4")
+                            
+                            val linkType = when {
+                                isM3u8 -> ExtractorLinkType.M3U8
+                                isMp4 -> ExtractorLinkType.VIDEO
+                                else -> ExtractorLinkType.M3U8
+                            }
+
                             callback.invoke(
                                 newExtractorLink(
                                     source = this.name,
                                     name = "${this.name} - Kaynak ${videoIds.indexOf(videoId) + 1}",
-                                    url = contentUrl,
-                                    type = ExtractorLinkType.M3U8
+                                    url = videoUrl,
+                                    type = linkType
                                 ) {
                                     this.referer = mainUrl
                                     this.quality = Qualities.Unknown.value
