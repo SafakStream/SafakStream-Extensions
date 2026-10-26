@@ -146,10 +146,40 @@ class HDFilmCehennemi : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
-        
+        val document = app.get(
+            data,
+            headers = mapOf(
+                "Referer" to mainUrl,
+                "Origin" to mainUrl,
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+        ).document
+
+        val iframeUrl = document.selectFirst("iframe")?.attr("data-src") 
+            ?: document.selectFirst("iframe")?.attr("src")
+
+        if (iframeUrl != null) {
+            val iframeDoc = app.get(fixUrl(iframeUrl)).text
+            val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
+                ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
+
+            if (contentUrl != null) {
+                callback.invoke(
+                    newExtractorLink(
+                        source = this.name,
+                        name = this.name,
+                        url = contentUrl,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = mainUrl
+                        this.quality = Qualities.Unknown.value
+                    }
+                )
+                return true
+            }
+        }
+
         val possibleIds = mutableSetOf<String>()
-        
         document.select("[data-video]").forEach { 
             val id = it.attr("data-video")
             if (id.isNotBlank()) possibleIds.add(id)
@@ -158,8 +188,6 @@ class HDFilmCehennemi : MainAPI() {
         Regex("\"([0-9]{4,8})\"").findAll(document.html()).forEach { 
             possibleIds.add(it.groupValues[1])
         }
-
-        if (possibleIds.isEmpty()) return false
 
         for (videoId in possibleIds) {
             try {
@@ -174,11 +202,11 @@ class HDFilmCehennemi : MainAPI() {
                 ).text
 
                 if (response.contains("\"success\":true")) {
-                    val iframeUrl = Regex("\"data-src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
+                    val iframeUrl2 = Regex("\"data-src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
                         ?: Regex("\"src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
 
-                    if (iframeUrl != null) {
-                        val iframeDoc = app.get(fixUrl(iframeUrl)).text
+                    if (iframeUrl2 != null) {
+                        val iframeDoc = app.get(fixUrl(iframeUrl2)).text
                         val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
                             ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
 
@@ -198,9 +226,7 @@ class HDFilmCehennemi : MainAPI() {
                         }
                     }
                 }
-            } catch (e: Exception) {
-                // Hata olursa devam et
-            }
+            } catch (e: Exception) { }
         }
         return false
     }
