@@ -144,20 +144,21 @@ class HDFilmCehennemi : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(
-            data,
-            headers = mapOf(
-                "User-Agent" to userAgent,
-                "Referer" to mainUrl,
-                "Origin" to mainUrl
-            )
-        ).document
+        val headers = mapOf(
+            "User-Agent" to userAgent,
+            "Referer" to data,
+            "Origin" to mainUrl,
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language" to "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
+        )
+
+        val document = app.get(data, headers = headers).document
 
         val iframeUrl = document.selectFirst("iframe")?.attr("data-src") 
             ?: document.selectFirst("iframe")?.attr("src")
 
         if (iframeUrl != null) {
-            val iframeDoc = app.get(fixUrl(iframeUrl), headers = mapOf("User-Agent" to userAgent)).text
+            val iframeDoc = app.get(fixUrl(iframeUrl), headers = headers).text
             val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
                 ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
 
@@ -188,12 +189,9 @@ class HDFilmCehennemi : MainAPI() {
             try {
                 val response = app.get(
                     "$mainUrl/video/$videoId/",
-                    headers = mapOf(
+                    headers = headers + mapOf(
                         "X-Requested-With" to "fetch",
-                        "Content-Type" to "application/json",
-                        "User-Agent" to userAgent,
-                        "Referer" to data,
-                        "Origin" to mainUrl
+                        "Content-Type" to "application/json"
                     )
                 ).text
 
@@ -202,7 +200,7 @@ class HDFilmCehennemi : MainAPI() {
                         ?: Regex("\"src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
 
                     if (iframeUrl2 != null) {
-                        val iframeDoc = app.get(fixUrl(iframeUrl2), headers = mapOf("User-Agent" to userAgent)).text
+                        val iframeDoc = app.get(fixUrl(iframeUrl2), headers = headers).text
                         val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
                             ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
 
