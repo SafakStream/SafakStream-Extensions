@@ -17,7 +17,7 @@ class HDFilmCehennemi : MainAPI() {
     }
     private fun Element.toSearchResult(): SearchResponse? {
         val href = fixUrl(this.attr("href"))
-        val title = this.selectFirst("h4.title, h2.title, .title")?.text()?.trim() ?: return null
+        val title = this.selectFirst("strong.poster-title, h4.title, h2.title, .title")?.text()?.trim() ?: return null
         val posterUrl = fixUrlNull(this.selectFirst("img")?.let { it.attr("data-src").ifBlank { it.attr("src") } })
         return newMovieSearchResponse(title, href, TvType.Movie) { this.posterUrl = posterUrl }
     }
