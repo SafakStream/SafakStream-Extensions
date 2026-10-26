@@ -67,11 +67,14 @@ class SafakStreamTV : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // Güncel ve çalışan sabit linkler
+        // Resmi ve stabil m3u8 linkleri
         val hardcodedLinks = mapOf(
-            "TRT 1" to "https://tv-trt1.medya.trt.com.tr/master.m3u8",
-            "ATV" to "https://mttwmcin.turknet.ercdn.net/lcpmvefbyo/atv/atv_360p.m3u8",
-            "Show TV" to "https://mttfbjine.turknet.ercdn.net/bpeytmnqyp/showtv/showtv_720p.m3u8"
+            "TRT 1" to "https://tv-trt1.medya.trt.com.tr/master_1080.m3u8",
+            "Beyaz TV" to "https://beyaztv.daioncdn.net/beyaztv/beyaztv.m3u8?app=fcd5c66b-da9d-44ba-a410-4f34805c397d&ce=3",
+            "Kanal 7" to "https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8",
+            "Star TV" to "https://dogus.daioncdn.net/startv/startv.m3u8?ce=3&app=a20ac41e-bdc3-4aa1-934d-26b484480ac9&ppid=35c70907b4a59202569ff0e6f8d1a9f7",
+            "Kanal D" to "https://streams.uzunmuhalefet.com/stream/6bdc8fb5-3e82-4b44-a0b1-6ab9fdc35d3f.m3u8",
+            "Now TV" to "https://streams.uzunmuhalefet.com/stream/f9368c57-16e5-44a2-a559-46377a476b04.m3u8"
         )
 
         val document = app.get(data).document
@@ -80,7 +83,6 @@ class SafakStreamTV : MainAPI() {
 
         var found = false
         for ((key, link) in hardcodedLinks) {
-            // Kanal ismini hem başlıkta hem de URL'de arıyoruz
             if (pageTitle.contains(key, ignoreCase = true) || pageUrl.contains(key.replace(" ", "").lowercase())) {
                 callback.invoke(
                     newExtractorLink(
@@ -89,7 +91,6 @@ class SafakStreamTV : MainAPI() {
                         url = link,
                         type = ExtractorLinkType.M3U8
                     ) {
-                        // Sunucunun kabul etmesi için gerekli başlıklar
                         this.referer = "https://www.canlitv.you/"
                         this.headers = mapOf(
                             "User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
