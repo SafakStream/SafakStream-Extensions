@@ -19,9 +19,7 @@ class HDFilmCehennemi : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         val url = if (page <= 1) "$mainUrl/${request.data}" else "$mainUrl/${request.data}/page/$page/"
         val document = app.get(url).document
-
         val home = document.select("div.poster, a.poster").mapNotNull { it.toSearchResult() }
-
         return newHomePageResponse(request, home)
     }
 
@@ -83,7 +81,7 @@ class HDFilmCehennemi : MainAPI() {
         var posterUrl: String? = null
         var description: String? = null
         var year: Int? = null
-        var isSeries = url.contains("/dizi/")
+        val isSeries = url.contains("/dizi/")
 
         if (jsonLd != null) {
             val descRegex = Regex("\"description\":\"(.*?)\"")
@@ -149,64 +147,61 @@ class HDFilmCehennemi : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
-
-        val videoIds = document.select("[data-video]").mapNotNull { it.attr("data-video").ifBlank { null } }
-
-        if (videoIds.isEmpty()) return false
-
-        for (videoId in videoIds) {
-            val apiUrl = "$mainUrl/video/$videoId/"
-            val response = app.get(
-                apiUrl,
-                headers = mapOf(
-                    "X-Requested-With" to "fetch",
-                    "Content-Type" to "application/json"
-                )
-            ).text
-
-            val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(response)?.groupValues?.get(1)
-                ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(response)?.groupValues?.get(1)
-                ?: Regex("(https?://[^\"']+\\.mp4[^\"']*)").find(response)?.groupValues?.get(1)
-
-            if (contentUrl != null) {
-                val isM3u8 = contentUrl.contains(".m3u8")
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "${this.name} - Kaynak ${videoIds.indexOf(videoId) + 1}",
-                        url = contentUrl,
-                        type = if (isM3u8) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
-                    ) {
-                        this.referer = mainUrl
-                        this.quality = Qualities.Unknown.value
-                    }
-                )
-            } else {
-                val iframeUrl = Regex("\"iframe\":\\s*\"([^\"]+)\"").find(response)?.groupValues?.get(1)
-                    ?: Regex("<iframe[^>]*src=\"([^\"]+)\"").find(response)?.groupValues?.get(1)
-
-                if (iframeUrl != null) {
-                    val iframeDocument = app.get(fixUrl(iframeUrl)).text
-                    val iframeContentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDocument)?.groupValues?.get(1)
-                        ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDocument)?.groupValues?.get(1)
-
-                    if (iframeContentUrl != null) {
-                        callback.invoke(
-                            newExtractorLink(
-                                source = this.name,
-                                name = "${this.name} - Kaynak ${videoIds.indexOf(videoId) + 1}",
-                                url = iframeContentUrl,
-                                type = ExtractorLinkType.M3U8
-                            ) {
-                                this.referer = mainUrl
-                                this.quality = Qualities.Unknown.value
-                            }
-                        )
-                    }
-                }
-            }
+        
+        val possibleIds = mutableSetOf<String>()
+        
+        document.select("[data-video]").forEach { 
+            val id = it.attr("data-video")
+            if (id.isNotBlank()) possibleIds.add(id)
         }
 
-        return true
+        Regex("\"([0-9]{4,8})\"").findAll(document.html()).forEach { 
+            possibleIds.add(it.groupValues[1])
+        }
+
+        if (possibleIds.isEmpty()) return false
+
+        for (videoId in possibleIds) {
+            try {
+                val response = app.get(
+                    "$mainUrl/video/$videoId/",
+                    headers = mapOf(
+                        "X-Requested-With" to "fetch",
+                        "Content-Type" to "application/json",
+                        "Referer" to data,
+                        "Origin" to mainUrl
+                    )
+                ).text
+
+                if (response.contains("\"success\":true")) {
+                    val iframeUrl = Regex("\"data-src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
+                        ?: Regex("\"src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
+
+                    if (iframeUrl != null) {
+                        val iframeDoc = app.get(fixUrl(iframeUrl)).text
+                        val contentUrl = Regex("\"contentUrl\":\\s*\"([^\"]+)\"").find(iframeDoc)?.groupValues?.get(1)
+                            ?: Regex("(https?://[^\"']+\\.m3u8[^\"']*)").find(iframeDoc)?.groupValues?.get(1)
+
+                        if (contentUrl != null) {
+                            callback.invoke(
+                                newExtractorLink(
+                                    source = this.name,
+                                    name = this.name,
+                                    url = contentUrl,
+                                    type = ExtractorLinkType.M3U8
+                                ) {
+                                    this.referer = mainUrl
+                                    this.quality = Qualities.Unknown.value
+                                }
+                            )
+                            return true
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Hata olursa devam et
+            }
+        }
+        return false
     }
 }
