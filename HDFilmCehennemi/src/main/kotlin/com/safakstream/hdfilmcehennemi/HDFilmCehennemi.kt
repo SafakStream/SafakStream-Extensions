@@ -75,7 +75,7 @@ class HDFilmCehennemi : MainAPI() {
         val htmlText = document.html()
 
         val jsonLdRegex = Regex("<script type=\"application/ld\\+json\">(.*?)</script>", RegexOption.DOT_MATCHES_ALL)
-        val jsonLd = jsonLdRegex.find(htmlText)?.groupValues?.get(1)
+        val jsonLd = jsonLdRegex.find(htmlText)?.groupValues?.get(1)?.replace("\\\"", "\"")?.replace("\\/", "/")
 
         var title = document.selectFirst("h1")?.text()?.trim() ?: "Bilinmeyen Film"
         var posterUrl: String? = null
@@ -85,7 +85,7 @@ class HDFilmCehennemi : MainAPI() {
 
         if (jsonLd != null) {
             val descRegex = Regex("\"description\":\"(.*?)\"")
-            description = descRegex.find(jsonLd)?.groupValues?.get(1)?.replace("\\\"", "\"")
+            description = descRegex.find(jsonLd)?.groupValues?.get(1)
 
             val posterRegex = Regex("\"thumbnail\":\\{\"@type\":\"ImageObject\",\"contentUrl\":\"(.*?)\"\\}")
             posterUrl = posterRegex.find(jsonLd)?.groupValues?.get(1)
@@ -101,29 +101,26 @@ class HDFilmCehennemi : MainAPI() {
         return if (isSeries) {
             val episodes = mutableListOf<Episode>()
 
-            if (jsonLd != null) {
-                val seasonBlocks = jsonLd.split("\"@type\":\"TVSeason\"")
-                var seasonIndex = 1
+            // Bölümleri HTML'den çek
+            val episodeElements = document.select("div.seasons-tab-content a.mini-poster")
+            for (a in episodeElements) {
+                val epUrl = fixUrl(a.attr("href"))
+                val epName = a.selectFirst("h4.mini-poster-title")?.text()?.trim() ?: ""
                 
-                for (block in seasonBlocks.drop(1)) {
-                    val seasonNum = Regex("\"seasonNumber\":\\s*\"(\\d+)\"").find(block)?.groupValues?.get(1)?.toIntOrNull() ?: seasonIndex
-                    
-                    val epBlocks = block.split("\"@type\":\"TVEpisode\"")
-                    for (epBlock in epBlocks.drop(1)) {
-                        val epNum = Regex("\"episodeNumber\":\\s*\"(\\d+)\"").find(epBlock)?.groupValues?.get(1)?.toIntOrNull() ?: 1
-                        val epName = Regex("\"name\":\\s*\"([^\"]+)\"").find(epBlock)?.groupValues?.get(1) ?: "Bölüm $epNum"
-                        val epUrl = Regex("\"url\":\\s*\"([^\"]+)\"").find(epBlock)?.groupValues?.get(1) ?: continue
-                        
-                        episodes.add(
-                            newEpisode(fixUrl(epUrl)) {
-                                this.name = epName
-                                this.season = seasonNum
-                                this.episode = epNum
-                            }
-                        )
+                // "1. Sezon 1. Bölüm" gibi bir isimden sezon ve bölüm numaralarını çıkar
+                val seasonMatch = Regex("(\\d+)\\.\\s*Sezon").find(epName)
+                val episodeMatch = Regex("(\\d+)\\.\\s*Bölüm").find(epName)
+                
+                val seasonNum = seasonMatch?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                val episodeNum = episodeMatch?.groupValues?.get(1)?.toIntOrNull() ?: 1
+
+                episodes.add(
+                    newEpisode(epUrl) {
+                        this.name = epName
+                        this.season = seasonNum
+                        this.episode = episodeNum
                     }
-                    seasonIndex++
-                }
+                )
             }
 
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
