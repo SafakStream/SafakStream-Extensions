@@ -154,18 +154,18 @@ class HDFilmCehennemi : MainAPI() {
 
         val document = app.get(data, headers = headers).document
 
-        // 1. Doğrudan iframe var mı?
+        // 1. Sayfada doğrudan iframe var mı? (Sadece hdfilmcehennemi.mobi olanlar)
         val iframeUrl = document.selectFirst("iframe")?.attr("data-src") 
             ?: document.selectFirst("iframe")?.attr("src")
 
-        if (iframeUrl != null) {
+        if (iframeUrl != null && iframeUrl.contains("hdfilmcehennemi.mobi")) {
             val iframeDoc = app.get(fixUrl(iframeUrl), headers = headers).text
             
             val videoUrlRegex = Regex("(https?://[^\"'\\s]+\\.(?:m3u8|mp4|txt)[^\"'\\s]*)")
             val videoUrls = videoUrlRegex.findAll(iframeDoc).map { it.groupValues[1] }.toList()
 
             for (videoUrl in videoUrls) {
-                val isM3u8 = videoUrl.contains(".m3u8")
+                val isM3u8 = videoUrl.contains(".m3u8") || videoUrl.contains("playmix.uno")
                 val linkType = if (isM3u8) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
 
                 callback.invoke(
@@ -180,7 +180,6 @@ class HDFilmCehennemi : MainAPI() {
                     }
                 )
             }
-            
             if (videoUrls.isNotEmpty()) return true
         }
 
@@ -192,7 +191,7 @@ class HDFilmCehennemi : MainAPI() {
             if (id.isNotBlank()) videoIds.add(id)
         }
 
-        // 3. Her ID için /video/ API'sine istek at
+        // 3. Her ID için /video/ API'sine istek at, sadece hdfilmcehennemi.mobi iframe'lerini işle
         for (videoId in videoIds) {
             try {
                 val response = app.get(
@@ -207,14 +206,14 @@ class HDFilmCehennemi : MainAPI() {
                     val iframeUrl2 = Regex("\"data-src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
                         ?: Regex("\"src\":\"([^\"]+)\"").find(response)?.groupValues?.get(1)
 
-                    if (iframeUrl2 != null) {
+                    if (iframeUrl2 != null && iframeUrl2.contains("hdfilmcehennemi.mobi")) {
                         val iframeDoc = app.get(fixUrl(iframeUrl2), headers = headers).text
                         
                         val videoUrlRegex = Regex("(https?://[^\"'\\s]+\\.(?:m3u8|mp4|txt)[^\"'\\s]*)")
                         val videoUrls = videoUrlRegex.findAll(iframeDoc).map { it.groupValues[1] }.toList()
 
                         for (videoUrl in videoUrls) {
-                            val isM3u8 = videoUrl.contains(".m3u8")
+                            val isM3u8 = videoUrl.contains(".m3u8") || videoUrl.contains("playmix.uno")
                             val linkType = if (isM3u8) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
 
                             callback.invoke(
@@ -234,6 +233,6 @@ class HDFilmCehennemi : MainAPI() {
             } catch (e: Exception) { }
         }
 
-        return videoIds.isNotEmpty()
+        return false
     }
 }
