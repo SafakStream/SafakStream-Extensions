@@ -228,29 +228,6 @@
         "fileHash": "sha256-2235f5a82ec1265069293505d6a28b6a90be68a364e1ac309297d749bf4bb5ee"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/StreamingCommunity.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "StreamingCommunity",
-        "internalName": "StreamingCommunity",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "StreamingCommunity | Film e Serie TV",
-        "fileSize": 60976,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "it",
-        "tvTypes": [
-            "TvSeries",
-            "Movie",
-            "Documentary",
-            "Cartoon"
-        ],
-        "iconUrl": "https://streamingunity.dog/apple-touch-icon.png?v=2",
-        "apiVersion": 1,
-        "fileHash": "sha256-5038119e1a8fff251d3a7dd808d79a37d3ecb661a3eac332f82abde45df337b0"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/TrGoals.cs3",
         "status": 1,
         "version": 1,
