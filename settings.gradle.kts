@@ -18,7 +18,6 @@ rootProject.name = "SafakStream-Extensions"
 
 include(
     "YouTube",
-    "StreamingCommunity",
     "SelcukFlix",
     "InatTV",
     "DiziFilmizle",
