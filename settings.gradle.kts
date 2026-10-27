@@ -27,10 +27,8 @@ include(
     "TrGoals",
     "Betmatik",
     "Dizibox",
-    "Filmmakinesi",
     "SafakStreamHub",
     "MahsunSports",
     "PapazSports",
-    "SafakStreamCinema",
-    "HDFilmCehennemi"
+    "SafakStreamCinema"
 )
