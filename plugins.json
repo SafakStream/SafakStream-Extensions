@@ -84,48 +84,6 @@
         "fileHash": "sha256-c6eba081dc78f9db89f0df9abb34e3d4bd82feeda9809e2be936dbc75c1e0cea"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Filmmakinesi.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "Filmmakinesi",
-        "internalName": "Filmmakinesi",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "FilmMakinesi - T\u00fcrk\u00e7e Dublaj ve Altyaz\u0131l\u0131 Film & Dizi \u0130zleme Sitesi",
-        "fileSize": 36418,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://www.google.com/s2/favicons?domain=filmmakinesi.to&sz=%size%",
-        "apiVersion": 1,
-        "fileHash": "sha256-a11fc083d2425c1fe765b534cd11ccaad03cadcaffad4c273b4b56fa4b3994b1"
-    },
-    {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/HDFilmCehennemi.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "HDFilmCehennemi",
-        "internalName": "HDFilmCehennemi",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "HDFilmCehennemi - T\u00fcrkiye'nin en h\u0131zl\u0131 HD film ve dizi izleme sitesi.",
-        "fileSize": 18070,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://www.hdfilmcehennemi.nl/dist/images/logo.svg",
-        "apiVersion": 1,
-        "fileHash": "sha256-4b50a629b8437f29b4274b96e651344f85dccb6892b364c2b27e45b51e5aeca2"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
         "status": 1,
         "version": 1,
