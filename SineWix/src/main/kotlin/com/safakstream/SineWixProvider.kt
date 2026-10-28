@@ -107,25 +107,13 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // Senin test edip ÇALIŞTIĞINI doğruladığın 2 kaynak
-        val sources = mutableListOf<String>()
-        
+        // Kendi yazdığımız özel çözücüyü kullanıyoruz
         if (type == "movie") {
-            sources.add("https://vidlink.pro/movie/$imdbId")
-            sources.add("https://vidsrc.sh/embed/movie/$imdbId")
+            VidLinkExtractor().getUrl("https://vidlink.pro/movie/$imdbId", null, subtitleCallback, callback)
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            sources.add("https://vidlink.pro/tv/$imdbId/$season/$episode")
-            sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
-        }
-
-        for (source in sources) {
-            try {
-                loadExtractor(source, subtitleCallback, callback)
-            } catch (e: Exception) {
-                // Hata alırsak bir sonraki kaynağa geç
-            }
+            VidLinkExtractor().getUrl("https://vidlink.pro/tv/$imdbId/$season/$episode", null, subtitleCallback, callback)
         }
         
         return true
