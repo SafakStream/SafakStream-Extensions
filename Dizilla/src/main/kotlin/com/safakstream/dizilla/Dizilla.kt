@@ -22,14 +22,15 @@ class Dizilla : MainAPI() {
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
 
     override val mainPage = mainPageOf(
-        "$mainUrl/tr-dublaj-diziler" to "Türkçe Dublaj Diziler",
-        "$mainUrl/yerli-diziler" to "Yerli Diziler",
-        "$mainUrl/yabanci-diziler" to "Yabancı Diziler",
-        "$mainUrl/filmler" to "Filmler"
+        "$mainUrl/turkce-dublaj-dizi-izle" to "Türkçe Dublaj Diziler",
+        "$mainUrl/yerli-dizi-izle" to "Yerli Diziler",
+        "$mainUrl/yabanci-dizi-izle" to "Yabancı Diziler",
+        "$mainUrl/anime-izle" to "Anime"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = "${request.data}?page=$page"
+        // Ana sayfa linklerinde sayfalama genelde ?page= veya /sayfa/ şeklindedir, şimdilik ilk sayfayı çekelim
+        val url = if (page == 1) request.data else "${request.data}?page=$page"
         val document = app.get(url).text
         val home = parseItems(document)
         return newHomePageResponse(request.name, home)
@@ -44,10 +45,12 @@ class Dizilla : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).text
         
+        // JSON kaçışlı verileri temizle
         val title = Regex("\\\\\"title\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1) ?: "Bilinmeyen Başlık"
         val description = Regex("\\\\\"description\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1) ?: ""
-        val poster = Regex("\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1) ?: ""
+        val poster = Regex("\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1)?.replace("\\\\", "") ?: ""
         
+        // Eğer link film ise
         if (url.contains("/film/") || url.contains("/filmler/")) {
             return newMovieLoadResponse(title, url, TvType.Movie, url) {
                 this.posterUrl = poster
@@ -55,19 +58,21 @@ class Dizilla : MainAPI() {
             }
         }
 
+        // Dizi ise bölümleri çek
         val episodes = mutableListOf<Episode>()
         val addedUrls = mutableSetOf<String>()
-        val episodeRegex = Regex("(\\\\\"/.*?sezon-.*?bolum\\\\\")")
+        
+        // Sitedeki tüm bölüm linklerini yakala (Örn: \"/carrie-1-sezon-1-bolum\")
+        val episodeRegex = Regex("\\\\\"href\\\\\":\\\\\"(/[a-zA-Z0-9-]+-\\\\d+-sezon-\\\\d+-bolum[^\"\\\\]*)\\\\\"")
         val matches = episodeRegex.findAll(document)
         
         var counter = 1
         matches.forEach { match ->
-            var epUrl = match.groupValues[1].replace("\\\"", "")
+            var epUrl = match.groupValues[1]
             if (epUrl.startsWith("/")) epUrl = "$mainUrl$epUrl"
             
-            val epName = epUrl.substringAfterLast("/").replace("-", " ").replaceFirstChar { it.uppercase() }
-            
             if (addedUrls.add(epUrl)) {
+                val epName = epUrl.substringAfterLast("/").replace("-", " ").replaceFirstChar { it.uppercase() }
                 episodes.add(newEpisode(epUrl) {
                     this.name = epName
                     this.episode = counter
@@ -85,6 +90,7 @@ class Dizilla : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val document = app.get(data).text
         
+        // Bölüm sayfasındaki iframe kaynağını bul
         val iframeRegex = Regex("\\\\\"src\\\\\":\\\\\"(https://.*?iframe\\\\.php\\\\?v=.*?)\\\\\"")
         val iframeMatch = iframeRegex.find(document)
         
@@ -97,18 +103,32 @@ class Dizilla : MainAPI() {
 
     private fun parseItems(html: String): List<SearchResponse> {
         val items = mutableListOf<SearchResponse>()
-        val itemRegex = Regex("\\\\\"title\\\\\":\\\\\"(.*?)\\\\\",\\\\\"slug\\\\\":\\\\\"(.*?)\\\\\",.*?\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\"")
+        
+        // Mükemmel Regex: Başlık, Afiş ve Linki (/dizi/ veya /film/) sırasıyla yakalar
+        val itemRegex = Regex("\\\\\"title\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"href\\\\\":\\\\\"(/dizi/|/film/)([^\"\\\\]*)\\\\\"")
         
         itemRegex.findAll(html).forEach { match ->
             val title = match.groupValues[1]
-            val slug = match.groupValues[2]
-            val poster = match.groupValues[3]
+            val poster = match.groupValues[2].replace("\\\\", "") 
+            val typePath = match.groupValues[3] // /dizi/ veya /film/
+            val slug = match.groupValues[4]
             
-            val fullUrl = if (slug.startsWith("http")) slug else "$mainUrl/$slug"
+            val fullUrl = "$mainUrl$typePath$slug"
+            val isMovie = typePath == "/film/"
+            val tvType = if (isMovie) TvType.Movie else TvType.TvSeries
             
-            items.add(newTvSeriesSearchResponse(title, fullUrl, TvType.TvSeries) {
-                this.posterUrl = poster
-            })
+            // Aynı içeriği iki kere eklemeyi önle
+            if (items.none { it.url == fullUrl }) {
+                if (isMovie) {
+                    items.add(newMovieSearchResponse(title, fullUrl, TvType.Movie) {
+                        this.posterUrl = poster
+                    })
+                } else {
+                    items.add(newTvSeriesSearchResponse(title, fullUrl, TvType.TvSeries) {
+                        this.posterUrl = poster
+                    })
+                }
+            }
         }
         return items
     }
