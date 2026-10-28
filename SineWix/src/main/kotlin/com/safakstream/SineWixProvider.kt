@@ -107,19 +107,19 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // Farklı kaynakları sırayla deneyeceğiz
+        // Yeni ve daha stabil kaynakları sırayla deneyeceğiz
         val sources = mutableListOf<String>()
         
         if (type == "movie") {
-            sources.add("https://embed.su/embed/movie/$imdbId")
-            sources.add("https://vidsrc.cc/v2/embed/movie/$imdbId")
-            sources.add("https://vidsrc.sh/embed/movie/$imdbId")
+            sources.add("https://vidlink.pro/movie/$imdbId")
+            sources.add("https://vidsrc.in/embed/movie/$imdbId")
+            sources.add("https://vidsrc.pro/embed/movie/$imdbId")
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            sources.add("https://embed.su/embed/tv/$imdbId/$season/$episode")
-            sources.add("https://vidsrc.cc/v2/embed/tv/$imdbId/$season/$episode")
-            sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidlink.pro/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.in/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.pro/embed/tv/$imdbId/$season/$episode")
         }
 
         // Sırayla dene, biri çalışırsa diğerlerine geçme
