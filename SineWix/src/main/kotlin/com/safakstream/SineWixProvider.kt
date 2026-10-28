@@ -107,30 +107,36 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // Yeni ve daha stabil kaynakları sırayla deneyeceğiz
-        val sources = mutableListOf<String>()
-        
-        if (type == "movie") {
-            sources.add("https://vidlink.pro/movie/$imdbId")
-            sources.add("https://vidsrc.in/embed/movie/$imdbId")
-            sources.add("https://vidsrc.pro/embed/movie/$imdbId")
+        // 1. Kaynak: VidLink (Genellikle engellenmez ve çok stabil)
+        val vidlinkUrl = if (type == "movie") {
+            "https://vidlink.pro/movie/$imdbId"
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            sources.add("https://vidlink.pro/tv/$imdbId/$season/$episode")
-            sources.add("https://vidsrc.in/embed/tv/$imdbId/$season/$episode")
-            sources.add("https://vidsrc.pro/embed/tv/$imdbId/$season/$episode")
+            "https://vidlink.pro/tv/$imdbId/$season/$episode"
         }
 
-        // Sırayla dene, biri çalışırsa diğerlerine geçme
-        for (source in sources) {
-            try {
-                loadExtractor(source, subtitleCallback, callback)
-            } catch (e: Exception) {
-                // Hata alırsak bir sonraki kaynağa geç
-            }
+        try {
+            loadExtractor(vidlinkUrl, subtitleCallback, callback)
+        } catch (e: Exception) {
+            // Hata olursa 2. kaynağa geç
         }
-        
+
+        // 2. Kaynak: Vidsrc.cc (Yedek)
+        val vidsrcCcUrl = if (type == "movie") {
+            "https://vidsrc.cc/v2/embed/movie/$imdbId"
+        } else {
+            val season = data.substringAfter("/season/").substringBefore("/")
+            val episode = data.substringAfter("/episode/")
+            "https://vidsrc.cc/v2/embed/tv/$imdbId/$season/$episode"
+        }
+
+        try {
+            loadExtractor(vidsrcCcUrl, subtitleCallback, callback)
+        } catch (e: Exception) {
+            // İkisi de olmazsa çık
+        }
+
         return true
     }
 
