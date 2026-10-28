@@ -34,7 +34,7 @@ class SineWixProvider : MainAPI() {
         val url = "${request.data}&page=$page"
         val response = app.get(url).text
         val json = tryParseJson<TmdbResponse>(response)
-        val items = json?.results?.mapNotNull { it.toSearchResponse() } ?: emptyList()
+        val items = json?.results?.mapNotNull { it.toSearchResponse(this) } ?: emptyList()
         return newHomePageResponse(request.name, items)
     }
 
@@ -43,7 +43,7 @@ class SineWixProvider : MainAPI() {
         val url = "$mainUrl/search/multi?api_key=$tmdbApiKey&language=tr-TR&query=$encodedQuery"
         val response = app.get(url).text
         val json = tryParseJson<TmdbResponse>(response)
-        return json?.results?.mapNotNull { it.toSearchResponse() } ?: emptyList()
+        return json?.results?.mapNotNull { it.toSearchResponse(this) } ?: emptyList()
     }
 
     override suspend fun load(url: String): LoadResponse {
@@ -58,11 +58,11 @@ class SineWixProvider : MainAPI() {
         val backdrop = json.backdropPath?.let { "$tmdbImageBase$it" }
         val year = (json.releaseDate ?: json.firstAirDate)?.take(4)?.toIntOrNull()
         val plot = json.overview
-        val score = json.voteAverage?.times(10)?.toInt()
+        val score = json.voteAverage?.let { Score.from10(it) }
 
         return if (type == "tv") {
             val seasons = json.seasons ?: emptyList()
-            val episodeList = mutableListOf<Episode>()
+            val episodeList = mutableListOf<com.lagradost.cloudstream3.Episode>()
             seasons.forEach { season ->
                 val seasonUrl = "$mainUrl/tv/$id/season/${season.seasonNumber}?api_key=$tmdbApiKey&language=tr-TR"
                 val seasonResponse = app.get(seasonUrl).text
@@ -153,16 +153,17 @@ data class TmdbItem(
     @JsonProperty("overview") val overview: String?,
     @JsonProperty("vote_average") val voteAverage: Double?,
     @JsonProperty("media_type") val mediaType: String?
-) {
-    fun toSearchResponse(): SearchResponse? {
-        if (id == null) return null
-        val title = title ?: name ?: return null
-        val isTv = mediaType == "tv" || name != null
-        val url = if (isTv) "https://api.themoviedb.org/3/tv/$id" else "https://api.themoviedb.org/3/movie/$id"
-        return newMovieSearchResponse(title, url, if (isTv) TvType.TvSeries else TvType.Movie) {
-            this.posterUrl = posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
-            this.year = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull()
-        }
+)
+
+// Extension fonksiyonu, MainAPI receiver'ı ile
+fun TmdbItem.toSearchResponse(provider: MainAPI): SearchResponse? {
+    if (id == null) return null
+    val title = title ?: name ?: return null
+    val isTv = mediaType == "tv" || name != null
+    val url = if (isTv) "https://api.themoviedb.org/3/tv/$id" else "https://api.themoviedb.org/3/movie/$id"
+    return provider.newMovieSearchResponse(title, url, if (isTv) TvType.TvSeries else TvType.Movie) {
+        this.posterUrl = posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
+        this.year = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull()
     }
 }
 
@@ -188,10 +189,10 @@ data class Season(
 )
 
 data class SeasonDetail(
-    @JsonProperty("episodes") val episodes: List<Episode>?
+    @JsonProperty("episodes") val episodes: List<TmdbEpisode>?
 )
 
-data class Episode(
+data class TmdbEpisode(
     @JsonProperty("episode_number") val episodeNumber: Int,
     @JsonProperty("name") val name: String?,
     @JsonProperty("overview") val overview: String?,
