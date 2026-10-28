@@ -229,28 +229,6 @@
         "fileHash": "sha256-580ce01790774b85f65b874626ce7535f350ff90f5c59eaa03eca6a751af6c62"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SineWix.cs3",
-        "status": 3,
-        "version": 1,
-        "name": "SineWix",
-        "internalName": "SineWix",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "SineWix - T\u00fcrk\u00e7e film, dizi ve anime izleme platformu (TMDB tabanl\u0131)",
-        "fileSize": 28592,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Movie",
-            "TvSeries",
-            "Anime"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SineWix.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-be5829df8e267ce509ef8fa70c950be8dc299af66b386d8abe78d045f42365c8"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Streamed.cs3",
         "status": 1,
         "version": 1,
