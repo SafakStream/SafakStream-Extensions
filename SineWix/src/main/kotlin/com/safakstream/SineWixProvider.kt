@@ -107,31 +107,28 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // 1. Kaynak: vidsrc.sh (Özel çözücümüzle)
-        val vidsrcUrl = if (type == "movie") {
-            "https://vidsrc.sh/embed/movie/$imdbId"
+        // Farklı kaynakları sırayla deneyeceğiz
+        val sources = mutableListOf<String>()
+        
+        if (type == "movie") {
+            sources.add("https://vidlink.pro/movie/$imdbId")
+            sources.add("https://vidsrc.to/embed/movie/$imdbId")
+            sources.add("https://vidsrc.sh/embed/movie/$imdbId")
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://vidsrc.sh/embed/tv/$imdbId/$season/$episode"
+            sources.add("https://vidlink.pro/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.to/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
         }
 
-        try {
-            VidSrcExtractor().getUrl(vidsrcUrl, null, subtitleCallback, callback)
-        } catch (e: Exception) {
-            // Hata olursa yedek kaynağa geç
-        }
-
-        // 2. Kaynak (Yedek): multiembed.mov (SuperEmbed)
-        if (callback == null) { // Eğer 1. kaynaktan link çıkmadıysa
-            val superEmbedUrl = if (type == "movie") {
-                "https://multiembed.mov/?video_id=$imdbId"
-            } else {
-                val season = data.substringAfter("/season/").substringBefore("/")
-                val episode = data.substringAfter("/episode/")
-                "https://multiembed.mov/?video_id=$imdbId&s=$season&e=$episode"
+        // Sırayla dene, biri çalışırsa diğerlerine geçme
+        for (source in sources) {
+            try {
+                loadExtractor(source, subtitleCallback, callback)
+            } catch (e: Exception) {
+                // Hata alırsak bir sonraki kaynağa geç
             }
-            loadExtractor(superEmbedUrl, subtitleCallback, callback)
         }
         
         return true
