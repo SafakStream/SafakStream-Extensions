@@ -107,13 +107,13 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // vidsrc.net kullanarak deneyelim (vidsrc.sh yerine)
+        // vidsrc.sh kullanarak deneyelim
         val embedUrl = if (type == "movie") {
-            "https://vidsrc.net/embed/movie/$imdbId"
+            "https://vidsrc.sh/embed/movie/$imdbId"
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://vidsrc.net/embed/tv/$imdbId/$season/$episode"
+            "https://vidsrc.sh/embed/tv/$imdbId/$season/$episode"
         }
 
         try {
