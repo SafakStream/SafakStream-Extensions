@@ -13,7 +13,7 @@ import java.util.Base64
 
 open class VidSrcExtractor : ExtractorApi() {
     override val name = "VidSrc"
-    override val mainUrl = "https://vidsrc.sh"
+    override val mainUrl = "https://vidsrc.net"
     private val apiUrl = "https://vidsrc.stream"
     override val requiresReferer = false
 
