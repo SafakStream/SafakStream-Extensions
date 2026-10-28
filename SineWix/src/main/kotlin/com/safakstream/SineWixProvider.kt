@@ -5,9 +5,6 @@ import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.app
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.newExtractorLink
 import java.net.URLEncoder
 
 class SineWixProvider : MainAPI() {
@@ -22,8 +19,6 @@ class SineWixProvider : MainAPI() {
         TvType.Anime
     )
 
-    // TMDB API Anahtarı (Uygulamadan çıkarılamadı, halka açık bir anahtar kullanıyoruz)
-    // Not: Bu anahtar TMDB'nin halka açık test anahtarıdır, üretim için kendi anahtarınızı alın.
     private val tmdbApiKey = "4e44d9029b1270a757cddc766a1bcb63"
     private val tmdbImageBase = "https://image.tmdb.org/t/p/w500"
 
@@ -59,39 +54,46 @@ class SineWixProvider : MainAPI() {
         val json = tryParseJson<TmdbDetail>(response) ?: throw Exception("Detaylar yüklenemedi")
 
         val title = json.title ?: json.name ?: "Bilinmeyen"
-        val poster = json.posterPath?.let { "$tmdbImageBase$it" }
+        val poster = json.posterPath?.let { "$tmdbImageBase$it" } ?: ""
         val backdrop = json.backdropPath?.let { "$tmdbImageBase$it" }
         val year = (json.releaseDate ?: json.firstAirDate)?.take(4)?.toIntOrNull()
         val plot = json.overview
-        val rating = json.voteAverage?.times(10)?.toInt()
+        val score = json.voteAverage?.times(10)?.toInt()
 
-        val episodes = if (type == "tv") {
-            // Dizi detayları için sezonları çekelim
+        return if (type == "tv") {
             val seasons = json.seasons ?: emptyList()
-            seasons.flatMap { season ->
+            val episodeList = mutableListOf<Episode>()
+            seasons.forEach { season ->
                 val seasonUrl = "$mainUrl/tv/$id/season/${season.seasonNumber}?api_key=$tmdbApiKey&language=tr-TR"
                 val seasonResponse = app.get(seasonUrl).text
                 val seasonJson = tryParseJson<SeasonDetail>(seasonResponse)
-                seasonJson?.episodes?.map { ep ->
-                    newEpisode("$mainUrl/tv/$id/season/${season.seasonNumber}/episode/${ep.episodeNumber}") {
+                seasonJson?.episodes?.forEach { ep ->
+                    episodeList.add(newEpisode("$mainUrl/tv/$id/season/${season.seasonNumber}/episode/${ep.episodeNumber}") {
                         this.name = ep.name ?: "Bölüm ${ep.episodeNumber}"
                         this.season = season.seasonNumber
                         this.episode = ep.episodeNumber
                         this.posterUrl = ep.stillPath?.let { "$tmdbImageBase$it" }
                         this.description = ep.overview
-                    }
-                } ?: emptyList()
+                    })
+                }
             }
-        } else emptyList()
-
-        return newMovieLoadResponse(title, url, if (type == "tv") TvType.TvSeries else TvType.Movie, url) {
-            this.posterUrl = poster
-            this.backgroundPosterUrl = backdrop
-            this.year = year
-            this.plot = plot
-            this.rating = rating
-            this.tags = json.genres?.map { it.name } ?: emptyList()
-            this.episodes = episodes
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodeList) {
+                this.posterUrl = poster
+                this.backgroundPosterUrl = backdrop
+                this.year = year
+                this.plot = plot
+                this.score = score
+                this.tags = json.genres?.mapNotNull { it.name } ?: emptyList()
+            }
+        } else {
+            newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.backgroundPosterUrl = backdrop
+                this.year = year
+                this.plot = plot
+                this.score = score
+                this.tags = json.genres?.mapNotNull { it.name } ?: emptyList()
+            }
         }
     }
 
@@ -105,11 +107,9 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // İzleme linklerini vidsrc-embed.ru üzerinden oluşturalım
         val embedUrl = if (type == "movie") {
             "https://vidsrc-embed.ru/embed/movie/$imdbId"
         } else {
-            // Dizi için sezon/bölüm bilgisini data'dan çıkaralım
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
             "https://vidsrc-embed.ru/embed/tv/$imdbId/$season/$episode"
@@ -135,69 +135,69 @@ class SineWixProvider : MainAPI() {
         val json = tryParseJson<ExternalIds>(response)
         return json?.imdbId
     }
+}
 
-    // Veri Modelleri
-    data class TmdbResponse(
-        @JsonProperty("results") val results: List<TmdbItem>?
-    )
+// Veri Modelleri (Sınıf dışına taşındı)
+data class TmdbResponse(
+    @JsonProperty("results") val results: List<TmdbItem>?
+)
 
-    data class TmdbItem(
-        @JsonProperty("id") val id: Int?,
-        @JsonProperty("title") val title: String?,
-        @JsonProperty("name") val name: String?,
-        @JsonProperty("poster_path") val posterPath: String?,
-        @JsonProperty("backdrop_path") val backdropPath: String?,
-        @JsonProperty("release_date") val releaseDate: String?,
-        @JsonProperty("first_air_date") val firstAirDate: String?,
-        @JsonProperty("overview") val overview: String?,
-        @JsonProperty("vote_average") val voteAverage: Double?,
-        @JsonProperty("media_type") val mediaType: String?
-    ) {
-        fun toSearchResponse(): SearchResponse? {
-            if (id == null) return null
-            val title = title ?: name ?: return null
-            val isTv = mediaType == "tv" || name != null
-            val url = if (isTv) "https://api.themoviedb.org/3/tv/$id" else "https://api.themoviedb.org/3/movie/$id"
-            return newMovieSearchResponse(title, url, if (isTv) TvType.TvSeries else TvType.Movie) {
-                this.posterUrl = posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
-                this.year = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull()
-            }
+data class TmdbItem(
+    @JsonProperty("id") val id: Int?,
+    @JsonProperty("title") val title: String?,
+    @JsonProperty("name") val name: String?,
+    @JsonProperty("poster_path") val posterPath: String?,
+    @JsonProperty("backdrop_path") val backdropPath: String?,
+    @JsonProperty("release_date") val releaseDate: String?,
+    @JsonProperty("first_air_date") val firstAirDate: String?,
+    @JsonProperty("overview") val overview: String?,
+    @JsonProperty("vote_average") val voteAverage: Double?,
+    @JsonProperty("media_type") val mediaType: String?
+) {
+    fun toSearchResponse(): SearchResponse? {
+        if (id == null) return null
+        val title = title ?: name ?: return null
+        val isTv = mediaType == "tv" || name != null
+        val url = if (isTv) "https://api.themoviedb.org/3/tv/$id" else "https://api.themoviedb.org/3/movie/$id"
+        return newMovieSearchResponse(title, url, if (isTv) TvType.TvSeries else TvType.Movie) {
+            this.posterUrl = posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
+            this.year = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull()
         }
     }
-
-    data class TmdbDetail(
-        @JsonProperty("id") val id: Int?,
-        @JsonProperty("title") val title: String?,
-        @JsonProperty("name") val name: String?,
-        @JsonProperty("poster_path") val posterPath: String?,
-        @JsonProperty("backdrop_path") val backdropPath: String?,
-        @JsonProperty("release_date") val releaseDate: String?,
-        @JsonProperty("first_air_date") val firstAirDate: String?,
-        @JsonProperty("overview") val overview: String?,
-        @JsonProperty("vote_average") val voteAverage: Double?,
-        @JsonProperty("genres") val genres: List<Genre>?,
-        @JsonProperty("seasons") val seasons: List<Season>?
-    )
-
-    data class Genre(@JsonProperty("name") val name: String?)
-
-    data class Season(
-        @JsonProperty("season_number") val seasonNumber: Int,
-        @JsonProperty("episode_count") val episodeCount: Int?
-    )
-
-    data class SeasonDetail(
-        @JsonProperty("episodes") val episodes: List<Episode>?
-    )
-
-    data class Episode(
-        @JsonProperty("episode_number") val episodeNumber: Int,
-        @JsonProperty("name") val name: String?,
-        @JsonProperty("overview") val overview: String?,
-        @JsonProperty("still_path") val stillPath: String?
-    )
-
-    data class ExternalIds(
-        @JsonProperty("imdb_id") val imdbId: String?
-    )
 }
+
+data class TmdbDetail(
+    @JsonProperty("id") val id: Int?,
+    @JsonProperty("title") val title: String?,
+    @JsonProperty("name") val name: String?,
+    @JsonProperty("poster_path") val posterPath: String?,
+    @JsonProperty("backdrop_path") val backdropPath: String?,
+    @JsonProperty("release_date") val releaseDate: String?,
+    @JsonProperty("first_air_date") val firstAirDate: String?,
+    @JsonProperty("overview") val overview: String?,
+    @JsonProperty("vote_average") val voteAverage: Double?,
+    @JsonProperty("genres") val genres: List<Genre>?,
+    @JsonProperty("seasons") val seasons: List<Season>?
+)
+
+data class Genre(@JsonProperty("name") val name: String?)
+
+data class Season(
+    @JsonProperty("season_number") val seasonNumber: Int,
+    @JsonProperty("episode_count") val episodeCount: Int?
+)
+
+data class SeasonDetail(
+    @JsonProperty("episodes") val episodes: List<Episode>?
+)
+
+data class Episode(
+    @JsonProperty("episode_number") val episodeNumber: Int,
+    @JsonProperty("name") val name: String?,
+    @JsonProperty("overview") val overview: String?,
+    @JsonProperty("still_path") val stillPath: String?
+)
+
+data class ExternalIds(
+    @JsonProperty("imdb_id") val imdbId: String?
+)
