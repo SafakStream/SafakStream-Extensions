@@ -50,6 +50,15 @@ subprojects {
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/SafakStream/SafakStream-Extensions")
         authors = listOf("SafakStream")
 
+        // SineWix özel metadata
+        if (project.name == "SineWix") {
+            description = "SineWix - Türkçe film, dizi ve anime izleme platformu (TMDB tabanlı)"
+            language = "tr"
+            tvTypes = listOf("Movie", "TvSeries", "Anime")
+            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SineWix.png"
+            version = 1
+        }
+
         // SelcukFlix özel metadata
         if (project.name == "SelcukFlix") {
             description = "SelcukFlix - Türkçe dizi ve film izleme platformu"
