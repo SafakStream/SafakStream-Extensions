@@ -107,13 +107,25 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // Kendi yazdığımız özel çözücüyü kullanıyoruz
+        // Test ettiğin ve çalışan sitelerin doğrudan arka plan adreslerini kullanıyoruz
+        val sources = mutableListOf<String>()
+        
         if (type == "movie") {
-            VidLinkExtractor().getUrl("https://vidlink.pro/movie/$imdbId", null, subtitleCallback, callback)
+            sources.add("https://vidsrc.stream/embed/movie/$imdbId")
+            sources.add("https://vidlink.pro/movie/$imdbId")
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            VidLinkExtractor().getUrl("https://vidlink.pro/tv/$imdbId/$season/$episode", null, subtitleCallback, callback)
+            sources.add("https://vidsrc.stream/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidlink.pro/tv/$imdbId/$season/$episode")
+        }
+
+        for (source in sources) {
+            try {
+                loadExtractor(source, subtitleCallback, callback)
+            } catch (e: Exception) {
+                // Hata alırsak bir sonraki kaynağa geç
+            }
         }
         
         return true
