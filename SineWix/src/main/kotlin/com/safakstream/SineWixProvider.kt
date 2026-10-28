@@ -107,36 +107,30 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // 1. Kaynak: SuperEmbed (multiembed.mov) - Genellikle Cloudstream tarafından çok iyi desteklenir
-        val superEmbedUrl = if (type == "movie") {
-            "https://multiembed.mov/?video_id=$imdbId"
+        // Farklı kaynakları sırayla deneyeceğiz
+        val sources = mutableListOf<String>()
+        
+        if (type == "movie") {
+            sources.add("https://embed.su/embed/movie/$imdbId")
+            sources.add("https://vidsrc.cc/v2/embed/movie/$imdbId")
+            sources.add("https://vidsrc.sh/embed/movie/$imdbId")
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://multiembed.mov/?video_id=$imdbId&s=$season&e=$episode"
+            sources.add("https://embed.su/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.cc/v2/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
+        }
+
+        // Sırayla dene, biri çalışırsa diğerlerine geçme
+        for (source in sources) {
+            try {
+                loadExtractor(source, subtitleCallback, callback)
+            } catch (e: Exception) {
+                // Hata alırsak bir sonraki kaynağa geç
+            }
         }
         
-        try {
-            loadExtractor(superEmbedUrl, subtitleCallback, callback)
-        } catch (e: Exception) {
-            // Hata alırsak 2. kaynağa geç
-        }
-
-        // 2. Kaynak (Yedek): VidSrc.to
-        val vidsrcToUrl = if (type == "movie") {
-            "https://vidsrc.to/embed/movie/$imdbId"
-        } else {
-            val season = data.substringAfter("/season/").substringBefore("/")
-            val episode = data.substringAfter("/episode/")
-            "https://vidsrc.to/embed/tv/$imdbId/$season/$episode"
-        }
-
-        try {
-            loadExtractor(vidsrcToUrl, subtitleCallback, callback)
-        } catch (e: Exception) {
-            // İkisi de olmazsa çık
-        }
-
         return true
     }
 
