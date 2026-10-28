@@ -107,19 +107,36 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        val embedUrl = if (type == "movie") {
-            "https://vidsrc.sh/embed/movie/$imdbId"
+        // 1. Kaynak: SuperEmbed (multiembed.mov) - Genellikle Cloudstream tarafından çok iyi desteklenir
+        val superEmbedUrl = if (type == "movie") {
+            "https://multiembed.mov/?video_id=$imdbId"
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://vidsrc.sh/embed/tv/$imdbId/$season/$episode"
+            "https://multiembed.mov/?video_id=$imdbId&s=$season&e=$episode"
+        }
+        
+        try {
+            loadExtractor(superEmbedUrl, subtitleCallback, callback)
+        } catch (e: Exception) {
+            // Hata alırsak 2. kaynağa geç
+        }
+
+        // 2. Kaynak (Yedek): VidSrc.to
+        val vidsrcToUrl = if (type == "movie") {
+            "https://vidsrc.to/embed/movie/$imdbId"
+        } else {
+            val season = data.substringAfter("/season/").substringBefore("/")
+            val episode = data.substringAfter("/episode/")
+            "https://vidsrc.to/embed/tv/$imdbId/$season/$episode"
         }
 
         try {
-            VidSrcExtractor().getUrl(embedUrl, null, subtitleCallback, callback)
+            loadExtractor(vidsrcToUrl, subtitleCallback, callback)
         } catch (e: Exception) {
-            // Hata durumunda sessizce devam et
+            // İkisi de olmazsa çık
         }
+
         return true
     }
 
