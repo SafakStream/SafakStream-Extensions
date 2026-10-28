@@ -107,20 +107,18 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // Birden fazla kaynak deneyelim
         val sources = mutableListOf<String>()
         
         if (type == "movie") {
-            sources.add("https://vidsrc-embed.ru/embed/movie/$imdbId")
-            sources.add("https://streamimdb.ru/embed/movie/$imdbId")
+            sources.add("https://vidsrc.sh/embed/movie/$imdbId")
+            sources.add("https://vidsrc.net/embed/movie/$imdbId")
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            sources.add("https://vidsrc-embed.ru/embed/tv/$imdbId/$season/$episode")
-            sources.add("https://streamimdb.ru/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
+            sources.add("https://vidsrc.net/embed/tv/$imdbId/$season/$episode")
         }
 
-        // Her bir kaynak için loadExtractor kullanarak video linkini bulmaya çalışalım
         for (sourceUrl in sources) {
             try {
                 loadExtractor(sourceUrl, subtitleCallback, callback)
@@ -139,7 +137,7 @@ class SineWixProvider : MainAPI() {
     }
 }
 
-// Veri Modelleri (Sınıf dışına taşındı)
+// Veri Modelleri
 data class TmdbResponse(
     @JsonProperty("results") val results: List<TmdbItem>?
 )
@@ -157,7 +155,6 @@ data class TmdbItem(
     @JsonProperty("media_type") val mediaType: String?
 )
 
-// Extension fonksiyonu, MainAPI receiver'ı ile
 fun TmdbItem.toSearchResponse(provider: MainAPI): SearchResponse? {
     if (id == null) return null
     val title = title ?: name ?: return null
