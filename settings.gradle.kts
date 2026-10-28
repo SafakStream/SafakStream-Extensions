@@ -30,6 +30,6 @@ include(
     "MahsunSports",
     "PapazSports",
     "SafakStreamCinema",
-    "Dizilla",
+    "Dizilla"
     "SineWix"
 )
