@@ -5,8 +5,10 @@ import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import java.util.Base64
 
 open class VidSrcExtractor : ExtractorApi() {
@@ -37,14 +39,15 @@ open class VidSrcExtractor : ExtractorApi() {
                 val encodedElement = res.document.select("div#reporting_content+div")
                 val decodedUrl = decodeUrl(encodedElement.attr("id"), encodedElement.text()) ?: return@amap
                 callback.invoke(
-                    ExtractorLink(
-                        this.name,
-                        this.name,
-                        decodedUrl,
-                        apiUrl,
-                        Qualities.Unknown.value,
-                        isM3u8 = true
-                    )
+                    newExtractorLink(
+                        source = this.name,
+                        name = this.name,
+                        url = decodedUrl,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = apiUrl
+                        this.quality = Qualities.Unknown.value
+                    }
                 )
             } else {
                 loadExtractor(res.url, url, subtitleCallback, callback)
