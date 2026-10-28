@@ -107,16 +107,17 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
+        // 2embed.cc kullanarak daha stabil bir bağlantı deneyelim
         val embedUrl = if (type == "movie") {
-            "https://vidsrc.sh/embed/movie/$imdbId"
+            "https://www.2embed.cc/embed/$imdbId"
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://vidsrc.sh/embed/tv/$imdbId/$season/$episode"
+            "https://www.2embed.cc/embedtv/$imdbId&s=$season&e=$episode"
         }
 
         try {
-            VidSrcExtractor().getUrl(embedUrl, null, subtitleCallback, callback)
+            loadExtractor(embedUrl, subtitleCallback, callback)
         } catch (e: Exception) {
             // Hata durumunda sessizce devam et
         }
