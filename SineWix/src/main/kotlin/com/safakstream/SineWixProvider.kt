@@ -107,24 +107,18 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        val sources = mutableListOf<String>()
-        
-        if (type == "movie") {
-            sources.add("https://vidsrc.sh/embed/movie/$imdbId")
-            sources.add("https://vidsrc.net/embed/movie/$imdbId")
+        val embedUrl = if (type == "movie") {
+            "https://vidsrc.sh/embed/movie/$imdbId"
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
-            sources.add("https://vidsrc.net/embed/tv/$imdbId/$season/$episode")
+            "https://vidsrc.sh/embed/tv/$imdbId/$season/$episode"
         }
 
-        for (sourceUrl in sources) {
-            try {
-                loadExtractor(sourceUrl, subtitleCallback, callback)
-            } catch (e: Exception) {
-                // Hata olursa devam et
-            }
+        try {
+            VidSrcExtractor().getUrl(embedUrl, null, subtitleCallback, callback)
+        } catch (e: Exception) {
+            // Hata durumunda sessizce devam et
         }
         return true
     }
