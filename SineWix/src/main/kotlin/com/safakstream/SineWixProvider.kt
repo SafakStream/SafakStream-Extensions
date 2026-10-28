@@ -103,48 +103,52 @@ class SineWixProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val id = data.substringAfterLast("/")
+        val tmdbId = data.substringAfterLast("/")
         val type = if (data.contains("/tv/")) "tv" else "movie"
-        val imdbId = getImdbId(id, type) ?: return false
+        val imdbId = getImdbId(tmdbId, type)
 
-        // 1. Kaynak: VidLink (Genellikle engellenmez ve çok stabil)
-        val vidlinkUrl = if (type == "movie") {
-            "https://vidlink.pro/movie/$imdbId"
+        val sources = mutableListOf<String>()
+
+        if (type == "movie") {
+            // 1. vidsrc.sh TMDB parametresiyle (bazen IMDb'den daha iyi çalışır)
+            sources.add("https://vidsrc.sh/embed/movie?tmdb=$tmdbId")
+            // 2. vidsrc.sh IMDb yoluyla
+            if (imdbId != null) {
+                sources.add("https://vidsrc.sh/embed/movie/$imdbId")
+                // 3. SuperEmbed (multiembed.mov)
+                sources.add("https://multiembed.mov/?video_id=$imdbId")
+            }
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://vidlink.pro/tv/$imdbId/$season/$episode"
+            
+            sources.add("https://vidsrc.sh/embed/tv?tmdb=$tmdbId&season=$season&episode=$episode")
+            if (imdbId != null) {
+                sources.add("https://vidsrc.sh/embed/tv/$imdbId/$season/$episode")
+                sources.add("https://multiembed.mov/?video_id=$imdbId&s=$season&e=$episode")
+            }
         }
 
-        try {
-            loadExtractor(vidlinkUrl, subtitleCallback, callback)
-        } catch (e: Exception) {
-            // Hata olursa 2. kaynağa geç
+        for (source in sources) {
+            try {
+                loadExtractor(source, subtitleCallback, callback)
+            } catch (e: Exception) {
+                // Hata alırsak bir sonraki kaynağa geç
+            }
         }
-
-        // 2. Kaynak: Vidsrc.cc (Yedek)
-        val vidsrcCcUrl = if (type == "movie") {
-            "https://vidsrc.cc/v2/embed/movie/$imdbId"
-        } else {
-            val season = data.substringAfter("/season/").substringBefore("/")
-            val episode = data.substringAfter("/episode/")
-            "https://vidsrc.cc/v2/embed/tv/$imdbId/$season/$episode"
-        }
-
-        try {
-            loadExtractor(vidsrcCcUrl, subtitleCallback, callback)
-        } catch (e: Exception) {
-            // İkisi de olmazsa çık
-        }
-
+        
         return true
     }
 
     private suspend fun getImdbId(tmdbId: String, type: String): String? {
-        val url = "$mainUrl/$type/$tmdbId/external_ids?api_key=$tmdbApiKey"
-        val response = app.get(url).text
-        val json = tryParseJson<ExternalIds>(response)
-        return json?.imdbId
+        return try {
+            val url = "$mainUrl/$type/$tmdbId/external_ids?api_key=$tmdbApiKey"
+            val response = app.get(url).text
+            val json = tryParseJson<ExternalIds>(response)
+            json?.imdbId
+        } catch (e: Exception) {
+            null
+        }
     }
 }
 
