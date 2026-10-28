@@ -107,20 +107,18 @@ class SineWixProvider : MainAPI() {
         val type = if (data.contains("/tv/")) "tv" else "movie"
         val imdbId = getImdbId(id, type) ?: return false
 
-        // vidsrc.sh kullanarak deneyelim
+        // Daha önce çalıştığını doğruladığın vidsrc.cc kaynağını kullanıyoruz
         val embedUrl = if (type == "movie") {
-            "https://vidsrc.sh/embed/movie/$imdbId"
+            "https://vidsrc.cc/v2/embed/movie/$imdbId"
         } else {
             val season = data.substringAfter("/season/").substringBefore("/")
             val episode = data.substringAfter("/episode/")
-            "https://vidsrc.sh/embed/tv/$imdbId/$season/$episode"
+            "https://vidsrc.cc/v2/embed/tv/$imdbId/$season/$episode"
         }
 
-        try {
-            VidSrcExtractor().getUrl(embedUrl, null, subtitleCallback, callback)
-        } catch (e: Exception) {
-            // Hata durumunda sessizce devam et
-        }
+        // Cloudstream'in yerleşik loadExtractor fonksiyonunu kullan
+        loadExtractor(embedUrl, subtitleCallback, callback)
+        
         return true
     }
 
