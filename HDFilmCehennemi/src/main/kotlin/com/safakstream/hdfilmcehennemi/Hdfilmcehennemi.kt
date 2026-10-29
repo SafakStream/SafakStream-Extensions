@@ -26,9 +26,11 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import java.net.URLEncoder
 import org.json.JSONObject
 
+@CloudstreamPlugin
 class Hdfilmcehennemi : MainAPI() {
     override var mainUrl = "https://www.hdfilmcehennemi.nl"
     override var name = "HDFilmCehennemi"
