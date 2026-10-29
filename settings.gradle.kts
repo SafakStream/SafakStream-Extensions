@@ -14,5 +14,6 @@ include(
     "Streamed",
     "TrGoals",
     "YouTube",
-    "RoketDizi"
+    "RoketDizi",
+    "DiziPal"
 )

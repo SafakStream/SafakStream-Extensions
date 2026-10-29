@@ -80,7 +80,7 @@ subprojects {
             description = "DiziPal - Türkçe dizi ve film izleme platformu"
             language = "tr"
             tvTypes = listOf("TvSeries", "Movie")
-            iconUrl = "https://dizipal1822.com/assets/favicon/apple-touch-icon.png"
+            iconUrl = "https://dizipal1592.com/assets/favicon/apple-touch-icon.png"
             version = 1
         }
 
