@@ -155,7 +155,7 @@
             "SafakStream"
         ],
         "description": "RoketDizi - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 41096,
+        "fileSize": 41354,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -164,7 +164,7 @@
         ],
         "iconUrl": "https://roketdizi.life/assets/favicon/apple-touch-icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-570f14ed690a023071d866eb8a4cea9db779ad7ed6e3405cb763f12022694b87"
+        "fileHash": "sha256-6276d99507a7a38367e2331abd912899d5c57268b61f225d489cceffe3a35ea1"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamCinema.cs3",
