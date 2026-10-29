@@ -93,7 +93,7 @@
             "SafakStream"
         ],
         "description": "DiziPal - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 24228,
+        "fileSize": 24462,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -102,7 +102,7 @@
         ],
         "iconUrl": "https://dizipal1592.com/assets/favicon/apple-touch-icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-c47392c3175d49c62f5c2934d8011950d3606928af56794258cab5032cc9fb4b"
+        "fileHash": "sha256-bed10cdf04cacf981be569e5c5c6672621bb8057ac097675999677d364717afd"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
