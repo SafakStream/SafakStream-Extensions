@@ -101,6 +101,15 @@ subprojects {
             version = 1
         }
 
+        // HDFilmCehennemi özel metadata
+        if (project.name == "HDFilmCehennemi") {
+            description = "HDFilmCehennemi - Türkçe film ve dizi izleme platformu"
+            language = "tr"
+            tvTypes = listOf("Movie", "TvSeries")
+            iconUrl = "https://www.hdfilmcehennemi.nl/assets/front/icon/apple-touch-icon.png"
+            version = 1
+        }
+
     }
 
     android {
