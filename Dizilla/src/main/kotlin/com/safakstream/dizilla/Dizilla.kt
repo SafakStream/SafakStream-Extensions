@@ -44,15 +44,15 @@ class Dizilla : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).text
         
-        // JSON-LD formatından başlık ve açıklama çekiyoruz (Burası güncellendi)
-        val title = Regex("\"name\":\"(.*?)\"").find(document)?.groupValues?.get(1) ?: "Bilinmeyen Başlık"
+        // 1. HATA ÇÖZÜMÜ: "Dizilla" yerine sayfadaki gerçek başlığı bulmak için og:title veya h1 etiketini arıyoruz.
+        val title = Regex("<title>(.*?)</title>").find(document)?.groupValues?.get(1)?.substringBefore(" - ")?.substringBefore(" | ") 
+                 ?: Regex("\"name\":\"(.*?)\"").findAll(document).lastOrNull()?.groupValues?.get(1) // Yedek plan
+                 ?: "Bilinmeyen Başlık"
+                 
         val description = Regex("\"description\":\"(.*?)\"").find(document)?.groupValues?.get(1) ?: ""
-        
-        // Afiş için JSON-LD içindeki image veya contentUrl (backdrop) arıyoruz
         val poster = Regex("\"image\":\"(.*?)\"").find(document)?.groupValues?.get(1) 
                   ?: Regex("\"contentUrl\":\"(.*?)\"").find(document)?.groupValues?.get(1) ?: ""
 
-        // Eğer film ise (dizi linki değilse)
         if (!url.contains("-sezon-") && (url.contains("/film/") || url.contains("/filmler/"))) {
             return newMovieLoadResponse(title, url, TvType.Movie, url) {
                 this.posterUrl = poster
@@ -60,11 +60,10 @@ class Dizilla : MainAPI() {
             }
         }
 
-        // Dizi ise bölümleri çek (Gelen veriye göre Regex güncellendi)
         val episodes = mutableListOf<Episode>()
         val addedUrls = mutableSetOf<String>()
         
-        // Örnek: \"url\":\"/when-calls-the-heart-1-sezon-1-bolum\"
+        // Bölüm linkleri formata uygun
         val episodeRegex = Regex("\\\\\"url\\\\\":\\\\\"(/[^\"]*?-sezon-[0-9]*-bolum[^\"\\\\]*)\\\\\"")
         val matches = episodeRegex.findAll(document)
         
@@ -92,19 +91,35 @@ class Dizilla : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val document = app.get(data).text
         
+        // 2. HATA ÇÖZÜMÜ: Iframe bulamazsak, m3u8 veya player kaynağını arıyoruz.
+        var videoUrl: String? = null
+        
+        // Önce iframe'i ara
         val iframeRegex = Regex("\\\\\"src\\\\\":\\\\\"(https://.*?iframe\\\\.php\\\\?v=.*?)\\\\\"")
         val iframeMatch = iframeRegex.find(document)
-        
         if (iframeMatch != null) {
-            val iframeUrl = iframeMatch.groupValues[1]
-            loadExtractor(iframeUrl, mainUrl, subtitleCallback, callback)
+            videoUrl = iframeMatch.groupValues[1]
+        } else {
+            // Iframe yoksa, JSON içindeki "src" veya "url" değerlerini ara (Örn: pichive.online)
+            val srcRegex = Regex("\\\\\"src\\\\\":\\\\\"(https?://[^\"\\\\]*(?:pichive|hotlinger|playru|filese|okvip)[^\"\\\\]*)\\\\\"")
+            val srcMatch = srcRegex.find(document)
+            if (srcMatch != null) {
+                videoUrl = srcMatch.groupValues[1]
+            }
+        }
+
+        if (videoUrl != null) {
+            loadExtractor(videoUrl, mainUrl, subtitleCallback, callback)
         }
         return true
     }
 
     private fun parseItems(html: String): List<SearchResponse> {
         val items = mutableListOf<SearchResponse>()
-        val itemRegex = Regex("\\\\\"title\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"href\\\\\":\\\\\"(/dizi/|/film/)([^\"\\\\]*)\\\\\"")
+        
+        // 3. HATA ÇÖZÜMÜ: Regex'i sıkılaştırdık. Sadece dizi/film objelerini yakalıyor.
+        // Örnek: "key":"series:13538"... "title":"Carrie"... "poster":"..."... "href":"/dizi/carrie"
+        val itemRegex = Regex("\\\\\"key\\\\\":\\\\\"(?:series|movie):[0-9]+\\\\\".*?\\\\\"title\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"href\\\\\":\\\\\"(/dizi/|/film/)([^\"\\\\]*)\\\\\"")
         
         itemRegex.findAll(html).forEach { match ->
             val title = match.groupValues[1]
