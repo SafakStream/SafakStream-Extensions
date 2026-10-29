@@ -198,21 +198,32 @@ class Hdfilmcehennemi : MainAPI() {
     }
 
     private fun extractVideoUrl(iframeHtml: String, hostname: String): String? {
-        val d8nMatch = Regex("""d8n\("([^"]+)"\.split\("~"\)\)""").find(iframeHtml)
-        if (d8nMatch != null) {
-            val parts = d8nMatch.groupValues[1].split("~")
-            val decoded = decode(parts, addHostname = true, hostname = hostname)
-            if (decoded.startsWith("http")) return decoded
+        val candidateRegex = Regex("""\w+\("([^"]+)"\.split\("([^"]{1,3})"\)\)""")
+        for (m in candidateRegex.findAll(iframeHtml)) {
+            val encoded = m.groupValues[1].replace("\\/", "/")
+            val sep = m.groupValues[2]
+            if (sep.isEmpty()) continue
+            val parts = encoded.split(sep)
+            if (parts.size < 20) continue
+            for (addHost in listOf(true, false)) {
+                for (b64First in listOf(true, false)) {
+                    try {
+                        val decoded = decode(parts, addHostname = addHost, hostname = hostname, base64First = b64First)
+                        if (decoded.startsWith("http") && (
+                                decoded.contains(".m3u8") ||
+                                decoded.contains("/master") ||
+                                decoded.contains("master.txt") ||
+                                decoded.contains("playlist")
+                            )
+                        ) {
+                            return decoded
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
         }
-
-        val ty0Match = Regex("""ty0\("([^"]+)"\.split\("~"\)\)""").find(iframeHtml)
-        if (ty0Match != null) {
-            val parts = ty0Match.groupValues[1].split("~")
-            val decoded = decode(parts, addHostname = false, hostname = "")
-            if (decoded.startsWith("http")) return decoded
-        }
-
-        return Regex(""""contentUrl"\s*:\s*"([^"]+)"""").find(iframeHtml)?.groupValues?.get(1)
+        return null
     }
 
     private suspend fun extractSubtitles(
@@ -234,19 +245,40 @@ class Hdfilmcehennemi : MainAPI() {
         }
     }
 
-    private fun decode(parts: List<String>, addHostname: Boolean, hostname: String): String {
+    private fun decode(parts: List<String>, addHostname: Boolean, hostname: String, base64First: Boolean): String {
         val xbd25 = parts.toMutableList()
         val djq5 = xbd25.size - 2
         val nzq21 = djq5 % 7
         val a07 = 8 + (djq5 % 5)
+        if (a07 >= xbd25.size || nzq21 >= xbd25.size) throw IllegalArgumentException("splice out of range")
 
-        val x3y = xbd25.removeAt(a07)
-        var too3s = xbd25.removeAt(nzq21)
+        // Sıralamaya dikkat: önce büyük olanı çıkar
+        val cmd: String
+        val hashStr: String
+        if (a07 > nzq21) {
+            cmd = xbd25.removeAt(a07)
+            hashStr = xbd25.removeAt(nzq21)
+        } else if (nzq21 > a07) {
+            hashStr = xbd25.removeAt(nzq21)
+            cmd = xbd25.removeAt(a07)
+        } else {
+            cmd = xbd25.removeAt(a07)
+            hashStr = xbd25.removeAt(a07)
+        }
+
+        var too3s = hashStr
         if (addHostname) too3s += hostname
 
         var ipb0 = xbd25.joinToString("")
-        if (too3s.length > 4096) {
-            ipb0 = String(Base64.decode(ipb0, Base64.DEFAULT), Charsets.ISO_8859_1)
+
+        if (base64First) {
+            if (too3s.length > 4096) {
+                ipb0 = String(Base64.decode(ipb0, Base64.DEFAULT), Charsets.ISO_8859_1)
+            }
+        } else {
+            if (cmd.length > 2048) {
+                ipb0 = ipb0.reversed()
+            }
         }
 
         var ke7 = 0
@@ -261,8 +293,8 @@ class Hdfilmcehennemi : MainAPI() {
         val ki46x = (ox1 % 11) + 5
         var w3scp = ((ox1 * 251 + ke7) % 65519) + 1
 
-        for (i in x3y.indices.reversed()) {
-            when (val ch = x3y[i]) {
+        for (i in cmd.indices.reversed()) {
+            when (val ch = cmd[i]) {
                 '7' -> ipb0 = String(Base64.decode(ipb0, Base64.DEFAULT), Charsets.ISO_8859_1)
                 '3' -> ipb0 = ipb0.reversed()
                 else -> {
@@ -283,7 +315,13 @@ class Hdfilmcehennemi : MainAPI() {
             }
         }
 
-        if (x3y.length > 2048) ipb0 = ipb0.reversed()
+        if (base64First) {
+            if (cmd.length > 2048) ipb0 = ipb0.reversed()
+        } else {
+            if (too3s.length > 4096) {
+                ipb0 = String(Base64.decode(ipb0, Base64.DEFAULT), Charsets.ISO_8859_1)
+            }
+        }
 
         val len = ipb0.length
         val g83 = IntArray(len)
