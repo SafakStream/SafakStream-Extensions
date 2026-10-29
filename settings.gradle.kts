@@ -13,5 +13,6 @@ include(
     "SelcukFlix",
     "Streamed",
     "TrGoals",
-    "YouTube"
+    "YouTube",
+    "RoketDizi"
 )

@@ -92,6 +92,15 @@ subprojects {
             iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png"
             version = 1
         }
+        // RoketDizi özel metadata
+        if (project.name == "RoketDizi") {
+            description = "RoketDizi - Türkçe dizi ve film izleme platformu"
+            language = "tr"
+            tvTypes = listOf("TvSeries", "Movie")
+            iconUrl = "https://roketdizi.life/assets/favicon/apple-touch-icon.png"
+            version = 1
+        }
+
     }
 
     android {
