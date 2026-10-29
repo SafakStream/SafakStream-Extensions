@@ -133,17 +133,22 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
             }
             Log.d("RoketDiziPichive", "HTML Subtitles found: ${seen.size}")
 
-            // Debug: eğer altyazı bulunamadıysa, tracks/captions/vtt geçen bölümleri log'a yaz
+            // Debug: altyazı bulunamadıysa, anahtar kelimelerin geçtiği yerleri logla
             if (seen.isEmpty()) {
-                val tracksIdx = html.indexOf("\"tracks\"")
-                if (tracksIdx < 0) {
-                    val t2 = html.indexOf("tracks:")
-                    if (t2 >= 0) Log.d("RoketDiziPichive", "DEBUG tracks: at $t2: ${html.substring(t2, minOf(t2+400, html.length))}")
-                } else {
-                    Log.d("RoketDiziPichive", "DEBUG tracks: ${html.substring(tracksIdx, minOf(tracksIdx+400, html.length))}")
+                Log.d("RoketDiziPichive", "=== DEBUG HTML KEYWORDS (len=${html.length}) ===")
+                val keywords = listOf(".vtt", ".srt", ".ass", "\"tracks\"", "tracks:", "\"subtitles\"", "subtitles:", "\"captions\"", "caption", "subtitle")
+                for (kw in keywords) {
+                    var idx = html.indexOf(kw)
+                    var cnt = 0
+                    while (idx >= 0 && cnt < 2) {
+                        val start = maxOf(0, idx - 80)
+                        val end = minOf(html.length, idx + 150)
+                        val ctx = html.substring(start, end).replace("\n", " ")
+                        Log.d("RoketDiziPichive", "DEBUG[$kw] @$idx: $ctx")
+                        idx = html.indexOf(kw, idx + 1)
+                        cnt++
+                    }
                 }
-                val vttIdx = html.indexOf(".vtt")
-                if (vttIdx >= 0) Log.d("RoketDiziPichive", "DEBUG vtt ctx: ${html.substring(maxOf(0, vttIdx-300), minOf(vttIdx+100, html.length))}")
             }
         } catch (e: Exception) {
             Log.e("RoketDiziPichive", "parseVttInHtml error: ${e.message}")
@@ -153,6 +158,8 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
     private suspend fun parseM3u8Subtitles(m3u8Url: String, iframeUrl: String, subtitleCallback: (SubtitleFile) -> Unit) {
         try {
             val content = app.get(m3u8Url, headers = browserHeaders, referer = iframeUrl).text
+            Log.d("RoketDiziPichive", "=== M3U8 FULL CONTENT (len=${content.length}) ===")
+            Log.d("RoketDiziPichive", content)
             // #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Türkçe",LANGUAGE="tr",URI="https://..."
             val regex = Regex("""#EXT-X-MEDIA:TYPE=SUBTITLES[^\n]*NAME="([^"]+)"[^\n]*LANGUAGE="([^"]+)"[^\n]*URI="([^"]+)"""")
             var found = false
@@ -191,6 +198,8 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
 
         if (npConfig != null) {
             Log.d("RoketDiziPichive", "NP_CONFIG found len=${npConfig.length}")
+            Log.d("RoketDiziPichive", "=== NP_CONFIG FULL ===")
+            Log.d("RoketDiziPichive", npConfig)
             val master = Regex(""""master"\s*:\s*"([^"]+)"""").find(npConfig)?.groupValues?.get(1)?.replace("\\/", "/")
             val hosts = Regex(""""hosts"\s*:\s*\[([^\]]+)\]""").find(npConfig)?.groupValues?.get(1)
                 ?.split(",")?.map { it.trim().trim('"').replace("\\/", "/") }?.filter { it.isNotBlank() } ?: emptyList()
