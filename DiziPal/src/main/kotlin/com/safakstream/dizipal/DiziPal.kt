@@ -90,30 +90,54 @@ class DiziPal : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         return try {
-            val url = "$mainUrl/kesfet?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
-            val html = app.get(url, headers = headers + mapOf("Referer" to mainUrl)).text
-            val cardRegex = Regex("""<a[^>]*class="tc"[^>]*>""")
-            val results = mutableListOf<SearchResponse>()
-            cardRegex.findAll(html).forEach { match ->
-                val tag = match.value
-                val labelMatch = Regex("""aria-label="([^"]+)"""").find(tag) ?: return@forEach
-                val hrefMatch = Regex("""href="(/series/[^"]+|/movies/[^"]+)"""").find(tag) ?: return@forEach
-                val label = labelMatch.groupValues[1]
-                val href = hrefMatch.groupValues[1]
-                val parts = label.split(",").map { it.trim() }
-                if (parts.isEmpty()) return@forEach
-                val title = parts[0]
-                val year = parts.getOrNull(1)?.toIntOrNull()
-                val isMovie = href.startsWith("/movies/")
-                val fullUrl = "$mainUrl$href"
+            val body = JSONObject().apply {
+                put("action", "searchContent")
+                put("params", JSONArray().put(query))
+            }
+
+            val resp = app.post(
+                "$mainUrl/api/mj",
+                headers = headers + mapOf(
+                    "Content-Type" to "application/json",
+                    "Origin" to mainUrl,
+                    "Referer" to "$mainUrl/kesfet"
+                ),
+                json = body
+            ).text
+
+            val root = JSONObject(resp)
+            if (!root.optBoolean("ok", false)) {
+                Log.e("DiziPal", "search: ok=false")
+                return emptyList()
+            }
+            val results = root.optJSONArray("result") ?: return emptyList()
+            val items = mutableListOf<SearchResponse>()
+            for (i in 0 until results.length()) {
+                val node = results.optJSONObject(i) ?: continue
+                val slug = node.optString("used_slug", "").ifBlank { continue }
+                val type = node.optString("used_type", "")
+                val title = node.optString("object_name", "").ifBlank { continue }
+                val poster = node.optString("object_poster_url", "").ifBlank { null }
+                val year = node.optInt("object_release_year", 0).takeIf { it > 0 }
+                val imdb = node.optDouble("object_related_imdb_point", 0.0).takeIf { it > 0 }
+                val fullUrl = if (slug.startsWith("http")) slug else "$mainUrl/$slug"
+                val isMovie = type.equals("Movies", ignoreCase = true) || slug.startsWith("movies/")
                 if (isMovie) {
-                    results.add(newMovieSearchResponse(title, fullUrl, TvType.Movie) { this.year = year })
+                    items.add(newMovieSearchResponse(title, fullUrl, TvType.Movie) {
+                        this.posterUrl = poster
+                        this.year = year
+                        this.score = imdb?.let { Score.from10(it) }
+                    })
                 } else {
-                    results.add(newTvSeriesSearchResponse(title, fullUrl, TvType.TvSeries) { this.year = year })
+                    items.add(newTvSeriesSearchResponse(title, fullUrl, TvType.TvSeries) {
+                        this.posterUrl = poster
+                        this.year = year
+                        this.score = imdb?.let { Score.from10(it) }
+                    })
                 }
             }
-            Log.d("DiziPal", "search: ${results.size} sonuç")
-            results.distinctBy { it.url }
+            Log.d("DiziPal", "search: ${items.size} sonuç")
+            items.distinctBy { it.url }
         } catch (e: Exception) {
             Log.e("DiziPal", "search error: ${e.message}")
             emptyList()
