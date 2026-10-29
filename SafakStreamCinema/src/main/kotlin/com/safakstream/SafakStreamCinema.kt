@@ -3,6 +3,7 @@ package com.safakstream
 import android.util.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
+import com.lagradost.cloudstream3.Score
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
@@ -192,9 +193,39 @@ class SafakStreamCinema : MainAPI() {
         val html = try { app.get(url, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return emptyList() }
         val isMovie = pagePath.contains("film")
         val prefix = if (isMovie) "/film/" else "/dizi/"
+
+        val voteMap = mutableMapOf<Int, Double>()
+        val ssrOrder = mutableListOf<Int>()
+        val ssrJson = extractReactSsr(html)
+        if (ssrJson != null) {
+            try {
+                val root = JSONObject(ssrJson)
+                val queries = root.optJSONObject("state")?.optJSONArray("queries")
+                if (queries != null) {
+                    for (qi in 0 until queries.length()) {
+                        val q = queries.getJSONObject(qi)
+                        val data = q.optJSONObject("state")?.optJSONObject("data") ?: continue
+                        val resultsArr = data.optJSONArray("results") ?: continue
+                        if (resultsArr.length() == 0) continue
+                        for (ji in 0 until resultsArr.length()) {
+                            val item = resultsArr.getJSONObject(ji)
+                            val id = item.optInt("id", 0)
+                            val vote = item.optDouble("vote_average", 0.0)
+                            if (id > 0) {
+                                voteMap[id] = vote
+                                ssrOrder.add(id)
+                            }
+                        }
+                        break
+                    }
+                }
+            } catch (e: Exception) { }
+        }
+
         val pattern = Regex("""<a[^>]*href="($prefix[^"]+)"[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]+)"""", RegexOption.DOT_MATCHES_ALL)
         val seen = mutableSetOf<String>()
         val results = mutableListOf<SearchResponse>()
+        var cardIdx = 0
         for (match in pattern.findAll(html)) {
             if (results.size >= 30) break
             try {
@@ -203,18 +234,19 @@ class SafakStreamCinema : MainAPI() {
                 val poster = match.groupValues[2]
                 val rawTitle = match.groupValues[3]
                 val title = decodeHtmlEntities(rawTitle.removeSuffix(" izle afişi").removeSuffix(" izle").removeSuffix(" afişi").trim())
-                // HTML'de puan var mı? (örn. <div class="...">7.9</div>)
-                val scoreMatch = Regex("""<div[^>]*class="[^"]*text-yellow-400[^"]*"[^>]*>([0-9.]+)</div>""").find(match.value)
-                val score = scoreMatch?.groupValues?.get(1)?.toDoubleOrNull()
+
+                val vote = if (cardIdx < ssrOrder.size) (voteMap[ssrOrder[cardIdx]] ?: 0.0) else 0.0
+                cardIdx++
+
                 if (isMovie) {
-                    results.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { 
+                    results.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) {
                         this.posterUrl = posterUrl(poster)
-                        if (score != null) this.score = Score.from10(score)
+                        if (vote > 0) this.score = Score.from10(vote)
                     })
                 } else {
-                    results.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { 
+                    results.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) {
                         this.posterUrl = posterUrl(poster)
-                        if (score != null) this.score = Score.from10(score)
+                        if (vote > 0) this.score = Score.from10(vote)
                     })
                 }
             } catch (e: Exception) { }
