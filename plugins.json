@@ -93,7 +93,7 @@
             "SafakStream"
         ],
         "description": "Dizilla - Dizi ve Film izleme platformu",
-        "fileSize": 11811,
+        "fileSize": 11816,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -102,7 +102,7 @@
         ],
         "iconUrl": "https://dizilla.now/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-acfdf93a7b0c8e350d4a6c9f4def2fb3742ae69db5ed5633e4eb5f452559abf7"
+        "fileHash": "sha256-165521725cad4ebf7aeba9879c88285f42faee3b6c7468a1805354070ab99455"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
