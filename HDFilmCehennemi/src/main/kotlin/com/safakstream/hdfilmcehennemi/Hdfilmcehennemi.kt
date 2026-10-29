@@ -27,10 +27,11 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
+import com.lagradost.cloudstream3.plugins.Plugin
+import android.content.Context
 import java.net.URLEncoder
 import org.json.JSONObject
 
-@CloudstreamPlugin
 class Hdfilmcehennemi : MainAPI() {
     override var mainUrl = "https://www.hdfilmcehennemi.nl"
     override var name = "HDFilmCehennemi"
@@ -356,5 +357,12 @@ class Hdfilmcehennemi : MainAPI() {
             Log.e(name, "search error: ${e.message}")
             emptyList()
         }
+    }
+}
+
+@CloudstreamPlugin
+class HdfilmcehennemiPlugin : Plugin() {
+    override fun load(context: Context) {
+        registerMainAPI(Hdfilmcehennemi())
     }
 }
