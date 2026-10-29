@@ -29,7 +29,6 @@ class Dizilla : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        // Ana sayfa linklerinde sayfalama genelde ?page= veya /sayfa/ şeklindedir, şimdilik ilk sayfayı çekelim
         val url = if (page == 1) request.data else "${request.data}?page=$page"
         val document = app.get(url).text
         val home = parseItems(document)
@@ -45,25 +44,28 @@ class Dizilla : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).text
         
-        // JSON kaçışlı verileri temizle
-        val title = Regex("\\\\\"title\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1) ?: "Bilinmeyen Başlık"
-        val description = Regex("\\\\\"description\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1) ?: ""
-        val poster = Regex("\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\"").find(document)?.groupValues?.get(1)?.replace("\\\\", "") ?: ""
+        // JSON-LD formatından başlık ve açıklama çekiyoruz (Burası güncellendi)
+        val title = Regex("\"name\":\"(.*?)\"").find(document)?.groupValues?.get(1) ?: "Bilinmeyen Başlık"
+        val description = Regex("\"description\":\"(.*?)\"").find(document)?.groupValues?.get(1) ?: ""
         
-        // Eğer link film ise
-        if (url.contains("/film/") || url.contains("/filmler/")) {
+        // Afiş için JSON-LD içindeki image veya contentUrl (backdrop) arıyoruz
+        val poster = Regex("\"image\":\"(.*?)\"").find(document)?.groupValues?.get(1) 
+                  ?: Regex("\"contentUrl\":\"(.*?)\"").find(document)?.groupValues?.get(1) ?: ""
+
+        // Eğer film ise (dizi linki değilse)
+        if (!url.contains("-sezon-") && (url.contains("/film/") || url.contains("/filmler/"))) {
             return newMovieLoadResponse(title, url, TvType.Movie, url) {
                 this.posterUrl = poster
                 this.plot = description
             }
         }
 
-        // Dizi ise bölümleri çek
+        // Dizi ise bölümleri çek (Gelen veriye göre Regex güncellendi)
         val episodes = mutableListOf<Episode>()
         val addedUrls = mutableSetOf<String>()
         
-        // Sitedeki tüm bölüm linklerini yakala (Örn: \"/carrie-1-sezon-1-bolum\")
-        val episodeRegex = Regex("\\\\\"href\\\\\":\\\\\"(/[a-zA-Z0-9-]+-\\\\d+-sezon-\\\\d+-bolum[^\"\\\\]*)\\\\\"")
+        // Örnek: \"url\":\"/when-calls-the-heart-1-sezon-1-bolum\"
+        val episodeRegex = Regex("\\\\\"url\\\\\":\\\\\"(/[^\"]*?-sezon-[0-9]*-bolum[^\"\\\\]*)\\\\\"")
         val matches = episodeRegex.findAll(document)
         
         var counter = 1
@@ -90,7 +92,6 @@ class Dizilla : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val document = app.get(data).text
         
-        // Bölüm sayfasındaki iframe kaynağını bul
         val iframeRegex = Regex("\\\\\"src\\\\\":\\\\\"(https://.*?iframe\\\\.php\\\\?v=.*?)\\\\\"")
         val iframeMatch = iframeRegex.find(document)
         
@@ -103,30 +104,23 @@ class Dizilla : MainAPI() {
 
     private fun parseItems(html: String): List<SearchResponse> {
         val items = mutableListOf<SearchResponse>()
-        
-        // Mükemmel Regex: Başlık, Afiş ve Linki (/dizi/ veya /film/) sırasıyla yakalar
         val itemRegex = Regex("\\\\\"title\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"poster\\\\\":\\\\\"(.*?)\\\\\".*?\\\\\"href\\\\\":\\\\\"(/dizi/|/film/)([^\"\\\\]*)\\\\\"")
         
         itemRegex.findAll(html).forEach { match ->
             val title = match.groupValues[1]
             val poster = match.groupValues[2].replace("\\\\", "") 
-            val typePath = match.groupValues[3] // /dizi/ veya /film/
+            val typePath = match.groupValues[3]
             val slug = match.groupValues[4]
             
             val fullUrl = "$mainUrl$typePath$slug"
             val isMovie = typePath == "/film/"
             val tvType = if (isMovie) TvType.Movie else TvType.TvSeries
             
-            // Aynı içeriği iki kere eklemeyi önle
             if (items.none { it.url == fullUrl }) {
                 if (isMovie) {
-                    items.add(newMovieSearchResponse(title, fullUrl, TvType.Movie) {
-                        this.posterUrl = poster
-                    })
+                    items.add(newMovieSearchResponse(title, fullUrl, TvType.Movie) { this.posterUrl = poster })
                 } else {
-                    items.add(newTvSeriesSearchResponse(title, fullUrl, TvType.TvSeries) {
-                        this.posterUrl = poster
-                    })
+                    items.add(newTvSeriesSearchResponse(title, fullUrl, TvType.TvSeries) { this.posterUrl = poster })
                 }
             }
         }
