@@ -97,23 +97,57 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
 
     private suspend fun parseVttInHtml(html: String, iframeUrl: String, subtitleCallback: (SubtitleFile) -> Unit) {
         try {
-            val subtitleRegex = Regex("""\{"file":"([^"]+\.(?:vtt|srt|ass)[^"]*)"[^}]*"label":"([^"]*)"[^}]*(?:"lang":"([^"]*)")?[^}]*\}""")
             val seen = mutableSetOf<String>()
-            subtitleRegex.findAll(html).forEach { m ->
-                var subUrl = m.groupValues[1].replace("\\/", "/").replace("\\", "")
-                if (subUrl.startsWith("//")) subUrl = "https:$subUrl"
-                if (subUrl.isBlank() || seen.contains(subUrl)) return@forEach
-                seen.add(subUrl)
-                val label = unescapeUnicode(m.groupValues[2]).ifBlank { "Altyazı" }
-                Log.d("RoketDiziPichive", "HTML Subtitle: $label -> $subUrl")
-                try {
-                    subtitleCallback.invoke(newSubtitleFile(label, subUrl) {
-                        this.headers = browserHeaders + mapOf("Referer" to iframeUrl)
-                    })
-                } catch (_: Exception) {}
+            
+            // Genişletilmiş regex: tırnaklı, tırnaksız, tek tırnak destekli
+            // Örn: {"file":"...vtt","label":"Türkçe"} veya {file:"...vtt",label:"Türkçe"} veya {file:'...vtt',label:'Türkçe'}
+            val patterns = listOf(
+                Regex("""["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt|ass)[^"']*)["'][^}]{0,500}?["']?label["']?\s*:\s*["']([^"']*)["']"""),
+                Regex("""["']?label["']?\s*:\s*["']([^"']*)["'][^}]{0,500}?["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt|ass)[^"']*)["']"""),
+                Regex("""["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt|ass)[^"']*)["']""")
+            )
+
+            for ((idx, pat) in patterns.withIndex()) {
+                pat.findAll(html).forEach { m ->
+                    val (url, label) = if (idx == 1) {
+                        m.groupValues[2] to m.groupValues[1]
+                    } else if (idx == 2) {
+                        m.groupValues[1] to "Altyazı"
+                    } else {
+                        m.groupValues[1] to m.groupValues[2]
+                    }
+                    
+                    var subUrl = url.replace("\\/", "/").replace("\\", "")
+                    if (subUrl.startsWith("//")) subUrl = "https:$subUrl"
+                    else if (subUrl.startsWith("/")) subUrl = "https://four.pichive.online$subUrl"
+                    if (subUrl.isBlank() || seen.contains(subUrl)) return@forEach
+                    seen.add(subUrl)
+                    val lbl = unescapeUnicode(label).ifBlank { "Altyazı" }
+                    Log.d("RoketDiziPichive", "HTML Subtitle (p$idx): $lbl -> $subUrl")
+                    try {
+                        subtitleCallback.invoke(newSubtitleFile(lbl, subUrl) {
+                            this.headers = browserHeaders + mapOf("Referer" to iframeUrl)
+                        })
+                    } catch (_: Exception) {}
+                }
             }
             Log.d("RoketDiziPichive", "HTML Subtitles found: ${seen.size}")
-        } catch (_: Exception) {}
+
+            // Debug: eğer altyazı bulunamadıysa, tracks/captions/vtt geçen bölümleri log'a yaz
+            if (seen.isEmpty()) {
+                val tracksIdx = html.indexOf("\"tracks\"")
+                if (tracksIdx < 0) {
+                    val t2 = html.indexOf("tracks:")
+                    if (t2 >= 0) Log.d("RoketDiziPichive", "DEBUG tracks: at $t2: ${html.substring(t2, minOf(t2+400, html.length))}")
+                } else {
+                    Log.d("RoketDiziPichive", "DEBUG tracks: ${html.substring(tracksIdx, minOf(tracksIdx+400, html.length))}")
+                }
+                val vttIdx = html.indexOf(".vtt")
+                if (vttIdx >= 0) Log.d("RoketDiziPichive", "DEBUG vtt ctx: ${html.substring(maxOf(0, vttIdx-300), minOf(vttIdx+100, html.length))}")
+            }
+        } catch (e: Exception) {
+            Log.e("RoketDiziPichive", "parseVttInHtml error: ${e.message}")
+        }
     }
 
     private suspend fun parseM3u8Subtitles(m3u8Url: String, iframeUrl: String, subtitleCallback: (SubtitleFile) -> Unit) {
