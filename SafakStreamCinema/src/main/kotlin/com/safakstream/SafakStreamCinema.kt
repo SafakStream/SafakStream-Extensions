@@ -43,12 +43,24 @@ class SafakStreamCinema : MainAPI() {
     }
 
     private fun posterUrl(path: String?): String? {
-        val p = path?.trim() ?: return null
-        if (p.isEmpty() || p == "null") return null
-        return when {
-            p.startsWith("http://") || p.startsWith("https://") -> p
-            else -> "https://image.tmdb.org/t/p/w500$p"
+        var p = path?.trim() ?: return null
+        if (p.isEmpty() || p == "null" || p == "undefined") return null
+        p = p.replace("&amp;", "&").replace("&#x27;", "'").replace("&quot;", "\"")
+        
+        // Dizisol proxy: /api/img?p=/xxxx.jpg&s=w342 → gerçek TMDb URL'sine çevir
+        val proxyMatch = Regex("""/api/img\?p=([^&]+)""").find(p)
+        if (proxyMatch != null) {
+            try {
+                val decoded = java.net.URLDecoder.decode(proxyMatch.groupValues[1], "UTF-8")
+                return if (decoded.startsWith("http")) decoded
+                    else "https://image.tmdb.org/t/p/w500" + (if (decoded.startsWith("/")) "" else "/") + decoded
+            } catch (e: Exception) {
+                Log.e("SafakStreamCinema", "posterUrl decode hata: ${e.message}")
+            }
         }
+        
+        if (p.startsWith("http://") || p.startsWith("https://")) return p
+        return "https://image.tmdb.org/t/p/w500" + (if (p.startsWith("/")) "" else "/") + p
     }
 
     private fun cleanOverview(text: String?): String? {
