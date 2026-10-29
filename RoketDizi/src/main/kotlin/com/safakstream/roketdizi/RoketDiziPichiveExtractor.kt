@@ -28,7 +28,7 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        Log.d("RoketDiziPichive", "getUrl: $url")
+        Log.d("RoketDiziPichive", "=== getUrl: $url ===")
 
         val iframeHtml = try {
             app.get(
@@ -41,10 +41,14 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
             ""
         }
 
-        if (iframeHtml.isEmpty()) return
-        Log.d("RoketDiziPichive", "iframe HTML length: ${iframeHtml.length}")
+        if (iframeHtml.isEmpty()) {
+            Log.e("RoketDiziPichive", "iframe empty")
+            return
+        }
+        Log.d("RoketDiziPichive", "HTML length=${iframeHtml.length}")
+        Log.d("RoketDiziPichive", "HTML first 600: ${iframeHtml.take(600)}")
 
-        // Extract subtitles
+        // Subtitles
         try {
             val subtitleRegex = Regex("""\{"file":"([^"]+\.vtt[^"]*)"[^}]*"label":"([^"]*)"[^}]*(?:"lang":"([^"]*)")?[^}]*\}""")
             val seen = mutableSetOf<String>()
@@ -65,55 +69,127 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
 
         val domain = Regex("""https?://[^/]+""").find(url)?.value ?: "https://four.pichive.online"
 
-        // Try selcukflix style: openPlayer token -> source2.php
-        val openPlayerToken = Regex("""openPlayer\('([^']+)'""").find(iframeHtml)?.groupValues?.get(1)
-        if (openPlayerToken != null) {
-            Log.d("RoketDiziPichive", "openPlayer token found")
-            if (trySource2(domain, openPlayerToken, url, callback)) return
+        if (processIframe(iframeHtml, domain, url, callback)) {
+            Log.d("RoketDiziPichive", "SUCCESS - video found")
+            return
         }
+        Log.e("RoketDiziPichive", "No video sources found for $url")
+    }
 
-        // Try NP_CONFIG style: master URL's v token -> source2.php
-        val masterUrl = Regex(""""(?:master|file)"\s*:\s*"([^"]+)"""").find(iframeHtml)
-            ?.groupValues?.get(1)?.replace("\\/", "/")
-        if (masterUrl != null) {
-            Log.d("RoketDiziPichive", "master URL: ${masterUrl.take(80)}")
-            val vToken = Regex("""[?&]v=([^&"]+)""").find(masterUrl)?.groupValues?.get(1)
-            if (vToken != null && trySource2(domain, vToken, url, callback)) return
+    private suspend fun processIframe(
+        iframeHtml: String,
+        domain: String,
+        iframeUrl: String,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        // 1) NP_CONFIG with hosts
+        val npConfig = Regex("""window\.NP_CONFIG\s*=\s*(\{.*?\});""", RegexOption.DOT_MATCHES_ALL)
+            .find(iframeHtml)?.groupValues?.get(1)
 
-            // Try master directly
-            try {
-                val masterResp = app.get(
-                    masterUrl,
-                    headers = browserHeaders + mapOf(
-                        "Referer" to "https://roketdizi.life/",
-                        "Origin" to "https://roketdizi.life"
-                    ),
-                    referer = "https://roketdizi.life/"
-                ).text
-                if (masterResp.contains("#EXTM3U")) {
-                    callback.invoke(newExtractorLink(
-                        source = name,
-                        name = "RoketDizi Pichive",
-                        url = masterUrl,
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = url
-                        this.headers = browserHeaders + mapOf("Referer" to url)
-                        this.quality = Qualities.P1080.value
-                    })
-                    return
-                } else {
-                    // Maybe it's the playlist JSON
-                    if (masterResp.trimStart().startsWith("{")) {
-                        if (parsePlaylistJson(masterResp, domain, url, callback)) return
+        if (npConfig != null) {
+            Log.d("RoketDiziPichive", "NP_CONFIG found len=${npConfig.length}")
+            val master = Regex(""""master"\s*:\s*"([^"]+)"""").find(npConfig)?.groupValues?.get(1)?.replace("\\/", "/")
+            val hosts = Regex(""""hosts"\s*:\s*\[([^\]]+)\]""").find(npConfig)?.groupValues?.get(1)
+                ?.split(",")?.map { it.trim().trim('"').replace("\\/", "/") }?.filter { it.isNotBlank() } ?: emptyList()
+            Log.d("RoketDiziPichive", "master=${master?.take(120)}")
+            Log.d("RoketDiziPichive", "hosts count=${hosts.size}, first=${hosts.firstOrNull()}")
+
+            if (master != null) {
+                val vToken = Regex("""[?&]v=([^&"]+)""").find(master)?.groupValues?.get(1)
+                Log.d("RoketDiziPichive", "vToken len=${vToken?.length}, first=${vToken?.take(30)}")
+
+                if (vToken != null) {
+                    // Try on each host
+                    val candidates = mutableListOf<String>()
+                    for (host in hosts) {
+                        val h = host.trimEnd('/')
+                        candidates.add("$h/nm.php?v=$vToken")
+                        candidates.add("$h/source2.php?v=$vToken")
+                        candidates.add("$h/$vToken.m3u8")
+                        candidates.add("$h/master.m3u8")
+                        candidates.add("$h/playlist.m3u8")
+                    }
+                    // Also direct
+                    candidates.add("$domain/nm.php?v=$vToken")
+                    candidates.add("$domain/source2.php?v=$vToken")
+
+                    for (testUrl in candidates) {
+                        try {
+                            Log.d("RoketDiziPichive", "TRY: ${testUrl.take(150)}")
+                            val resp = app.get(testUrl, headers = browserHeaders, referer = iframeUrl).text
+                            val short = resp.take(150).replace("\n", " ")
+                            Log.d("RoketDiziPichive", "  OK len=${resp.length}: $short")
+
+                            if (resp.contains("#EXTM3U")) {
+                                callback.invoke(newExtractorLink(
+                                    source = name, name = "RoketDizi Pichive",
+                                    url = testUrl, type = ExtractorLinkType.M3U8
+                                ) {
+                                    this.referer = iframeUrl
+                                    this.headers = browserHeaders
+                                    this.quality = Qualities.P1080.value
+                                })
+                                return true
+                            }
+                            if (resp.trimStart().startsWith("{") || resp.trimStart().startsWith("[")) {
+                                if (parsePlaylistJson(resp, domain, iframeUrl, callback)) return true
+                            }
+                        } catch (e: Exception) {
+                            Log.d("RoketDiziPichive", "  ERR: ${e.message?.take(80)}")
+                        }
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("RoketDiziPichive", "master fetch error: ${e.message}")
             }
+        } else {
+            Log.d("RoketDiziPichive", "No NP_CONFIG - trying other methods")
         }
 
-        Log.e("RoketDiziPichive", "No video sources found")
+        // 2) Direct m3u8/mp4 in HTML
+        val directVideoRegex = Regex("""(https?:)?//[^"'\s\\<>]+\.(m3u8|mp4)(\?[^"'\s\\<>]*)?""")
+        var found = false
+        directVideoRegex.findAll(iframeHtml).forEach { m ->
+            var u = m.groupValues[0].replace("\\/", "/").replace("&amp;", "&")
+            if (u.startsWith("//")) u = "https:$u"
+            Log.d("RoketDiziPichive", "Direct video: $u")
+            callback.invoke(newExtractorLink(
+                source = name, name = "RoketDizi Pichive",
+                url = u,
+                type = if (u.contains(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
+            ) {
+                this.referer = iframeUrl
+                this.headers = browserHeaders
+                this.quality = Qualities.P1080.value
+            })
+            found = true
+        }
+        if (found) return true
+
+        // 3) JSON-style keys
+        val jsonFileRegex = Regex(""""(?:file|source|src|url|playlist|stream)"\s*:\s*"(https?://[^"]+\.(?:m3u8|mp4)[^"]*)"""")
+        jsonFileRegex.findAll(iframeHtml).forEach { m ->
+            var u = m.groupValues[1].replace("\\/", "/")
+            Log.d("RoketDiziPichive", "JSON video: $u")
+            callback.invoke(newExtractorLink(
+                source = name, name = "RoketDizi Pichive",
+                url = u,
+                type = if (u.contains(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
+            ) {
+                this.referer = iframeUrl
+                this.headers = browserHeaders
+                this.quality = Qualities.P1080.value
+            })
+            found = true
+        }
+        if (found) return true
+
+        // 4) openPlayer
+        val openPlayerToken = Regex("""openPlayer\(['"]([^'"]+)['"]""").find(iframeHtml)?.groupValues?.get(1)
+        if (openPlayerToken != null) {
+            Log.d("RoketDiziPichive", "openPlayer token len=${openPlayerToken.length}")
+            if (trySource2(domain, openPlayerToken, iframeUrl, callback)) return true
+        }
+
+        return false
     }
 
     private suspend fun trySource2(
@@ -124,7 +200,7 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
     ): Boolean {
         return try {
             val sourceUrl = "$domain/source2.php?v=$token"
-            Log.d("RoketDiziPichive", "source2 URL: ${sourceUrl.take(120)}")
+            Log.d("RoketDiziPichive", "source2: ${sourceUrl.take(120)}")
             val jsonText = app.get(
                 sourceUrl,
                 headers = browserHeaders + mapOf(
@@ -133,13 +209,9 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
                 ),
                 referer = iframeUrl
             ).text
-            if (!jsonText.trimStart().startsWith("{")) {
-                Log.d("RoketDiziPichive", "source2 not JSON: ${jsonText.take(80)}")
-                return false
-            }
+            if (!jsonText.trimStart().startsWith("{")) return false
             parsePlaylistJson(jsonText, domain, iframeUrl, callback)
-        } catch (e: Exception) {
-            Log.e("RoketDiziPichive", "source2 error: ${e.message}")
+        } catch (_: Exception) {
             false
         }
     }
@@ -152,12 +224,15 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
     ): Boolean {
         return try {
             val json = JSONObject(jsonText)
-            if (!json.optBoolean("state", false)) return false
+            if (!json.optBoolean("state", false)) {
+                Log.d("RoketDiziPichive", "Playlist state=false: ${jsonText.take(100)}")
+                return false
+            }
             val playlist = json.optJSONArray("playlist") ?: return false
-            var found = false
+            var any = false
             for (i in 0 until playlist.length()) {
                 val track = playlist.optJSONObject(i) ?: continue
-                val trackTitle = track.optString("title", "Orijinal")
+                val title = track.optString("title", "Orijinal")
                 val sources = track.optJSONArray("sources") ?: continue
                 for (j in 0 until sources.length()) {
                     val src = sources.optJSONObject(j) ?: continue
@@ -165,23 +240,19 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
                     if (fileUrl.isEmpty()) continue
                     if (fileUrl.startsWith("//")) fileUrl = "https:$fileUrl"
                     else if (fileUrl.startsWith("/")) fileUrl = "$domain$fileUrl"
-
                     val m3u8Url = when {
                         fileUrl.contains("m.php") -> fileUrl.replace("m.php", "master.m3u8")
                         fileUrl.contains(".php") -> fileUrl.replace(Regex("""\.[a-z]+\.php"""), "master.m3u8")
                         else -> fileUrl
                     }
                     val label = src.optString("label", "HD").uppercase()
-                    Log.d("RoketDiziPichive", "Found: $m3u8Url")
-
+                    Log.d("RoketDiziPichive", "Playlist -> $m3u8Url")
                     callback.invoke(newExtractorLink(
-                        source = name,
-                        name = "RoketDizi - $trackTitle ($label)",
-                        url = m3u8Url,
-                        type = ExtractorLinkType.M3U8
+                        source = name, name = "RoketDizi - $title ($label)",
+                        url = m3u8Url, type = ExtractorLinkType.M3U8
                     ) {
                         this.referer = iframeUrl
-                        this.headers = browserHeaders + mapOf("Referer" to iframeUrl)
+                        this.headers = browserHeaders
                         this.quality = when (label) {
                             "4K" -> Qualities.P2160.value
                             "1080P", "FHD" -> Qualities.P1080.value
@@ -191,10 +262,10 @@ class RoketDiziPichiveExtractor : ExtractorApi() {
                             else -> Qualities.Unknown.value
                         }
                     })
-                    found = true
+                    any = true
                 }
             }
-            found
+            any
         } catch (e: Exception) {
             Log.e("RoketDiziPichive", "parsePlaylist error: ${e.message}")
             false
