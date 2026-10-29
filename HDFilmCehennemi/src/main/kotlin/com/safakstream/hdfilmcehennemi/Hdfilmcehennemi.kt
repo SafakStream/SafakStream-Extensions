@@ -68,8 +68,14 @@ class Hdfilmcehennemi : MainAPI() {
         val href = element.attr("href").ifBlank { return null }
         val title = element.selectFirst("strong.poster-title")?.text()?.trim()?.ifBlank { null } ?: return null
         val posterUrl = element.selectFirst("img")?.let { img ->
-            img.attr("src").ifBlank { img.attr("data-src") }
-        }?.ifBlank { null }
+            val dataSrc = img.attr("data-src")
+            val src = img.attr("src")
+            when {
+                dataSrc.isNotBlank() && !dataSrc.startsWith("data:") -> dataSrc
+                src.isNotBlank() && !src.startsWith("data:") -> src
+                else -> null
+            }
+        }
         val year = element.selectFirst("div.poster-meta span")?.text()?.toIntOrNull()
         val imdb = element.selectFirst("span.imdb")?.text()?.trim()?.toDoubleOrNull()
 
