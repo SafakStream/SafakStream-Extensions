@@ -42,10 +42,13 @@ class SafakStreamCinema : MainAPI() {
         return null
     }
 
-    private fun posterUrl(path: String?): String? = when {
-        path == null -> null
-        path.startsWith("http") -> path
-        else -> "https://image.tmdb.org/t/p/w500$path"
+    private fun posterUrl(path: String?): String? {
+        val p = path?.trim() ?: return null
+        if (p.isEmpty() || p == "null") return null
+        return when {
+            p.startsWith("http://") || p.startsWith("https://") -> p
+            else -> "https://image.tmdb.org/t/p/w500$p"
+        }
     }
 
     private fun cleanOverview(text: String?): String? {
@@ -129,7 +132,7 @@ class SafakStreamCinema : MainAPI() {
                 val rawTitle = match.groupValues[3]
                 val title = decodeHtmlEntities(rawTitle.removeSuffix(" izle afişi").removeSuffix(" izle").trim())
                 newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) {
-                    this.posterUrl = poster
+                    this.posterUrl = posterUrl(poster)
                 }
             } catch (e: Exception) { null }
         }.toList()
@@ -160,9 +163,9 @@ class SafakStreamCinema : MainAPI() {
                             val typeStr = if (isMovie) "movie" else "tv"
                             val finalUrl = "$mainUrl/api/movies/by-tmdb/$tmdbId?type=$typeStr"
                             if (isMovie) {
-                                newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.posterUrl = poster; this.year = year }
+                                newMovieSearchResponse(title, finalUrl, TvType.Movie) { this.posterUrl = posterUrl(poster); this.year = year }
                             } else {
-                                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) { this.posterUrl = poster; this.year = year }
+                                newTvSeriesSearchResponse(title, finalUrl, TvType.TvSeries) { this.posterUrl = posterUrl(poster); this.year = year }
                             }
                         } catch (e: Exception) { null }
                     }
@@ -189,9 +192,9 @@ class SafakStreamCinema : MainAPI() {
                 val rawTitle = match.groupValues[3]
                 val title = decodeHtmlEntities(rawTitle.removeSuffix(" izle afişi").removeSuffix(" izle").removeSuffix(" afişi").trim())
                 if (isMovie) {
-                    results.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { this.posterUrl = poster })
+                    results.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { this.posterUrl = posterUrl(poster) })
                 } else {
-                    results.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = poster })
+                    results.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = posterUrl(poster) })
                 }
             } catch (e: Exception) { }
         }
@@ -208,7 +211,7 @@ class SafakStreamCinema : MainAPI() {
                     val slug = match.groupValues[1]
                     val poster = match.groupValues[2]
                     val title = decodeHtmlEntities(match.groupValues[3].removeSuffix(" izle afişi").removeSuffix(" izle").trim())
-                    allItems.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = poster })
+                    allItems.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = posterUrl(poster) })
                 } catch (e: Exception) { }
             }
         } catch (e: Exception) { }
@@ -220,7 +223,7 @@ class SafakStreamCinema : MainAPI() {
                     val slug = match.groupValues[1]
                     val poster = match.groupValues[2]
                     val title = decodeHtmlEntities(match.groupValues[3].removeSuffix(" izle afişi").removeSuffix(" izle").trim())
-                    allItems.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { this.posterUrl = poster })
+                    allItems.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { this.posterUrl = posterUrl(poster) })
                 } catch (e: Exception) { }
             }
         } catch (e: Exception) { }
@@ -332,13 +335,13 @@ class SafakStreamCinema : MainAPI() {
             if (finalIsTv) {
                 val episodes = loadEpisodesForSeries(tmdbId)
                 newTvSeriesLoadResponse(title, browserUrl, TvType.TvSeries, episodes) {
-                    this.posterUrl = poster; this.year = year; this.plot = overview
+                    this.posterUrl = posterUrl(poster); this.year = year; this.plot = overview
                     this.tags = genres?.split(",")?.map { it.trim() } ?: emptyList()
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
             } else {
                 newMovieLoadResponse(title, browserUrl, TvType.Movie, url) {
-                    this.posterUrl = poster; this.year = year; this.plot = overview
+                    this.posterUrl = posterUrl(poster); this.year = year; this.plot = overview
                     this.tags = genres?.split(",")?.map { it.trim() } ?: emptyList()
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                 }
@@ -410,13 +413,13 @@ class SafakStreamCinema : MainAPI() {
                 val episodes = if (episodesFromSsr.isNotEmpty()) episodesFromSsr else loadEpisodesForSeries(tmdbId)
                 Log.d("SafakStreamCinema", "Kullanılan bölüm sayısı: ${episodes.size}")
                 newTvSeriesLoadResponse(finalTitle, browserUrl, TvType.TvSeries, episodes) {
-                    this.posterUrl = poster; this.year = year; this.plot = overview
+                    this.posterUrl = posterUrl(poster); this.year = year; this.plot = overview
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                     addTrailer(trailerUrl)
                 }
             } else {
                 newMovieLoadResponse(finalTitle, browserUrl, TvType.Movie, apiUrl) {
-                    this.posterUrl = poster; this.year = year; this.plot = overview
+                    this.posterUrl = posterUrl(poster); this.year = year; this.plot = overview
                     this.score = rating?.let { Score.from10(it.toDouble()) }
                     addTrailer(trailerUrl)
                 }
