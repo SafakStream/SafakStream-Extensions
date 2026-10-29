@@ -203,10 +203,19 @@ class SafakStreamCinema : MainAPI() {
                 val poster = match.groupValues[2]
                 val rawTitle = match.groupValues[3]
                 val title = decodeHtmlEntities(rawTitle.removeSuffix(" izle afişi").removeSuffix(" izle").removeSuffix(" afişi").trim())
+                // HTML'de puan var mı? (örn. <div class="...">7.9</div>)
+                val scoreMatch = Regex("""<div[^>]*class="[^"]*text-yellow-400[^"]*"[^>]*>([0-9.]+)</div>""").find(match.value)
+                val score = scoreMatch?.groupValues?.get(1)?.toDoubleOrNull()
                 if (isMovie) {
-                    results.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { this.posterUrl = posterUrl(poster) })
+                    results.add(newMovieSearchResponse(title, "$mainUrl$slug", TvType.Movie) { 
+                        this.posterUrl = posterUrl(poster)
+                        if (score != null) this.score = Score.from10(score)
+                    })
                 } else {
-                    results.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = posterUrl(poster) })
+                    results.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { 
+                        this.posterUrl = posterUrl(poster)
+                        if (score != null) this.score = Score.from10(score)
+                    })
                 }
             } catch (e: Exception) { }
         }
@@ -223,7 +232,12 @@ class SafakStreamCinema : MainAPI() {
                     val slug = match.groupValues[1]
                     val poster = match.groupValues[2]
                     val title = decodeHtmlEntities(match.groupValues[3].removeSuffix(" izle afişi").removeSuffix(" izle").trim())
-                    allItems.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { this.posterUrl = posterUrl(poster) })
+                    val scoreMatch = Regex("""<div[^>]*class="[^"]*text-yellow-400[^"]*"[^>]*>([0-9.]+)</div>""").find(match.value)
+                    val score = scoreMatch?.groupValues?.get(1)?.toDoubleOrNull()
+                    allItems.add(newTvSeriesSearchResponse(title, "$mainUrl$slug", TvType.TvSeries) { 
+                        this.posterUrl = posterUrl(poster)
+                        if (score != null) this.score = Score.from10(score)
+                    })
                 } catch (e: Exception) { }
             }
         } catch (e: Exception) { }
