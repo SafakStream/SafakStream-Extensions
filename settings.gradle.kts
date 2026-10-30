@@ -6,7 +6,7 @@ include(
     "DiziFilmizle",
     "Dizibox",
     "InatTV",
-    "MahsunSports",
+    "SafakStreamSpor",
     "PapazSports",
     "SafakStreamCinema",
     "SafakStreamHub",
