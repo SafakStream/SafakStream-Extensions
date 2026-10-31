@@ -147,6 +147,26 @@
         "fileHash": "sha256-405cf028818fe752ada663f09184d8334fb475c8d9be692cff9300113981bd61"
     },
     {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/MahsunSports.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "MahsunSports",
+        "internalName": "MahsunSports",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "MahsunSports \u00fczerinden canl\u0131 ma\u00e7 ve 7/24 spor kanallar\u0131n\u0131 izleyin.",
+        "fileSize": 12148,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "Live"
+        ],
+        "iconUrl": "https://mahsunsports57.xyz/favicon.ico",
+        "apiVersion": 1,
+        "fileHash": "sha256-e7471a634cb211e73d43e3f7dae838d26117eed82b7174e38228ac41f56f46e3"
+    },
+    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/PapazSports.cs3",
         "status": 1,
         "version": 1,
@@ -228,26 +248,6 @@
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/icon.png",
         "apiVersion": 1,
         "fileHash": "sha256-8be797bd62da6c5cb920a2f88732a9d5df828abfb84ce4b1879f1de03666c81d"
-    },
-    {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamSpor.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "SafakStreamSpor",
-        "internalName": "SafakStreamSpor",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "SafakStream Spor \u00fczerinden canl\u0131 ma\u00e7 ve 7/24 spor kanallar\u0131n\u0131 izleyin.",
-        "fileSize": 12179,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "Live"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamSpor.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-c132eef9e353e4b8c458fa518f00e2073626fb741a5739dce37682f7e5384535"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
