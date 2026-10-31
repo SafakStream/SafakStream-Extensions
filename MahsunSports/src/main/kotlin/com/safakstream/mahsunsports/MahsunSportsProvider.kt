@@ -5,7 +5,10 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
+import org.json.JSONObject
 import java.net.URLEncoder
 
 class MahsunSportsProvider : MainAPI() {
@@ -16,7 +19,7 @@ class MahsunSportsProvider : MainAPI() {
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Live)
 
-    // GÜNCEL SUNUCU ADRESLERİ
+    // 7/24 kanallar ve "bs"/"ss" gibi kısa ID'ler için (evrenesoglu sunucuları)
     private val baseUrls = listOf(
         "https://andro.evrenesoglu219.click/checklist/",
         "https://andro.evrenesoglu211.click/checklist/",
@@ -191,9 +194,30 @@ class MahsunSportsProvider : MainAPI() {
         val id = data
         if (id.isBlank()) return false
 
-        val streamFile = getStreamFile(id)
+        // ÖZEL DURUM: androstreamlivech<sayısal> → streamsport365 API
+        if (id.startsWith("androstreamlivech")) {
+            val videoId = id.removePrefix("androstreamlivech")
+            if (videoId.matches(Regex("^\\d+$"))) {
+                val apiUrl = getStreamsportUrl(videoId)
+                if (apiUrl != null) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "MahsunSports - $id",
+                            url = apiUrl,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = "https://streamsport365.com/"
+                            this.quality = Qualities.P720.value
+                        }
+                    )
+                    return true
+                }
+            }
+        }
 
-        // Tarayıcı ile birebir aynı görünmek için tüm kritik header'lar
+        // DİĞER ID'LER: evrenesoglu sunucuları üzerinden .m3u8
+        val streamFile = getStreamFile(id)
         val headers = mapOf(
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer" to "$mainUrl/",
@@ -208,7 +232,6 @@ class MahsunSportsProvider : MainAPI() {
         for (base in baseUrls) {
             val streamUrl = base + streamFile
             try {
-                // Linki ExoPlayer'a vermeden önce çalışıp çalışmadığını (2xx) test et
                 val response = app.get(streamUrl, headers = headers)
                 if (response.isSuccessful) {
                     callback.invoke(
@@ -230,6 +253,30 @@ class MahsunSportsProvider : MainAPI() {
             }
         }
         return false
+    }
+
+    /**
+     * streamsport365.com/cinema API'sine POST atıp gerçek .m3u8 URL'sini alır.
+     * VideoId: androstreamlivech sonrasındaki sayısal kısım (ör: 20830138)
+     */
+    private suspend fun getStreamsportUrl(videoId: String): String? {
+        return try {
+            val json = """{"AppId":"5000","AppVer":"1","VpcVer":"1.0.12","Language":"en","Token":"","VideoId":"$videoId"}"""
+            val body = json.toRequestBody("application/json".toMediaType())
+            val response = app.post(
+                url = "https://streamsport365.com/cinema",
+                requestBody = body,
+                headers = mapOf(
+                    "Content-Type" to "application/json",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Origin" to "https://streamsport365.com",
+                    "Referer" to "https://streamsport365.com/"
+                )
+            ).text
+            JSONObject(response).optString("URL").takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun buildLoadUrl(id: String, title: String): String {
