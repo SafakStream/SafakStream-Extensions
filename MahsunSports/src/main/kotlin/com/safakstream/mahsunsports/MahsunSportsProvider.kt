@@ -193,21 +193,38 @@ class MahsunSportsProvider : MainAPI() {
 
         val streamFile = getStreamFile(id)
 
+        // Tarayıcı ile birebir aynı görünmek için tüm kritik header'lar
+        val headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer" to "$mainUrl/",
+            "Origin" to mainUrl,
+            "Accept" to "*/*",
+            "Accept-Language" to "tr-TR,tr;q=0.9,en;q=0.8",
+            "Sec-Fetch-Dest" to "empty",
+            "Sec-Fetch-Mode" to "cors",
+            "Sec-Fetch-Site" to "cross-site"
+        )
+
         for (base in baseUrls) {
             val streamUrl = base + streamFile
             try {
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "MahsunSports - $id",
-                        url = streamUrl,
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        this.referer = "$mainUrl/"
-                        this.quality = Qualities.P720.value
-                    }
-                )
-                return true
+                // Linki ExoPlayer'a vermeden önce çalışıp çalışmadığını (2xx) test et
+                val response = app.get(streamUrl, headers = headers)
+                if (response.isSuccessful) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "MahsunSports - $id",
+                            url = streamUrl,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.referer = "$mainUrl/"
+                            this.headers = headers
+                            this.quality = Qualities.P720.value
+                        }
+                    )
+                    return true
+                }
             } catch (e: Exception) {
                 continue
             }
