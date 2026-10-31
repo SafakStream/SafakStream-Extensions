@@ -1,4 +1,4 @@
-package com.safakstream.safakstreamspor
+package com.safakstream.mahsunsports
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -8,15 +8,15 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
 import java.net.URLEncoder
 
-class SafakStreamSporProvider : MainAPI() {
+class MahsunSportsProvider : MainAPI() {
     override var mainUrl = "https://mahsunsports57.xyz"
-    override var name = "SafakStream Spor"
+    override var name = "MahsunSports"
     override var lang = "tr"
     override val hasMainPage = true
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Live)
 
-    // GÜNCEL SUNUCU ADRESLERİ (mahsunsports57.xyz)
+    // GÜNCEL SUNUCU ADRESLERİ
     private val baseUrls = listOf(
         "https://andro.evrenesoglu219.click/checklist/",
         "https://andro.evrenesoglu211.click/checklist/",
@@ -25,7 +25,7 @@ class SafakStreamSporProvider : MainAPI() {
     )
 
     private val scriptUrl = "https://chatang0.com/script4.js"
-    private val defaultPoster = "https://placehold.co/600x900/0D0D10/FF9D00/png?text=SAFAKSTREAM+SPOR&font=oswald"
+    private val defaultPoster = "https://placehold.co/600x900/0D0D10/FF9D00/png?text=MAHSUN+SPORTS&font=oswald"
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val script = app.get(scriptUrl).text
@@ -168,7 +168,7 @@ class SafakStreamSporProvider : MainAPI() {
         val displayTitle = if (rawTitle != null) {
             try { java.net.URLDecoder.decode(rawTitle, "UTF-8") } catch (e: Exception) { rawTitle }
         } else {
-            "SafakStream Spor: $id"
+            "MahsunSports: $id"
         }
 
         return newMovieLoadResponse(
@@ -178,7 +178,7 @@ class SafakStreamSporProvider : MainAPI() {
             type = TvType.Live
         ) {
             this.posterUrl = defaultPoster
-            this.plot = "Canlı yayın - SafakStream Spor"
+            this.plot = "Canlı yayın - MahsunSports"
         }
     }
 
@@ -199,7 +199,7 @@ class SafakStreamSporProvider : MainAPI() {
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
-                        name = "SafakStream Spor - $id",
+                        name = "MahsunSports - $id",
                         url = streamUrl,
                         type = ExtractorLinkType.M3U8
                     ) {
