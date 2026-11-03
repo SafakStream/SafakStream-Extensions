@@ -93,7 +93,7 @@
             "SafakStream"
         ],
         "description": "DiziPal - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 24462,
+        "fileSize": 26648,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -102,7 +102,7 @@
         ],
         "iconUrl": "https://dizipal1592.com/assets/favicon/apple-touch-icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-bed10cdf04cacf981be569e5c5c6672621bb8057ac097675999677d364717afd"
+        "fileHash": "sha256-ac4445923296a7385ad430d4d9042ceaef234c799e88231eaae40bc1f9e7e1ce"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/HDFilmCehennemi.cs3",
