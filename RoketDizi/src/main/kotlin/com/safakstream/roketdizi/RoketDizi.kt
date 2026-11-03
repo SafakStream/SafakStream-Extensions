@@ -97,10 +97,28 @@ class RoketDizi : MainAPI() {
         if (!href.startsWith("/dizi/") && !href.startsWith("/film/")) return null
         
         val img = this.selectFirst("img")
-        val title = img?.attr("alt")?.replace(Regex("\\s+izle.*$", RegexOption.IGNORE_CASE), "")?.trim()
-            ?: this.selectFirst("[class*=rk-card-t]")?.text()?.trim()
-            ?: return null
-        if (title.isEmpty()) return null
+        
+        // 1) aria-label: "Breaking Bad, 2008, Suç, IMDb 9.5"
+        var title: String? = this.attr("aria-label").trim()
+            .takeIf { it.isNotBlank() }?.substringBefore(",")?.trim()
+        
+        // 2) img alt
+        if (title.isNullOrBlank()) {
+            title = img?.attr("alt")?.replace(Regex("\\s+izle.*$", RegexOption.IGNORE_CASE), "")?.trim()
+                ?.takeIf { it.isNotBlank() }
+        }
+        
+        // 3) span.tt (arama sonuç kartı)
+        if (title.isNullOrBlank()) {
+            title = this.selectFirst("span.tt")?.text()?.trim()?.takeIf { it.isNotBlank() }
+        }
+        
+        // 4) Eski kart class'ları
+        if (title.isNullOrBlank()) {
+            title = this.selectFirst("[class*=rk-card-t]")?.text()?.trim()?.takeIf { it.isNotBlank() }
+        }
+        
+        if (title.isNullOrBlank()) return null
         
         val poster = img?.attr("src")?.ifBlank { null } ?: img?.attr("data-src")?.ifBlank { null }
         val fullUrl = if (href.startsWith("http")) href else "$mainUrl$href"
@@ -144,14 +162,95 @@ class RoketDizi : MainAPI() {
             val html = app.get(url, headers = headers, referer = mainUrl).text
             val doc = Jsoup.parse(html)
             
-            val title = doc.selectFirst("h1")?.text()?.trim()
-                ?: doc.selectFirst("meta[property=og:title]")?.attr("content")?.replace(Regex("\\s+izle.*$", RegexOption.IGNORE_CASE), "")?.trim()
-                ?: return null
-            
-            val description = doc.selectFirst("meta[property=og:description]")?.attr("content")?.ifBlank { null }
-                ?: doc.selectFirst("meta[name=description]")?.attr("content")?.ifBlank { null }
-            val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")?.ifBlank { null }
-            val year = Regex("(19|20)\\d{2}").find(title)?.value?.toIntOrNull()
+            var title: String? = null
+            var description: String? = null
+            var poster: String? = null
+            var year: Int? = null
+
+            // 1) JSON-LD parse (TVSeries/Movie)
+            for (script in doc.select("script[type=application/ld+json]")) {
+                try {
+                    val raw = script.data().ifBlank { script.html() }
+                    if (raw.isBlank()) continue
+                    if (!raw.contains("TVSeries") && !raw.contains("\"Movie\"") && !raw.contains("TVEpisode")) continue
+
+                    val root = JSONObject(raw)
+                    val items = mutableListOf<JSONObject>()
+                    if (root.has("@graph")) {
+                        val graph = root.getJSONArray("@graph")
+                        for (i in 0 until graph.length()) items.add(graph.getJSONObject(i))
+                    } else {
+                        items.add(root)
+                    }
+
+                    for (item in items) {
+                        val type = item.optString("@type", "")
+                        if (type == "TVSeries" || type == "Movie") {
+                            if (title.isNullOrBlank()) {
+                                title = item.optString("name", "").ifBlank { null }
+                            }
+                            if (description.isNullOrBlank()) {
+                                description = item.optString("description", "").ifBlank { null }
+                            }
+                            if (poster.isNullOrBlank()) {
+                                val imgField = item.opt("image")
+                                poster = when (imgField) {
+                                    is String -> imgField.ifBlank { null }
+                                    is JSONObject -> imgField.optString("url", "").ifBlank { null }
+                                    else -> null
+                                }
+                            }
+                            if (year == null) {
+                                year = item.optString("datePublished", "").take(4).toIntOrNull()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("RoketDizi", "jsonld parse error: ${e.message}")
+                }
+            }
+
+            // 2) h1 fallback
+            if (title.isNullOrBlank()) {
+                title = doc.selectFirst("h1")?.text()?.trim()?.takeIf { it.isNotBlank() }
+            }
+            if (title.isNullOrBlank()) {
+                title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+                    ?.replace(Regex("\\s+izle.*$", RegexOption.IGNORE_CASE), "")?.trim()?.takeIf { it.isNotBlank() }
+            }
+            if (title.isNullOrBlank()) return null
+
+            // 3) Poster: /tv/poster/ veya /movie/poster/ içeren ilk img
+            if (poster.isNullOrBlank()) {
+                for (img in doc.select("img")) {
+                    val src = img.attr("src")
+                    if (src.contains("/tv/poster/") || src.contains("/movie/poster/")) {
+                        poster = src
+                        break
+                    }
+                }
+            }
+
+            // 4) Description: 80-800 karakter arası, filtrelenmiş
+            if (description.isNullOrBlank()) {
+                for (el in doc.select("p, div")) {
+                    val t = el.text().trim()
+                    if (t.length in 80..800 &&
+                        !t.contains("Roket") &&
+                        !t.contains("Türkiye'nin") &&
+                        !t.contains("Yabancı dizi, Kore") &&
+                        !t.contains("copyright") &&
+                        !t.contains("©")) {
+                        description = t
+                        break
+                    }
+                }
+            }
+
+            // 5) Year fallback
+            if (year == null) {
+                year = Regex("(19|20)\\d{2}").find(title ?: "")?.value?.toIntOrNull()
+            }
             
             // Bölüm linkleri
             val epLinks = doc.select("a[href*=/sezon-][href*=/bolum-]")
