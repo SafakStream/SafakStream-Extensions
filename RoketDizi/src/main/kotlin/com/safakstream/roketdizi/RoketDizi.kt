@@ -45,9 +45,9 @@ class RoketDizi : MainAPI() {
 
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Popüler Diziler",
+        "$mainUrl/" to "Güncel Bölümler",
         "$mainUrl/" to "Trend Filmler",
-        "$mainUrl/" to "Yeni Diziler",
-        "$mainUrl/" to "Yeni Filmler",
+        "$mainUrl/" to "Son Eklenen Filmler",
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -55,52 +55,30 @@ class RoketDizi : MainAPI() {
             val html = app.get(request.data, headers = headers, referer = mainUrl).text
             val doc = Jsoup.parse(html)
             
-            val isMovie = request.name.contains("Film")
-            val h2Match = when (request.name) {
-                "Popüler Diziler" -> "Popüler Diziler"
-                "Trend Filmler" -> "Trend Filmler"
-                "Yeni Diziler" -> "Son Eklenen Diziler"
-                "Yeni Filmler" -> "Son Eklenen Filmler"
-                else -> return newHomePageResponse(request.name, emptyList())
+            // İlgili h2'yi bul
+            val h2 = doc.select("h2").firstOrNull { it.text().equals(request.name, ignoreCase = true) }
+            if (h2 == null) {
+                Log.e("RoketDizi", "getMainPage '${request.name}' h2 bulunamadı")
+                return newHomePageResponse(request.name, emptyList())
             }
             
-            // İlgili h2'yi bul
-            val h2 = doc.select("h2").firstOrNull { it.text().contains(h2Match, ignoreCase = true) }
-                ?: doc.select("h2").firstOrNull()
+            // En yakın <section class="rk-band"> bul
+            val section = h2.parents().firstOrNull { it.tagName() == "section" }
+            if (section == null) {
+                Log.e("RoketDizi", "getMainPage '${request.name}' section bulunamadı")
+                return newHomePageResponse(request.name, emptyList())
+            }
             
             val items = mutableListOf<SearchResponse>()
-            if (h2 != null) {
-                // h2'nin ebeveynindeki tüm link'leri bul
-                val parent = h2.parent() ?: h2
-                // tüm section'lardaki linklere bak
-                var node = h2
-                var found = 0
-                while (node != null && found < 60) {
-                    val links = node.select("a[href^=/dizi/], a[href^=/film/]")
-                    links.forEach { a ->
-                        val href = a.attr("href")
-                        if (!href.contains("/sezon-") && !href.contains("/bolum-")) {
-                            val item = a.toSearchResult()
-                            if (item != null) {
-                                items.add(item)
-                                found++
-                            }
-                        }
-                    }
-                    if (items.size >= 20) break
-                    node = node.nextElementSibling()
-                }
-            }
-            
-            // Fallback: tüm linkler
-            if (items.isEmpty()) {
-                val allLinks = doc.select("a[href^=/dizi/], a[href^=/film/]")
-                allLinks.forEach { a ->
-                    val href = a.attr("href")
-                    if (!href.contains("/sezon-") && !href.contains("/bolum-")) {
-                        val item = a.toSearchResult()
-                        if (item != null) items.add(item)
-                    }
+            section.select("a[href^=/dizi/], a[href^=/film/]").forEach { a ->
+                val href = a.attr("href")
+                // Bölüm linkleriyse dizi linkine çevir
+                val normalizedHref = if (href.contains("/bolum-") || href.contains("/sezon-")) {
+                    href.substringBefore("/sezon-")
+                } else href
+                if (normalizedHref.startsWith("/dizi/") || normalizedHref.startsWith("/film/")) {
+                    val item = a.toSearchResult(normalizedHref)
+                    if (item != null) items.add(item)
                 }
             }
             
@@ -112,8 +90,8 @@ class RoketDizi : MainAPI() {
         }
     }
 
-    private fun Element.toSearchResult(): SearchResponse? {
-        val href = this.attr("href").trim()
+    private fun Element.toSearchResult(customHref: String? = null): SearchResponse? {
+        val href = (customHref ?: this.attr("href")).trim()
         if (href.isEmpty() || href.startsWith("#")) return null
         if (href.contains("/sezon-") || href.contains("/bolum-")) return null
         if (!href.startsWith("/dizi/") && !href.startsWith("/film/")) return null
