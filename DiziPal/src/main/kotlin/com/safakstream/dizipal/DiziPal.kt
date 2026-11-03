@@ -45,6 +45,25 @@ class DiziPal : MainAPI() {
         "Accept-Language" to "tr-TR,tr;q=0.9,en;q=0.8"
     )
 
+    @Volatile
+    private var resolvedUrl: String? = null
+
+    private suspend fun resolveBaseUrl(): String {
+        resolvedUrl?.let { return it }
+        return try {
+            val resp = app.get(mainUrl, headers = headers)
+            val finalUrl = resp.url.trimEnd('/')
+            if (finalUrl.startsWith("http")) {
+                resolvedUrl = finalUrl
+                Log.d("DiziPal", "resolvedUrl = $finalUrl")
+                finalUrl
+            } else mainUrl
+        } catch (e: Exception) {
+            Log.e("DiziPal", "resolveBaseUrl error: ${e.message}")
+            mainUrl
+        }
+    }
+
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Trend"
     )
@@ -52,7 +71,9 @@ class DiziPal : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         if (page > 1) return newHomePageResponse(request.name, emptyList())
         return try {
-            val html = app.get(request.data, headers = headers + mapOf("Referer" to mainUrl)).text
+            val base = resolveBaseUrl()
+            val reqUrl = if (request.data.contains(mainUrl)) request.data.replace(mainUrl, base) else request.data
+            val html = app.get(reqUrl, headers = headers + mapOf("Referer" to base)).text
             val rsc = extractRsc(html)
             val trend = extractJsonArrayAfter(rsc, "\"trend\":")
                 ?: return newHomePageResponse(request.name, emptyList())
@@ -95,12 +116,13 @@ class DiziPal : MainAPI() {
                 put("params", JSONArray().put(query))
             }
 
+            val base = resolveBaseUrl()
             val resp = app.post(
-                "$mainUrl/api/mj",
+                "$base/api/mj",
                 headers = headers + mapOf(
                     "Content-Type" to "application/json",
-                    "Origin" to mainUrl,
-                    "Referer" to "$mainUrl/kesfet"
+                    "Origin" to base,
+                    "Referer" to "$base/kesfet"
                 ),
                 json = body
             ).text
@@ -146,7 +168,9 @@ class DiziPal : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         return try {
-            val html = app.get(url, headers = headers + mapOf("Referer" to mainUrl)).text
+            val base = resolveBaseUrl()
+            val reqUrl = if (url.contains(mainUrl)) url.replace(mainUrl, base) else url
+            val html = app.get(reqUrl, headers = headers + mapOf("Referer" to base)).text
             val rsc = extractRsc(html)
             val data = extractJsonObjectAfter(rsc, "\"data\":{\"id\":")
                 ?: run {
@@ -223,7 +247,9 @@ class DiziPal : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            val html = app.get(data, headers = headers + mapOf("Referer" to mainUrl)).text
+            val base = resolveBaseUrl()
+            val reqUrl = if (data.contains(mainUrl)) data.replace(mainUrl, base) else data
+            val html = app.get(reqUrl, headers = headers + mapOf("Referer" to base)).text
             val rsc = extractRsc(html)
             val player = findPlayer(rsc) ?: run {
                 Log.e("DiziPal", "loadLinks: player not found")
@@ -244,7 +270,7 @@ class DiziPal : MainAPI() {
 
             val absoluteIframe = when {
                 iframeUrl.startsWith("//") -> "https:$iframeUrl"
-                iframeUrl.startsWith("/") -> "$mainUrl$iframeUrl"
+                iframeUrl.startsWith("/") -> "$base$iframeUrl"
                 else -> iframeUrl
             }
             Log.d("DiziPal", "iframe: $absoluteIframe")
