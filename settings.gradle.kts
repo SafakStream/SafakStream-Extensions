@@ -9,7 +9,6 @@ include(
     "MahsunSports",
     "PapazSports",
     "SafakStreamCinema",
-    "SafakStreamHub",
     "SelcukFlix",
     "Streamed",
     "TrGoals",
