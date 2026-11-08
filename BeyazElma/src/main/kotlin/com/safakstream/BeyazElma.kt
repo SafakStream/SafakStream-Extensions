@@ -354,6 +354,7 @@ class BeyazElma : MainAPI() {
                         }
                     )
                     found = true
+                sourceCount++
                 }
             } catch (e: Exception) {
                 continue
