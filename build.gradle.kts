@@ -49,6 +49,14 @@ subprojects {
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
+        if (project.name == "BeyazElma") {
+            description = "SafakStream Spor - Canlı maç yayınları ve spor içerikleri"
+            language = "tr"
+            tvTypes = listOf("Live")
+            iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamSpor.png"
+            version = 1
+        }
+
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/SafakStream/SafakStream-Extensions")
         authors = listOf("SafakStream")
 

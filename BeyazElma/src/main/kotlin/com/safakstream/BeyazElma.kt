@@ -28,7 +28,7 @@ import com.lagradost.cloudstream3.CommonActivity
 
 class BeyazElma : MainAPI() {
     override var mainUrl = "https://beyazelma78.com"
-    override var name = "BeyazElma"
+    override var name = "SafakStream Spor"
     override val hasMainPage = true
     override var lang = "tr"
     override val hasQuickSearch = false
