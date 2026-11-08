@@ -1,4 +1,4 @@
-// SafakStream-Extensions/BeyazElma/src/main/kotlin/com/safakstream/BeyazElmaPlugin.kt
+// SafakStream-Extensions/SafakStream Spor/src/main/kotlin/com/safakstream/SafakStream SporPlugin.kt
 
 package com.safakstream
 
@@ -7,8 +7,8 @@ import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 
 @CloudstreamPlugin
-class BeyazElmaPlugin : Plugin() {
+class SafakStream SporPlugin : Plugin() {
     override fun load(context: Context) {
-        registerMainAPI(BeyazElma())
+        registerMainAPI(SafakStream Spor())
     }
 }
