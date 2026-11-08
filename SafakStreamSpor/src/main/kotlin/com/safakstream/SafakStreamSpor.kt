@@ -257,9 +257,9 @@ class SafakStreamSpor : MainAPI() {
 
         return newMovieLoadResponse(
             name = title,
-            url = url, // Dünya simgesi orijinal siteyi açar, Hero ve video sorunsuz çalışır
+            url = "", // Dünya simgesini gizlemek için boş bırakıyoruz
             type = TvType.Live,
-            dataUrl = url, 
+            dataUrl = url, // Oynatıcı orijinal linki kullanmaya devam eder
         ) {
             this.posterUrl = poster
         }
