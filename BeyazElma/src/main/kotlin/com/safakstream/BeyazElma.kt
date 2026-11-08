@@ -26,9 +26,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.lagradost.cloudstream3.CommonActivity
 
-class SafakStreamSpor : MainAPI() {
+class BeyazElma : MainAPI() {
     override var mainUrl = "https://beyazelma78.com"
-    override var name = "SafakStream Spor"
+    override var name = "BeyazElma"
     override val hasMainPage = true
     override var lang = "tr"
     override val hasQuickSearch = false
@@ -251,8 +251,8 @@ class SafakStreamSpor : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
-        val rawTitle = document.selectFirst("title")?.text()?.trim() ?: "SafakStream Spor"
-        val title = rawTitle.replace("| BeyazElma", "").replace("BeyazElma", "SafakStream Spor").trim()
+        val rawTitle = document.selectFirst("title")?.text()?.trim() ?: "BeyazElma"
+        val title = rawTitle.replace("| BeyazElma", "")..trim()
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim()
 
         return newMovieLoadResponse(

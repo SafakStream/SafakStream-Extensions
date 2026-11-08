@@ -2,7 +2,7 @@ rootProject.name = "SafakStream-Extensions"
 
 include(
     "Betmatik",
-    "SafakStreamSpor",
+    "BeyazElma",
     "DiziFilmizle",
     "Dizibox",
     "InatTV",

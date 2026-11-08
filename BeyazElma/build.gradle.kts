@@ -1,11 +1,11 @@
-// SafakStream-Extensions/SafakStreamSpor/build.gradle.kts
+// SafakStream-Extensions/BeyazElma/build.gradle.kts
 
 version = 1
 
 cloudstream {
     authors     = listOf("SafakStream")
     language    = "tr"
-    description = "SafakStream Spor - Canlı maç yayınları ve spor içerikleri"
+    description = "BeyazElma - Canlı maç yayınları, spor kanalları ve canlı skorları Cloudstream üzerinden izle."
     
     /**
      * Status int as the following:
@@ -19,5 +19,5 @@ cloudstream {
         "LiveStream",
         "Others"
     )
-    iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamSpor.png"
+    iconUrl = "https://beyazelma78.com/favicon.png"
 }

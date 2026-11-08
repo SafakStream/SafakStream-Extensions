@@ -5,8 +5,8 @@ import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 
 @CloudstreamPlugin
-class SafakStreamSporPlugin : Plugin() {
+class BeyazElmaPlugin : Plugin() {
     override fun load(context: Context) {
-        registerMainAPI(SafakStreamSpor())
+        registerMainAPI(BeyazElma())
     }
 }
