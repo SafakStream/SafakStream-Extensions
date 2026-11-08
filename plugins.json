@@ -218,7 +218,7 @@
             "SafakStream"
         ],
         "description": "SafakStream Spor - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve spor i\u00e7erikleri",
-        "fileSize": 20170,
+        "fileSize": 20004,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -227,7 +227,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamSpor.png",
         "apiVersion": 1,
-        "fileHash": "sha256-6153db4fb8ec83ffe515ee3358cbfe13c3598077981255f185ba116d66b00abd"
+        "fileHash": "sha256-0f6019cdf912f44f812af34b9287393c05b6011245421dc8565c13683263937a"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
