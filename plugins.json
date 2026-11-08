@@ -21,27 +21,6 @@
         "fileHash": "sha256-a3f2e9a3b57196df8196b4156057beed7070131fa1fc65e5ca3038571f9c35d2"
     },
     {
-        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/BeyazElma.cs3",
-        "status": 1,
-        "version": 1,
-        "name": "BeyazElma",
-        "internalName": "BeyazElma",
-        "authors": [
-            "SafakStream"
-        ],
-        "description": "BeyazElma - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, spor kanallar\u0131 ve canl\u0131 skorlar\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 19996,
-        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
-        "language": "tr",
-        "tvTypes": [
-            "LiveStream",
-            "Others"
-        ],
-        "iconUrl": "https://beyazelma78.com/favicon.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-bdbc16e66889bbdea6fe81cb39ee2b4b2b67ec2130079702385cafec6b463304"
-    },
-    {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Dizibox.cs3",
         "status": 3,
         "version": 1,
@@ -228,6 +207,27 @@
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png",
         "apiVersion": 1,
         "fileHash": "sha256-dba422c08edc5ccf1e2044372ad5828acfa1a42659a2a2b6f76e3acc5945956f"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamSpor.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "SafakStreamSpor",
+        "internalName": "SafakStreamSpor",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "BeyazElma - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, spor kanallar\u0131 ve canl\u0131 skorlar\u0131 Cloudstream \u00fczerinden izle.",
+        "fileSize": 20028,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            "LiveStream",
+            "Others"
+        ],
+        "iconUrl": "https://beyazelma78.com/favicon.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-f514e9b2a88d7af8270bf93bd43ccf7fe2cfc7197f6c62f457b88313726dc62d"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
