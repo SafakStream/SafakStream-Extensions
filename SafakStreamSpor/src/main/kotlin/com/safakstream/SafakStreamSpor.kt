@@ -251,7 +251,8 @@ class SafakStreamSpor : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
-        val title = document.selectFirst("title")?.text()?.trim() ?: "BeyazElma"
+        val rawTitle = document.selectFirst("title")?.text()?.trim() ?: "SafakStream Spor"
+        val title = rawTitle.replace("| BeyazElma", "").replace("BeyazElma", "SafakStream Spor").trim()
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim()
 
         return newMovieLoadResponse(
