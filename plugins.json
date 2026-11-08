@@ -301,7 +301,7 @@
             "SafakStream"
         ],
         "description": "YouTube eklentisi - SafakStream taraf\u0131ndan uyarland\u0131.",
-        "fileSize": 17338,
+        "fileSize": 20897,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -309,6 +309,6 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=youtube.com&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-6c28103a612946d5f27b273c49bfd7b65194d6a048101c7c859be77ddf2bd4e9"
+        "fileHash": "sha256-fab0b9f69f0de239ef59995af8aae44f7998a4c477290bb280048e9364a14019"
     }
 ]
