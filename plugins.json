@@ -9,7 +9,7 @@
             "SafakStream"
         ],
         "description": "Betmatik - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve 7/24 spor kanallar\u0131 (Zirve Stream altyap\u0131s\u0131).",
-        "fileSize": 19472,
+        "fileSize": 15969,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -18,7 +18,7 @@
         ],
         "iconUrl": "https://betmatiktv156.com/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-a4669d2b48691af19e1b13986ea31123e10859fe7b5a425e6b3e6294f757537b"
+        "fileHash": "sha256-10090f470a5728bb993d0cb8a282399fc9bb31b1ae42c79925d92e4425e9490f"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/BeyazElma.cs3",
@@ -228,6 +228,26 @@
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamCinema.png",
         "apiVersion": 1,
         "fileHash": "sha256-dba422c08edc5ccf1e2044372ad5828acfa1a42659a2a2b6f76e3acc5945956f"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SafakStreamHub.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "SafakStreamHub",
+        "internalName": "SafakStreamHub",
+        "authors": [
+            "SafakStream"
+        ],
+        "description": "SafakStream projesi hakk\u0131nda bilgi, GitHub ba\u011flant\u0131s\u0131 ve Kreosus \u00fczerinden destek olma imkan\u0131 sunar.",
+        "fileSize": 3332,
+        "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
+        "language": "tr",
+        "tvTypes": [
+            
+        ],
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/main/icon.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-8be797bd62da6c5cb920a2f88732a9d5df828abfb84ce4b1879f1de03666c81d"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/SelcukFlix.cs3",
