@@ -32,6 +32,22 @@ import android.content.Context
 import java.net.URLEncoder
 import org.json.JSONObject
 
+// --- REKLAM İÇİN EKLENEN KÜTÜPHANELER ---
+import android.app.Dialog
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.LinearLayout
+import android.widget.TextView
+import com.lagradost.cloudstream3.CommonActivity
+
 class Hdfilmcehennemi : MainAPI() {
     override var mainUrl = "https://www.hdfilmcehennemi.nl"
     override var name = "HDFilmCehennemi"
@@ -45,6 +61,121 @@ class Hdfilmcehennemi : MainAPI() {
         "Accept-Language" to "tr-TR,tr;q=0.9,en;q=0.8"
     )
 
+    // ========================================================================
+    // MODERN REKLAM / DESTEK FONKSİYONU
+    // ========================================================================
+    fun showSupportDialog(context: Context) {
+        val prefs = context.getSharedPreferences("SafakStreamOrtakHafiza", Context.MODE_PRIVATE)
+        val lastShown = prefs.getLong("son_reklam_zamani", 0)
+        val currentTime = System.currentTimeMillis()
+
+        // 60 Dakika = 60 * 60 * 1000 = 3.600.000 ms
+        if (currentTime - lastShown > 3600000L) { 
+            
+            val dialog = Dialog(context)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setCancelable(true)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            val mainLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(70, 70, 70, 70)
+                val bg = GradientDrawable().apply {
+                    setColor(Color.parseColor("#212429"))
+                    cornerRadius = 60f
+                    setStroke(2, Color.parseColor("#33363D"))
+                }
+                background = bg
+            }
+
+            val title = TextView(context).apply {
+                text = "SafakStream'i Destekle ❤️"
+                setTextColor(Color.WHITE)
+                textSize = 22f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(0, 0, 0, 20)
+            }
+            mainLayout.addView(title)
+
+            val subtitle = TextView(context).apply {
+                text = "Tamamen Ücretsiz Eklentiler"
+                setTextColor(Color.WHITE)
+                textSize = 16f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(0, 0, 0, 15)
+            }
+            mainLayout.addView(subtitle)
+
+            val desc = TextView(context).apply {
+                text = "Bu eklentiler sizin için tamamen ücretsizdir ve her zaman öyle kalacaktır.\n\nEmeğime destek olmak için bir reklam izleyebilirsiniz. Her küçük katkı benim için çok değerlidir, teşekkürler!"
+                setTextColor(Color.parseColor("#C5C5C5"))
+                textSize = 14f
+                setLineSpacing(15f, 1.1f)
+                setPadding(0, 0, 0, 60)
+            }
+            mainLayout.addView(desc)
+
+            val buttonLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+
+            val btnLater = TextView(context).apply {
+                text = "DAHA SONRA"
+                setTextColor(Color.parseColor("#7A9CFF"))
+                textSize = 13f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(30, 30, 30, 30)
+                val bg = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    setStroke(3, Color.parseColor("#5C85FF"))
+                    cornerRadius = 100f
+                }
+                background = bg
+                setOnClickListener { dialog.dismiss() }
+            }
+            
+            val laterParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            laterParams.marginEnd = 20
+            buttonLayout.addView(btnLater, laterParams)
+
+            val btnWatchAd = TextView(context).apply {
+                text = "REKLAM İZLE\nVE DESTEK OL"
+                setTextColor(Color.WHITE)
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(30, 20, 30, 20)
+                val bg = GradientDrawable().apply {
+                    setColor(Color.parseColor("#22449B"))
+                    cornerRadius = 100f
+                }
+                background = bg
+                setOnClickListener {
+                    val adUrl = "https://link-center.net/10612612/WsR8DGfNtSq0"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adUrl))
+                    context.startActivity(intent)
+                    dialog.dismiss()
+                }
+            }
+            
+            val adParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f)
+            buttonLayout.addView(btnWatchAd, adParams)
+
+            mainLayout.addView(buttonLayout)
+
+            dialog.setContentView(mainLayout)
+            dialog.show()
+            
+            prefs.edit().putLong("son_reklam_zamani", currentTime).apply()
+        }
+    }
+
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Son Eklenenler",
         "$mainUrl/category/film-izle-2/" to "Filmler",
@@ -52,6 +183,15 @@ class Hdfilmcehennemi : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        
+        // --- REKLAM TETİKLEYİCİSİ ---
+        CommonActivity.activity?.let { ctx ->
+            Handler(Looper.getMainLooper()).post {
+                showSupportDialog(ctx)
+            }
+        }
+        // ---------------------------
+
         return try {
             val html = app.get(request.data, headers = headers).text
             val document = Jsoup.parse(html)
@@ -67,6 +207,7 @@ class Hdfilmcehennemi : MainAPI() {
     private fun parsePosterElement(element: Element): SearchResponse? {
         val href = element.attr("href").ifBlank { return null }
         val title = element.selectFirst("strong.poster-title")?.text()?.trim()?.ifBlank { null } ?: return null
+        
         val posterUrl = element.selectFirst("img")?.let { img ->
             val dataSrc = img.attr("data-src")
             val src = img.attr("src")
@@ -76,6 +217,7 @@ class Hdfilmcehennemi : MainAPI() {
                 else -> null
             }
         }
+        
         val year = element.selectFirst("div.poster-meta span")?.text()?.toIntOrNull()
         val imdb = element.selectFirst("span.imdb")?.text()?.trim()?.toDoubleOrNull()
 
@@ -131,6 +273,7 @@ class Hdfilmcehennemi : MainAPI() {
                 }
                 val distinct = episodes.distinctBy { it.data }
                 Log.d(name, "load series: $title, ${distinct.size} bölüm")
+
                 return newTvSeriesLoadResponse(title, url, TvType.TvSeries, distinct) {
                     this.posterUrl = poster
                     this.year = year
@@ -209,18 +352,20 @@ class Hdfilmcehennemi : MainAPI() {
             val encoded = m.groupValues[1].replace("\\/", "/")
             val sep = m.groupValues[2]
             if (sep.isEmpty()) continue
+
             val parts = encoded.split(sep)
             if (parts.size < 20) continue
+
             for (addHost in listOf(true, false)) {
                 for (b64First in listOf(true, false)) {
                     try {
                         val decoded = decode(parts, addHostname = addHost, hostname = hostname, base64First = b64First)
                         if (decoded.startsWith("http") && (
-                                decoded.contains(".m3u8") ||
-                                decoded.contains("/master") ||
-                                decoded.contains("master.txt") ||
-                                decoded.contains("playlist")
-                            )
+                                    decoded.contains(".m3u8") ||
+                                    decoded.contains("/master") ||
+                                    decoded.contains("master.txt") ||
+                                    decoded.contains("playlist")
+                                )
                         ) {
                             return decoded
                         }
@@ -258,7 +403,6 @@ class Hdfilmcehennemi : MainAPI() {
         val a07 = 8 + (djq5 % 5)
         if (a07 >= xbd25.size || nzq21 >= xbd25.size) throw IllegalArgumentException("splice out of range")
 
-        // Sıralamaya dikkat: önce büyük olanı çıkar
         val cmd: String
         val hashStr: String
         if (a07 > nzq21) {
@@ -373,6 +517,7 @@ class Hdfilmcehennemi : MainAPI() {
             }
             sb.append("</body></html>")
             val document = Jsoup.parse(sb.toString())
+
             document.select("a.search-result").mapNotNull { a ->
                 val href = a.attr("href").ifBlank { return@mapNotNull null }
                 val title = a.selectFirst("h4.title")?.text()?.trim()
@@ -382,6 +527,7 @@ class Hdfilmcehennemi : MainAPI() {
                 val year = a.selectFirst("span.year")?.text()?.toIntOrNull()
                 val imdb = a.selectFirst("span.imdb")?.text()?.trim()?.toDoubleOrNull()
                 val type = a.selectFirst("span.type")?.text()?.trim()
+
                 val isSeries = type.equals("Dizi", ignoreCase = true) || href.contains("/dizi/")
                 if (isSeries) {
                     newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
