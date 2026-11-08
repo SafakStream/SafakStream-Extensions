@@ -251,8 +251,7 @@ class BeyazElma : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
-        val rawTitle = document.selectFirst("title")?.text()?.trim() ?: "BeyazElma"
-        val title = rawTitle.replace("| BeyazElma", "")..trim()
+        val title = document.selectFirst("title")?.text()?.trim() ?: "BeyazElma"
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim()
 
         return newMovieLoadResponse(
@@ -341,7 +340,7 @@ class BeyazElma : MainAPI() {
                     callback.invoke(
                         newExtractorLink(
                             source = this.name,
-                            name = "SafakStream Spor",
+                            name = "BeyazElma",
                             url = m3u8,
                             type = ExtractorLinkType.M3U8,
                         ) {
