@@ -135,7 +135,7 @@
             "SafakStream"
         ],
         "description": "inatTV - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, 7/24 TV kanallar\u0131 ve spor kar\u015f\u0131la\u015fmalar\u0131n\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 28900,
+        "fileSize": 32338,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -144,7 +144,7 @@
         ],
         "iconUrl": "https://www.inattvizle494.top/lib/img/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-405cf028818fe752ada663f09184d8334fb475c8d9be692cff9300113981bd61"
+        "fileHash": "sha256-d29eb0581698e7033569776678c9562064fc32871c47ae479f98ff296799c92e"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/MahsunSports.cs3",
