@@ -114,7 +114,7 @@
             "SafakStream"
         ],
         "description": "HDFilmCehennemi - Film ve Dizi \u0130zleme",
-        "fileSize": 21907,
+        "fileSize": 25560,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -123,7 +123,7 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=hdfilmcehennemi.nl&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-3bb032df5160e6220a3964d056e8e97f42a936aacbc608b35574db83454607ce"
+        "fileHash": "sha256-4914ef5b31a74a1ed372d42581beb25e62347fb44e59f4df03275ae6c3191d52"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
