@@ -26,6 +26,23 @@ import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 
+// --- REKLAM İÇİN EKLENEN KÜTÜPHANELER ---
+import android.app.Dialog
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.LinearLayout
+import android.widget.TextView
+import com.lagradost.cloudstream3.CommonActivity
+
 class TrGoalsProvider : MainAPI() {
     override var mainUrl = "https://www.trgoals183.top"
     override var name = "TrGoals"
@@ -42,6 +59,121 @@ class TrGoalsProvider : MainAPI() {
     private var cachedAuthUrl: String? = null
     private var cachedSiteName: String? = null
     private var cachedChannels: List<SportsChannel> = emptyList()
+
+    // ========================================================================
+    // MODERN REKLAM / DESTEK FONKSİYONU
+    // ========================================================================
+    fun showSupportDialog(context: Context) {
+        val prefs = context.getSharedPreferences("SafakStreamOrtakHafiza", Context.MODE_PRIVATE)
+        val lastShown = prefs.getLong("son_reklam_zamani", 0)
+        val currentTime = System.currentTimeMillis()
+
+        // 60 Dakika = 60 * 60 * 1000 = 3.600.000 ms
+        if (currentTime - lastShown > 3600000L) { 
+            
+            val dialog = Dialog(context)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setCancelable(true)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            val mainLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(70, 70, 70, 70)
+                val bg = GradientDrawable().apply {
+                    setColor(Color.parseColor("#212429"))
+                    cornerRadius = 60f
+                    setStroke(2, Color.parseColor("#33363D"))
+                }
+                background = bg
+            }
+
+            val title = TextView(context).apply {
+                text = "SafakStream'i Destekle ❤️"
+                setTextColor(Color.WHITE)
+                textSize = 22f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(0, 0, 0, 20)
+            }
+            mainLayout.addView(title)
+
+            val subtitle = TextView(context).apply {
+                text = "Tamamen Ücretsiz Eklentiler"
+                setTextColor(Color.WHITE)
+                textSize = 16f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(0, 0, 0, 15)
+            }
+            mainLayout.addView(subtitle)
+
+            val desc = TextView(context).apply {
+                text = "Bu eklentiler sizin için tamamen ücretsizdir ve her zaman öyle kalacaktır.\n\nEmeğime destek olmak için bir reklam izleyebilirsiniz. Her küçük katkı benim için çok değerlidir, teşekkürler!"
+                setTextColor(Color.parseColor("#C5C5C5"))
+                textSize = 14f
+                setLineSpacing(15f, 1.1f)
+                setPadding(0, 0, 0, 60)
+            }
+            mainLayout.addView(desc)
+
+            val buttonLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+
+            val btnLater = TextView(context).apply {
+                text = "DAHA SONRA"
+                setTextColor(Color.parseColor("#7A9CFF"))
+                textSize = 13f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(30, 30, 30, 30)
+                val bg = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    setStroke(3, Color.parseColor("#5C85FF"))
+                    cornerRadius = 100f
+                }
+                background = bg
+                setOnClickListener { dialog.dismiss() }
+            }
+            
+            val laterParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            laterParams.marginEnd = 20
+            buttonLayout.addView(btnLater, laterParams)
+
+            val btnWatchAd = TextView(context).apply {
+                text = "REKLAM İZLE\nVE DESTEK OL"
+                setTextColor(Color.WHITE)
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(30, 20, 30, 20)
+                val bg = GradientDrawable().apply {
+                    setColor(Color.parseColor("#22449B"))
+                    cornerRadius = 100f
+                }
+                background = bg
+                setOnClickListener {
+                    val adUrl = "https://link-center.net/10612612/WsR8DGfNtSq0"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adUrl))
+                    context.startActivity(intent)
+                    dialog.dismiss()
+                }
+            }
+            
+            val adParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f)
+            buttonLayout.addView(btnWatchAd, adParams)
+
+            mainLayout.addView(buttonLayout)
+
+            dialog.setContentView(mainLayout)
+            dialog.show()
+            
+            prefs.edit().putLong("son_reklam_zamani", currentTime).apply()
+        }
+    }
 
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Canlı Maçlar",
@@ -102,6 +234,15 @@ class TrGoalsProvider : MainAPI() {
     // ANA SAYFA
     // ========================================================================
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        
+        // --- REKLAM TETİKLEYİCİSİ ---
+        CommonActivity.activity?.let { ctx ->
+            Handler(Looper.getMainLooper()).post {
+                showSupportDialog(ctx)
+            }
+        }
+        // ---------------------------
+
         loadSite()
 
         val items: List<SearchResponse> = when {
@@ -163,7 +304,6 @@ class TrGoalsProvider : MainAPI() {
 
         val id = attr("data-url").removePrefix("#").removeSuffix("-canli-izle")
             .ifBlank { name.replace(" ", "-").lowercase() }
-
         val stableUrl = buildStableUrl(id, name, player, targetType)
         return newLiveSearchResponse(name, stableUrl, TvType.Live) {
             this.posterUrl = poster
@@ -183,12 +323,14 @@ class TrGoalsProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         Log.d(TAG, "load() url=$url")
         val parsed = parseStableUrl(url) ?: return null
+
         val description = when (parsed.target) {
             "viptv", "vip" -> "Canlı yayın"
             "m3u8" -> "HLS yayın"
             "frame" -> "Gömülü yayın"
             else -> "Canlı yayın"
         }
+
         return newLiveStreamLoadResponse(
             parsed.title,
             url,
@@ -230,6 +372,7 @@ class TrGoalsProvider : MainAPI() {
                 referer = "$mainUrl/",
                 data = mapOf(param to parsed.player)
             )
+
             Log.d(TAG, "auth.php code=${response.code} body=${response.text.take(300)}")
             if (response.code != 200) return false
 
@@ -253,6 +396,7 @@ class TrGoalsProvider : MainAPI() {
         }
 
         Log.d(TAG, "playlist code=${playlist.code} ilk50=${playlist.text.take(50).replace("\n", "\\n")}")
+
         if (playlist.code != 200 || !playlist.text.trimStart().startsWith("#EXTM3U")) {
             Log.e(TAG, "playlist EXTM3U değil veya hata")
             return false
@@ -274,6 +418,7 @@ class TrGoalsProvider : MainAPI() {
                 this.quality = if (maxHeight > 0) maxHeight else Qualities.Unknown.value
             }
         )
+
         return true
     }
 
