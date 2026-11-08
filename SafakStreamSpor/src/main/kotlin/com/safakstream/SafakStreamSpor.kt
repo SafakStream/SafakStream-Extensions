@@ -250,22 +250,16 @@ class SafakStreamSpor : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        // 1. Başlık ve Posteri almak için ORİJİNAL siteye git
         val document = app.get(url).document
         val rawTitle = document.selectFirst("title")?.text()?.trim() ?: "SafakStream Spor"
         val title = rawTitle.replace("| BeyazElma", "").replace("BeyazElma", "SafakStream Spor").trim()
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim()
 
-        // 2. Dünya simgesi için gitmesini istediğin link (İstersen Google yapabilirsin)
-        val webUrl = "https://github.com/SafakStream/SafakStream-Extensions" 
-        // val webUrl = "https://www.google.com/search?q=" + java.net.URLEncoder.encode(title + " canlı izle", "UTF-8")
-
-        // 3. Hem başlığı koru, hem videoyu oynat, hem de dünya simgesini webUrl'ye yönlendir.
         return newMovieLoadResponse(
             name = title,
-            url = webUrl,        // Dünya simgesi burayı açar
+            url = url, // Dünya simgesi orijinal siteyi açar, Hero ve video sorunsuz çalışır
             type = TvType.Live,
-            dataUrl = url,       // Oynatıcı orijinal linki kullanır
+            dataUrl = url, 
         ) {
             this.posterUrl = poster
         }
