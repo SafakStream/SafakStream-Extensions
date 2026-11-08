@@ -217,7 +217,7 @@
         "authors": [
             "SafakStream"
         ],
-        "description": "BeyazElma - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, spor kanallar\u0131 ve canl\u0131 skorlar\u0131 Cloudstream \u00fczerinden izle.",
+        "description": "SafakStream Spor - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve spor i\u00e7erikleri",
         "fileSize": 20139,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
@@ -225,7 +225,7 @@
             "LiveStream",
             "Others"
         ],
-        "iconUrl": "https://beyazelma78.com/favicon.png",
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/SafakStreamSpor.png",
         "apiVersion": 1,
         "fileHash": "sha256-9f034f8e2a9ef81c1fb59e935bf0df3d75584d1b1fccced0a3184aac2bccca5c"
     },
