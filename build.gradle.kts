@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 buildscript {
     repositories {
         google()
-        mavenCentral()
+        maven("https://maven.aliyun.com/repository/public")
         maven("https://repo.huaweicloud.com/repository/maven/")
         maven("https://jitpack.io")
     }
@@ -23,7 +23,7 @@ buildscript {
 allprojects {
     repositories {
         google()
-        mavenCentral()
+        maven("https://maven.aliyun.com/repository/public")
         maven("https://repo.huaweicloud.com/repository/maven/")
         maven("https://jitpack.io")
     }
