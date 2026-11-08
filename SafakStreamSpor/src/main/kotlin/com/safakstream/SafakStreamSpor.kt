@@ -341,7 +341,7 @@ class SafakStreamSpor : MainAPI() {
                     callback.invoke(
                         newExtractorLink(
                             source = this.name,
-                            name = "$label - $slug",
+                            name = "SafakStream Spor",
                             url = m3u8,
                             type = ExtractorLinkType.M3U8,
                         ) {
