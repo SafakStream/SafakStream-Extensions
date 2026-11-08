@@ -38,7 +38,6 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.Window
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.lagradost.cloudstream3.CommonActivity
@@ -58,7 +57,7 @@ class BetmatikProvider : MainAPI() {
     }
 
     // ========================================================================
-    // MODERN REKLAM / DESTEK FONKSİYONU
+    // MODERN (YAPAY ZEKA TASARIMLI) REKLAM / DESTEK FONKSİYONU
     // ========================================================================
     fun showSupportDialog(context: Context) {
         val prefs = context.getSharedPreferences("SafakStreamOrtakHafiza", Context.MODE_PRIVATE)
@@ -71,89 +70,100 @@ class BetmatikProvider : MainAPI() {
             val dialog = Dialog(context)
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
             dialog.setCancelable(true)
+            // Arka planın şeffaf olmasını sağla (köşelerin kesilmemesi için)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-            // Ana Arka Plan (Koyu Gri ve Yuvarlak Köşeler)
+            // Ana Arka Plan (Koyu Füme / Yuvarlak Köşeler ve İnce Çerçeve)
             val mainLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(60, 60, 60, 60)
+                setPadding(70, 70, 70, 70) // Daha ferah bir görünüm
                 val bg = GradientDrawable().apply {
-                    setColor(Color.parseColor("#2C2E33")) // Koyu gri arka plan
-                    cornerRadius = 50f // Yuvarlak köşeler
+                    setColor(Color.parseColor("#212429")) // Yapay zekanın rengine yakın koyu ton
+                    cornerRadius = 60f // Daha yumuşak köşeler
+                    setStroke(2, Color.parseColor("#33363D")) // Hafif bir çerçeve
                 }
                 background = bg
             }
 
+            // Başlık
             val title = TextView(context).apply {
                 text = "SafakStream'i Destekle ❤️"
                 setTextColor(Color.WHITE)
                 textSize = 22f
                 setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, 30)
+                setPadding(0, 0, 0, 20)
             }
             mainLayout.addView(title)
 
+            // Alt Başlık
             val subtitle = TextView(context).apply {
                 text = "Tamamen Ücretsiz Eklentiler"
                 setTextColor(Color.WHITE)
                 textSize = 16f
                 setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, 20)
+                setPadding(0, 0, 0, 15)
             }
             mainLayout.addView(subtitle)
 
+            // Açıklama Metni
             val desc = TextView(context).apply {
                 text = "Bu eklentiler sizin için tamamen ücretsizdir ve her zaman öyle kalacaktır.\n\nEmeğime destek olmak için bir reklam izleyebilirsiniz. Her küçük katkı benim için çok değerlidir, teşekkürler!"
-                setTextColor(Color.parseColor("#B0B0B0")) // Gri renk metin
+                setTextColor(Color.parseColor("#C5C5C5")) // Daha yumuşak bir gri
                 textSize = 14f
-                setLineSpacing(10f, 1f)
-                setPadding(0, 0, 0, 50)
+                setLineSpacing(15f, 1.1f) // Satır aralıkları ferahlatıldı
+                setPadding(0, 0, 0, 60)
             }
             mainLayout.addView(desc)
 
+            // Butonlar İçin Yatay Düzen
             val buttonLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.END
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
             }
 
-            val btnLater = Button(context).apply {
+            // "DAHA SONRA" Butonu (Hap Şeklinde)
+            val btnLater = TextView(context).apply {
                 text = "DAHA SONRA"
-                setTextColor(Color.parseColor("#5C85FF")) // Mavi yazı
-                textSize = 12f
+                setTextColor(Color.parseColor("#7A9CFF")) // Açık Mavi
+                textSize = 13f
                 setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(30, 30, 30, 30)
                 val bg = GradientDrawable().apply {
                     setColor(Color.TRANSPARENT)
                     setStroke(3, Color.parseColor("#5C85FF")) // Mavi çerçeve
-                    cornerRadius = 30f
+                    cornerRadius = 100f // Tam hap şeklinde
                 }
                 background = bg
-                setPadding(40, 20, 40, 20)
-                
                 setOnClickListener { dialog.dismiss() }
             }
             
+            // Butonların ağırlıkları ve boşlukları ayarlanıyor
             val laterParams = LinearLayout.LayoutParams(
+                0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                1f // Sol buton alanın yarısını kaplasın
             )
-            laterParams.marginEnd = 30
+            laterParams.marginEnd = 20
             buttonLayout.addView(btnLater, laterParams)
 
-            val btnWatchAd = Button(context).apply {
-                text = "REKLAM İZLE ▶"
+            // "REKLAM İZLE VE DESTEK OL" Butonu (Hap Şeklinde)
+            val btnWatchAd = TextView(context).apply {
+                text = "REKLAM İZLE\nVE DESTEK OL" // Resimdeki gibi iki satır
                 setTextColor(Color.WHITE)
                 textSize = 12f
                 setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(30, 20, 30, 20)
                 val bg = GradientDrawable().apply {
-                    setColor(Color.parseColor("#2555FF")) // Parlak Mavi arka plan
-                    cornerRadius = 30f
+                    setColor(Color.parseColor("#22449B")) // Koyu, tok bir mavi
+                    cornerRadius = 100f // Tam hap şeklinde
                 }
                 background = bg
-                setPadding(40, 20, 40, 20)
-                
                 setOnClickListener {
                     val adUrl = "https://link-center.net/10612612/WsR8DGfNtSq0" // LİNVERTİSE LİNKİN
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adUrl))
@@ -161,7 +171,13 @@ class BetmatikProvider : MainAPI() {
                     dialog.dismiss()
                 }
             }
-            buttonLayout.addView(btnWatchAd)
+            
+            val adParams = LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1.2f // Sağ buton biraz daha geniş olsun
+            )
+            buttonLayout.addView(btnWatchAd, adParams)
 
             mainLayout.addView(buttonLayout)
 
