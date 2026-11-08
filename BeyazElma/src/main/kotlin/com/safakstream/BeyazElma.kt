@@ -335,12 +335,16 @@ class BeyazElma : MainAPI() {
                     }
                 }
 
+                var sourceCount = 1
                 for ((m3u8, label) in sources) {
                     if (m3u8.isBlank()) continue
+                    
+                    val sourceName = "BeyazElma - Kaynak $sourceCount"
+                    
                     callback.invoke(
                         newExtractorLink(
                             source = this.name,
-                            name = "BeyazElma",
+                            name = sourceName,
                             url = m3u8,
                             type = ExtractorLinkType.M3U8,
                         ) {
@@ -354,7 +358,7 @@ class BeyazElma : MainAPI() {
                         }
                     )
                     found = true
-                sourceCount++
+                    sourceCount++
                 }
             } catch (e: Exception) {
                 continue
