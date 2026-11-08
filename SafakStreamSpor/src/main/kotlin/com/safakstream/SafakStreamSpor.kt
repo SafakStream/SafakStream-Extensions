@@ -255,14 +255,11 @@ class SafakStreamSpor : MainAPI() {
         val title = rawTitle.replace("| BeyazElma", "").replace("BeyazElma", "SafakStream Spor").trim()
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim()
 
-        // DÜNYA SİMGESİ İÇİN GOOGLE ARAMASI OLUŞTUR
-        val searchUrl = "https://www.google.com/search?q=" + java.net.URLEncoder.encode(title + " canlı izle", "UTF-8")
-
         return newMovieLoadResponse(
             name = title,
-            url = searchUrl,  // Dünya simgesi burayı açar
+            url = "https://github.com/SafakStream/SafakStream-Extensions", // Dünya simgesi burayı açar
             type = TvType.Live,
-            dataUrl = url,    // Oynatıcı orijinal linki kullanır
+            dataUrl = url, // Oynatıcı orijinal linki kullanır
         ) {
             this.posterUrl = poster
         }
