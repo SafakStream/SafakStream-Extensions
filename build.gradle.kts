@@ -9,6 +9,7 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        maven("https://repo.huaweicloud.com/repository/maven/")
         maven("https://jitpack.io")
     }
 
@@ -23,6 +24,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven("https://repo.huaweicloud.com/repository/maven/")
         maven("https://jitpack.io")
     }
 }
