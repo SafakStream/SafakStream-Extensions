@@ -26,7 +26,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.lagradost.cloudstream3.CommonActivity
 
-class BeyazElma : MainAPI() {
+class SafakStreamSpor : MainAPI() {
     override var mainUrl = "https://beyazelma78.com"
     override var name = "SafakStream Spor"
     override val hasMainPage = true

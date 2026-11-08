@@ -49,7 +49,7 @@ subprojects {
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
-        if (project.name == "BeyazElma") {
+        if (project.name == "SafakStreamSpor") {
             description = "SafakStream Spor - Canlı maç yayınları ve spor içerikleri"
             language = "tr"
             tvTypes = listOf("Live")
