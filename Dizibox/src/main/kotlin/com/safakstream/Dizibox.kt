@@ -22,23 +22,6 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONObject
 import org.jsoup.nodes.Document
 
-// --- REKLAM İÇİN EKLENEN KÜTÜPHANELER ---
-import android.app.Dialog
-import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.view.Gravity
-import android.view.ViewGroup
-import android.view.Window
-import android.widget.LinearLayout
-import android.widget.TextView
-import com.lagradost.cloudstream3.CommonActivity
-
 class Dizibox : MainAPI() {
     override var mainUrl              = "https://ddizibox.com"
     override var name                 = "DiziBox"
@@ -50,136 +33,12 @@ class Dizibox : MainAPI() {
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     private val defaultPlayerBase = "https://pilavyerplay.top"
 
-    // ========================================================================
-    // MODERN REKLAM / DESTEK FONKSİYONU
-    // ========================================================================
-    fun showSupportDialog(context: Context) {
-        val prefs = context.getSharedPreferences("SafakStreamOrtakHafiza", Context.MODE_PRIVATE)
-        val lastShown = prefs.getLong("son_reklam_zamani", 0)
-        val currentTime = System.currentTimeMillis()
-
-        // 60 Dakika = 60 * 60 * 1000 = 3.600.000 ms
-        if (currentTime - lastShown > 3600000L) { 
-            
-            val dialog = Dialog(context)
-            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-            dialog.setCancelable(true)
-            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-            val mainLayout = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(70, 70, 70, 70)
-                val bg = GradientDrawable().apply {
-                    setColor(Color.parseColor("#212429"))
-                    cornerRadius = 60f
-                    setStroke(2, Color.parseColor("#33363D"))
-                }
-                background = bg
-            }
-
-            val title = TextView(context).apply {
-                text = "SafakStream'i Destekle ❤️"
-                setTextColor(Color.WHITE)
-                textSize = 22f
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, 20)
-            }
-            mainLayout.addView(title)
-
-            val subtitle = TextView(context).apply {
-                text = "Tamamen Ücretsiz Eklentiler"
-                setTextColor(Color.WHITE)
-                textSize = 16f
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, 15)
-            }
-            mainLayout.addView(subtitle)
-
-            val desc = TextView(context).apply {
-                text = "Bu eklentiler sizin için tamamen ücretsizdir ve her zaman öyle kalacaktır.\n\nEmeğime destek olmak için bir reklam izleyebilirsiniz. Her küçük katkı benim için çok değerlidir, teşekkürler!"
-                setTextColor(Color.parseColor("#C5C5C5"))
-                textSize = 14f
-                setLineSpacing(15f, 1.1f)
-                setPadding(0, 0, 0, 60)
-            }
-            mainLayout.addView(desc)
-
-            val buttonLayout = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-            }
-
-            val btnLater = TextView(context).apply {
-                text = "DAHA SONRA"
-                setTextColor(Color.parseColor("#7A9CFF"))
-                textSize = 13f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(30, 30, 30, 30)
-                val bg = GradientDrawable().apply {
-                    setColor(Color.TRANSPARENT)
-                    setStroke(3, Color.parseColor("#5C85FF"))
-                    cornerRadius = 100f
-                }
-                background = bg
-                setOnClickListener { dialog.dismiss() }
-            }
-            
-            val laterParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            laterParams.marginEnd = 20
-            buttonLayout.addView(btnLater, laterParams)
-
-            val btnWatchAd = TextView(context).apply {
-                text = "REKLAM İZLE\nVE DESTEK OL"
-                setTextColor(Color.WHITE)
-                textSize = 12f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(30, 20, 30, 20)
-                val bg = GradientDrawable().apply {
-                    setColor(Color.parseColor("#22449B"))
-                    cornerRadius = 100f
-                }
-                background = bg
-                setOnClickListener {
-                    val adUrl = "https://link-center.net/10612612/WsR8DGfNtSq0"
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adUrl))
-                    context.startActivity(intent)
-                    dialog.dismiss()
-                }
-            }
-            
-            val adParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f)
-            buttonLayout.addView(btnWatchAd, adParams)
-
-            mainLayout.addView(buttonLayout)
-
-            dialog.setContentView(mainLayout)
-            dialog.show()
-            
-            prefs.edit().putLong("son_reklam_zamani", currentTime).apply()
-        }
-    }
-
     override val mainPage = mainPageOf(
         "${mainUrl}/rss.xml" to "Son Eklenenler"
     )
 
     // ============ ANA SAYFA (RSS) ============
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        
-        // --- REKLAM TETİKLEYİCİSİ ---
-        CommonActivity.activity?.let { ctx ->
-            Handler(Looper.getMainLooper()).post {
-                showSupportDialog(ctx)
-            }
-        }
-        // ---------------------------
-
         if (page > 1) return newHomePageResponse(request.name, emptyList())
         val body = app.get(request.data, headers = mapOf("User-Agent" to userAgent)).text
         val items = parseRss(body)
@@ -246,6 +105,7 @@ class Dizibox : MainAPI() {
         val ogTitle = doc.selectFirst("meta[property=og:title]")?.attr("content") ?: ""
         val title = ogTitle.substringBefore(" izle").substringBefore(" |").trim()
         val poster = doc.selectFirst("meta[property=og:image]")?.attr("content") ?: ""
+        // Tam aciklama: once <p class="mt-5 ..."> etiketini ara (film: max-w-3xl, dizi: max-w-2xl), yoksa meta'ya don
         val description = doc.selectFirst("p.mt-5.max-w-3xl")?.text()?.trim()
             ?: doc.selectFirst("p.mt-5.max-w-2xl")?.text()?.trim()
             ?: doc.selectFirst("meta[property=og:description]")?.attr("content") ?: ""
@@ -310,10 +170,13 @@ class Dizibox : MainAPI() {
     ): Boolean {
         val doc = app.get(data, headers = mapOf("User-Agent" to userAgent)).document
 
+        // 1. data-pv ID'sini al
         val pvId = doc.selectFirst("div[data-pv]")?.attr("data-pv")
             ?: doc.select("div[data-pv]").firstOrNull()?.attr("data-pv")
             ?: return false
 
+        // 2. Player base domainini script src'sinden dinamik al
+        //    Dizi: pilavyerplay.top | Film: play2.pilavyerplay.top
         val scriptSrc = doc.select("script[src*=pilavyerplay]").firstOrNull()?.attr("src")
         val dynamicBase = if (scriptSrc != null && scriptSrc.contains("/assets/js/")) {
             scriptSrc.substringBefore("/assets/js/")
@@ -321,6 +184,7 @@ class Dizibox : MainAPI() {
             defaultPlayerBase
         }
 
+        // 3. s.php'ye referer ile istek at
         val playerUrl = "$dynamicBase/assets/js/s.php?s=$pvId"
         val playerHtml = app.get(
             playerUrl,
@@ -331,6 +195,7 @@ class Dizibox : MainAPI() {
             )
         ).text
 
+        // 4. window.__PLAYER__ JSON'unu parse et
         val playerJsonMatch = Regex("""window\.__PLAYER__\s*=\s*(\{.*?\});""", RegexOption.DOT_MATCHES_ALL)
             .find(playerHtml)?.groupValues?.get(1) ?: return false
 
@@ -338,6 +203,7 @@ class Dizibox : MainAPI() {
         val streamUrl = playerObj.optString("stream", "")
         if (streamUrl.isBlank()) return false
 
+        // 5. Altyazilari ekle
         val subsArray = playerObj.optJSONArray("subs")
         if (subsArray != null) {
             for (i in 0 until subsArray.length()) {
@@ -350,6 +216,7 @@ class Dizibox : MainAPI() {
             }
         }
 
+        // 6. stream.php'ye istek at (m3u8 kontrolu icin)
         val m3u8Response = app.get(
             streamUrl,
             headers = mapOf(
@@ -377,6 +244,7 @@ class Dizibox : MainAPI() {
             return false
         }
 
+        // 7. m3u8 linkini callback'e ver
         callback(
             newExtractorLink(
                 source = this.name,

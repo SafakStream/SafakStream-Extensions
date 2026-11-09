@@ -6,7 +6,7 @@ cloudstream {
     authors     = listOf("SafakStream")
     language    = "tr"
     description = "BeyazElma - Canlı maç yayınları, spor kanalları ve canlı skorları Cloudstream üzerinden izle."
-    
+
     /**
      * Status int as the following:
      * 0: Down

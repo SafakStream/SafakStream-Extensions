@@ -25,23 +25,6 @@ import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 
-// --- REKLAM İÇİN EKLENEN KÜTÜPHANELER ---
-import android.app.Dialog
-import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.view.Gravity
-import android.view.ViewGroup
-import android.view.Window
-import android.widget.LinearLayout
-import android.widget.TextView
-import com.lagradost.cloudstream3.CommonActivity
-
 class BetmatikProvider : MainAPI() {
     override var mainUrl = "https://betmatiktv156.com"
     override var name = "Betmatik"
@@ -56,139 +39,7 @@ class BetmatikProvider : MainAPI() {
         private const val UA = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     }
 
-    // ========================================================================
-    // MODERN (YAPAY ZEKA TASARIMLI) REKLAM / DESTEK FONKSİYONU
-    // ========================================================================
-    fun showSupportDialog(context: Context) {
-        val prefs = context.getSharedPreferences("SafakStreamOrtakHafiza", Context.MODE_PRIVATE)
-        val lastShown = prefs.getLong("son_reklam_zamani", 0)
-        val currentTime = System.currentTimeMillis()
-
-        // 60 Dakika = 60 * 60 * 1000 = 3.600.000 ms
-        if (currentTime - lastShown > 3600000L) { 
-            
-            val dialog = Dialog(context)
-            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-            dialog.setCancelable(true)
-            // Arka planın şeffaf olmasını sağla (köşelerin kesilmemesi için)
-            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-            // Ana Arka Plan (Koyu Füme / Yuvarlak Köşeler ve İnce Çerçeve)
-            val mainLayout = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(70, 70, 70, 70) // Daha ferah bir görünüm
-                val bg = GradientDrawable().apply {
-                    setColor(Color.parseColor("#212429")) // Yapay zekanın rengine yakın koyu ton
-                    cornerRadius = 60f // Daha yumuşak köşeler
-                    setStroke(2, Color.parseColor("#33363D")) // Hafif bir çerçeve
-                }
-                background = bg
-            }
-
-            // Başlık
-            val title = TextView(context).apply {
-                text = "SafakStream'i Destekle ❤️"
-                setTextColor(Color.WHITE)
-                textSize = 22f
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, 20)
-            }
-            mainLayout.addView(title)
-
-            // Alt Başlık
-            val subtitle = TextView(context).apply {
-                text = "Tamamen Ücretsiz Eklentiler"
-                setTextColor(Color.WHITE)
-                textSize = 16f
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, 15)
-            }
-            mainLayout.addView(subtitle)
-
-            // Açıklama Metni
-            val desc = TextView(context).apply {
-                text = "Bu eklentiler sizin için tamamen ücretsizdir ve her zaman öyle kalacaktır.\n\nEmeğime destek olmak için bir reklam izleyebilirsiniz. Her küçük katkı benim için çok değerlidir, teşekkürler!"
-                setTextColor(Color.parseColor("#C5C5C5")) // Daha yumuşak bir gri
-                textSize = 14f
-                setLineSpacing(15f, 1.1f) // Satır aralıkları ferahlatıldı
-                setPadding(0, 0, 0, 60)
-            }
-            mainLayout.addView(desc)
-
-            // Butonlar İçin Yatay Düzen
-            val buttonLayout = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-            }
-
-            // "DAHA SONRA" Butonu (Hap Şeklinde)
-            val btnLater = TextView(context).apply {
-                text = "DAHA SONRA"
-                setTextColor(Color.parseColor("#7A9CFF")) // Açık Mavi
-                textSize = 13f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(30, 30, 30, 30)
-                val bg = GradientDrawable().apply {
-                    setColor(Color.TRANSPARENT)
-                    setStroke(3, Color.parseColor("#5C85FF")) // Mavi çerçeve
-                    cornerRadius = 100f // Tam hap şeklinde
-                }
-                background = bg
-                setOnClickListener { dialog.dismiss() }
-            }
-            
-            // Butonların ağırlıkları ve boşlukları ayarlanıyor
-            val laterParams = LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1f // Sol buton alanın yarısını kaplasın
-            )
-            laterParams.marginEnd = 20
-            buttonLayout.addView(btnLater, laterParams)
-
-            // "REKLAM İZLE VE DESTEK OL" Butonu (Hap Şeklinde)
-            val btnWatchAd = TextView(context).apply {
-                text = "REKLAM İZLE\nVE DESTEK OL" // Resimdeki gibi iki satır
-                setTextColor(Color.WHITE)
-                textSize = 12f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(30, 20, 30, 20)
-                val bg = GradientDrawable().apply {
-                    setColor(Color.parseColor("#22449B")) // Koyu, tok bir mavi
-                    cornerRadius = 100f // Tam hap şeklinde
-                }
-                background = bg
-                setOnClickListener {
-                    val adUrl = "https://link-center.net/10612612/WsR8DGfNtSq0" // LİNVERTİSE LİNKİN
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adUrl))
-                    context.startActivity(intent)
-                    dialog.dismiss()
-                }
-            }
-            
-            val adParams = LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1.2f // Sağ buton biraz daha geniş olsun
-            )
-            buttonLayout.addView(btnWatchAd, adParams)
-
-            mainLayout.addView(buttonLayout)
-
-            dialog.setContentView(mainLayout)
-            dialog.show()
-            
-            // Reklamın gösterildiği zamanı kaydet
-            prefs.edit().putLong("son_reklam_zamani", currentTime).apply()
-        }
-    }
-
+    // Cloudflare engelini aşmak için gerekli header'lar
     private fun streamHeaders(): Map<String, String> = mapOf(
         "User-Agent" to UA,
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -207,6 +58,9 @@ class BetmatikProvider : MainAPI() {
         "$API_BASE/channels.php" to "7/24 Kanallar"
     )
 
+    // ========================================================================
+    // BASE URL (domain.php)
+    // ========================================================================
     private suspend fun fetchBaseUrl(): String? {
         cachedBaseUrl?.let { return it }
         return try {
@@ -227,15 +81,10 @@ class BetmatikProvider : MainAPI() {
         }
     }
 
+    // ========================================================================
+    // ANA SAYFA
+    // ========================================================================
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        
-        // --- REKLAM TETİKLEYİCİSİ ---
-        CommonActivity.activity?.let { ctx ->
-            Handler(Looper.getMainLooper()).post {
-                showSupportDialog(ctx)
-            }
-        }
-
         val res = try {
             app.get(request.data, headers = mapOf("User-Agent" to UA))
         } catch (e: Exception) {
@@ -264,6 +113,7 @@ class BetmatikProvider : MainAPI() {
         val away = selectFirst(".away")?.text()?.trim().orEmpty()
         val event = selectFirst(".event")?.text()?.trim().orEmpty()
 
+        // Kanal ise sadece home adı, maç ise "Home - Away"
         val title = when {
             home.isNotBlank() && away.isNotBlank() -> "$home - $away"
             home.isNotBlank() -> home
@@ -271,6 +121,10 @@ class BetmatikProvider : MainAPI() {
             else -> return null
         }
 
+        // --- POSTER DÜZELTMESİ ---
+        // 1) Tüm img'leri topla, göreceli yolları tam URL'ye çevir
+        // 2) "img/tv.png" gibi genel placeholder'ları atla
+        // 3) Kalan ilk gerçek görseli (genelde takım/kanal logosu) kullan
         val allImgs = select("img").mapNotNull { img ->
             val src = img.attr("src").trim()
             if (src.isBlank()) return@mapNotNull null
@@ -290,6 +144,9 @@ class BetmatikProvider : MainAPI() {
         }
     }
 
+    // ========================================================================
+    // ARAMA
+    // ========================================================================
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -313,6 +170,9 @@ class BetmatikProvider : MainAPI() {
         return all.distinctBy { it.url }
     }
 
+    // ========================================================================
+    // LOAD (DETAY)
+    // ========================================================================
     override suspend fun load(url: String): LoadResponse? {
         val parsed = parseStableUrl(url) ?: return null
         return newLiveStreamLoadResponse(parsed.title, url, url) {
@@ -320,6 +180,9 @@ class BetmatikProvider : MainAPI() {
         }
     }
 
+    // ========================================================================
+    // LOADLINKS (M3U8)
+    // ========================================================================
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -360,6 +223,9 @@ class BetmatikProvider : MainAPI() {
         return true
     }
 
+    // ========================================================================
+    // YARDIMCI FONKSİYONLAR
+    // ========================================================================
     private fun buildStableUrl(channelId: String, title: String): String {
         val enc = { s: String -> URLEncoder.encode(s, "UTF-8") }
         return "$mainUrl/__betmatik__?id=${enc(channelId)}&title=${enc(title)}"
