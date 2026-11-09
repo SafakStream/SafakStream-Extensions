@@ -9,7 +9,7 @@
             "SafakStream"
         ],
         "description": "Betmatik - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve 7/24 spor kanallar\u0131 (Zirve Stream altyap\u0131s\u0131).",
-        "fileSize": 19631,
+        "fileSize": 15969,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -18,7 +18,7 @@
         ],
         "iconUrl": "https://betmatiktv156.com/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-a3f2e9a3b57196df8196b4156057beed7070131fa1fc65e5ca3038571f9c35d2"
+        "fileHash": "sha256-10090f470a5728bb993d0cb8a282399fc9bb31b1ae42c79925d92e4425e9490f"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/BeyazElma.cs3",
@@ -30,7 +30,7 @@
             "SafakStream"
         ],
         "description": "BeyazElma - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, spor kanallar\u0131 ve canl\u0131 skorlar\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 20180,
+        "fileSize": 16327,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -39,7 +39,7 @@
         ],
         "iconUrl": "https://beyazelma78.com/favicon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-e3d60f24f1c86b1d99cd114db5f5e7480b1ef75231874455cfae1e100f8e1029"
+        "fileHash": "sha256-445cfc3b5b057d4bf5c11c639edc1022b3d35d2ef15bbb1aaee80991ba84cec6"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Dizibox.cs3",
@@ -51,7 +51,7 @@
             "SafakStream"
         ],
         "description": "DiziBox - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 19978,
+        "fileSize": 16282,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -60,7 +60,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/Dizibox.png",
         "apiVersion": 1,
-        "fileHash": "sha256-9dcf3783b26f7e331e078f39a606da36089cfe52858bb62d582cc5a75c4d2adb"
+        "fileHash": "sha256-b02de6de45b6ee8393ddf2067d94f709ff99516b3a2c09841c581156bbe0e18b"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziFilmizle.cs3",
@@ -72,7 +72,7 @@
             "SafakStream"
         ],
         "description": "DiziFilmizle - dizifilmizle.to",
-        "fileSize": 39803,
+        "fileSize": 36163,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -81,7 +81,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziFilmizle.png",
         "apiVersion": 1,
-        "fileHash": "sha256-52cf9bb8a5294f2ad36a375d8da87b20685190a5711746df5da6cb162f5ab358"
+        "fileHash": "sha256-c6eba081dc78f9db89f0df9abb34e3d4bd82feeda9809e2be936dbc75c1e0cea"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziPal.cs3",
@@ -114,7 +114,7 @@
             "SafakStream"
         ],
         "description": "HDFilmCehennemi - Film ve Dizi \u0130zleme",
-        "fileSize": 25560,
+        "fileSize": 21907,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -123,7 +123,7 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=hdfilmcehennemi.nl&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-4914ef5b31a74a1ed372d42581beb25e62347fb44e59f4df03275ae6c3191d52"
+        "fileHash": "sha256-3bb032df5160e6220a3964d056e8e97f42a936aacbc608b35574db83454607ce"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/InatTV.cs3",
@@ -135,7 +135,7 @@
             "SafakStream"
         ],
         "description": "inatTV - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131, 7/24 TV kanallar\u0131 ve spor kar\u015f\u0131la\u015fmalar\u0131n\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 32338,
+        "fileSize": 28900,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -144,7 +144,7 @@
         ],
         "iconUrl": "https://www.inattvizle494.top/lib/img/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-d29eb0581698e7033569776678c9562064fc32871c47ae479f98ff296799c92e"
+        "fileHash": "sha256-405cf028818fe752ada663f09184d8334fb475c8d9be692cff9300113981bd61"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/MahsunSports.cs3",
@@ -280,7 +280,7 @@
             "SafakStream"
         ],
         "description": "TrGoals - Canl\u0131 ma\u00e7 yay\u0131nlar\u0131 ve 7/24 spor kanallar\u0131 Cloudstream \u00fczerinden izle.",
-        "fileSize": 27176,
+        "fileSize": 23501,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -289,7 +289,7 @@
         ],
         "iconUrl": "https://www.trgoals183.top/lib/img/logo.png",
         "apiVersion": 1,
-        "fileHash": "sha256-f358ec12c13f5f2b0350aaf26be9cb323cc00827d7b2f4850d931e8310bdb4e6"
+        "fileHash": "sha256-98447113408d8e0ad9be903a0f8dc734826436c1896553d326908fafbef00043"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/YouTube.cs3",
@@ -301,7 +301,7 @@
             "SafakStream"
         ],
         "description": "YouTube eklentisi - SafakStream taraf\u0131ndan uyarland\u0131.",
-        "fileSize": 20897,
+        "fileSize": 17338,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -309,6 +309,6 @@
         ],
         "iconUrl": "https://www.google.com/s2/favicons?domain=youtube.com&sz=%size%",
         "apiVersion": 1,
-        "fileHash": "sha256-fab0b9f69f0de239ef59995af8aae44f7998a4c477290bb280048e9364a14019"
+        "fileHash": "sha256-6c28103a612946d5f27b273c49bfd7b65194d6a048101c7c859be77ddf2bd4e9"
     }
 ]
