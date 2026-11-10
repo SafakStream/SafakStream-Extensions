@@ -8,6 +8,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -536,7 +537,7 @@ class SafakStreamCinema : MainAPI() {
             subTr?.let { subtitleCallback(SubtitleFile("Türkçe", it)) }
             subEn?.let { subtitleCallback(SubtitleFile("English", it)) }
             var added = false
-            if (mainM3u8 != null) {
+            if (mainM3u8 != null && (mainM3u8.startsWith("http://") || mainM3u8.startsWith("https://"))) {
                 val resolvedUrl = resolveStreamUrl(mainM3u8)
                 callback(newExtractorLink(
                     source = "SafakStream (Ana)",
@@ -555,11 +556,13 @@ class SafakStreamCinema : MainAPI() {
                     val src = sourcesArr.getJSONObject(i)
                     val provider = src.optString("provider", "ek-$i")
                     val m3u8 = src.optString("m3u8Url").ifBlank { null }
+                    val sourceUrl = src.optString("sourceUrl").ifBlank { null }
                     val sTr = src.optString("subtitleTr").ifBlank { null }
                     val sEn = src.optString("subtitleEn").ifBlank { null }
                     sTr?.let { subtitleCallback(SubtitleFile("Türkçe ($provider)", it)) }
                     sEn?.let { subtitleCallback(SubtitleFile("English ($provider)", it)) }
-                    if (m3u8 != null) {
+
+                    if (m3u8 != null && (m3u8.startsWith("http://") || m3u8.startsWith("https://"))) {
                         val resolved = resolveStreamUrl(m3u8)
                         callback(newExtractorLink(
                             source = "SafakStream ($provider)",
@@ -571,11 +574,21 @@ class SafakStreamCinema : MainAPI() {
                             this.quality = Qualities.Unknown.value
                         })
                         added = true
+                    } else if (sourceUrl != null && !sourceUrl.startsWith("http")) {
+                        try {
+                            loadExtractor(sourceUrl, data, subtitleCallback, callback)
+                            added = true
+                        } catch (e: Exception) {
+                            Log.e("SafakStreamCinema", "Extractor hatası ($provider): ${e.message}")
+                        }
                     }
                 }
             }
             added
-        } catch (e: Exception) { false }
+        } catch (e: Exception) { 
+            Log.e("SafakStreamCinema", "loadLinks hatası: ${e.message}")
+            false 
+        }
     }
 
     private suspend fun resolveStreamUrl(url: String): String {
