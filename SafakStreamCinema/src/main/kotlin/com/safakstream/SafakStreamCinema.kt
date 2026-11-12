@@ -624,16 +624,14 @@ class SafakStreamCinema : MainAPI() {
     // API üzerinden m3u8 linkini çöz
     private suspend fun resolveViaApi(id: Int): String? {
         return try {
-            val body = "{\"noCache\":true}"
             val response = app.post(
                 "$mainUrl/api/admin/resolve-stream/$id",
                 headers = mapOf(
                     "User-Agent" to ua,
                     "Referer" to "https://dizisol.com/",
-                    "Origin" to "https://dizisol.com",
-                    "Content-Type" to "application/json"
+                    "Origin" to "https://dizisol.com"
                 ),
-                data = body
+                data = mapOf("noCache" to "true")
             ).text
             Log.d("SafakStreamCinema", "resolveViaApi($id): $response")
             val json = JSONObject(response)
