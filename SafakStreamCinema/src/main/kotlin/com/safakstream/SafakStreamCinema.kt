@@ -531,6 +531,7 @@ class SafakStreamCinema : MainAPI() {
         val json = try { app.get(data, headers = mapOf("User-Agent" to ua)).text } catch (e: Exception) { return false }
         return try {
             val o = JSONObject(json)
+            val episodeId = o.optInt("id", 0)
             val mainM3u8 = o.optString("m3u8Url").ifBlank { null }
             val subTr = o.optString("subtitleTr").ifBlank { null }
             val subEn = o.optString("subtitleEn").ifBlank { null }
@@ -538,19 +539,35 @@ class SafakStreamCinema : MainAPI() {
             subEn?.let { subtitleCallback(SubtitleFile("English", it)) }
             var added = false
 
-            // Ana Kaynak (Sadece geçerli http/https m3u8 ise)
-            if (mainM3u8 != null && (mainM3u8.startsWith("http://") || mainM3u8.startsWith("https://"))) {
-                val resolvedUrl = resolveStreamUrl(mainM3u8)
-                callback(newExtractorLink(
-                    source = "SafakStream (Ana)",
-                    name = "SafakStream Ana",
-                    url = resolvedUrl,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.headers = videoHeaders
-                    this.quality = Qualities.Unknown.value
-                })
-                added = true
+            // Ana Kaynak
+            if (mainM3u8 != null) {
+                if (mainM3u8.startsWith("http://") || mainM3u8.startsWith("https://")) {
+                    val resolvedUrl = resolveStreamUrl(mainM3u8)
+                    callback(newExtractorLink(
+                        source = "SafakStream (Ana)",
+                        name = "SafakStream Ana",
+                        url = resolvedUrl,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.headers = videoHeaders
+                        this.quality = Qualities.Unknown.value
+                    })
+                    added = true
+                } else if (episodeId > 0) {
+                    val resolved = resolveViaApi(episodeId)
+                    if (resolved != null) {
+                        callback(newExtractorLink(
+                            source = "SafakStream (Ana)",
+                            name = "SafakStream Ana",
+                            url = resolved,
+                            type = ExtractorLinkType.M3U8
+                        ) {
+                            this.headers = videoHeaders
+                            this.quality = Qualities.Unknown.value
+                        })
+                        added = true
+                    }
+                }
             }
 
             // Ek Kaynaklar
@@ -559,15 +576,14 @@ class SafakStreamCinema : MainAPI() {
                 for (i in 0 until sourcesArr.length()) {
                     val src = sourcesArr.getJSONObject(i)
                     val provider = src.optString("provider", "ek-$i")
+                    val sourceId = src.optInt("id", 0)
                     val m3u8 = src.optString("m3u8Url").ifBlank { null }
 
-                    // Altyazıları ekle (eğer varsa)
                     val sTr = src.optString("subtitleTr").ifBlank { null }
                     val sEn = src.optString("subtitleEn").ifBlank { null }
                     sTr?.let { subtitleCallback(SubtitleFile("Türkçe ($provider)", it)) }
                     sEn?.let { subtitleCallback(SubtitleFile("English ($provider)", it)) }
 
-                    // SADECE http/https ile başlayan m3u8'leri ekle
                     if (m3u8 != null && (m3u8.startsWith("http://") || m3u8.startsWith("https://"))) {
                         val resolved = resolveStreamUrl(m3u8)
                         callback(newExtractorLink(
@@ -580,6 +596,21 @@ class SafakStreamCinema : MainAPI() {
                             this.quality = Qualities.Unknown.value
                         })
                         added = true
+                    } else if (sourceId > 0) {
+                        // Özel şema varsa API ile çöz
+                        val resolved = resolveViaApi(sourceId)
+                        if (resolved != null) {
+                            callback(newExtractorLink(
+                                source = "SafakStream ($provider)",
+                                name = "SafakStream $provider",
+                                url = resolved,
+                                type = ExtractorLinkType.M3U8
+                            ) {
+                                this.headers = videoHeaders
+                                this.quality = Qualities.Unknown.value
+                            })
+                            added = true
+                        }
                     }
                 }
             }
@@ -587,6 +618,31 @@ class SafakStreamCinema : MainAPI() {
         } catch (e: Exception) {
             Log.e("SafakStreamCinema", "loadLinks hatası: ${e.message}")
             false
+        }
+    }
+
+    // API üzerinden m3u8 linkini çöz
+    private suspend fun resolveViaApi(id: Int): String? {
+        return try {
+            val body = "{\"noCache\":true}"
+            val response = app.post(
+                "$mainUrl/api/admin/resolve-stream/$id",
+                headers = mapOf(
+                    "User-Agent" to ua,
+                    "Referer" to "https://dizisol.com/",
+                    "Origin" to "https://dizisol.com",
+                    "Content-Type" to "application/json"
+                ),
+                data = body
+            ).text
+            Log.d("SafakStreamCinema", "resolveViaApi($id): $response")
+            val json = JSONObject(response)
+            var url = json.optString("m3u8Url").ifBlank { null } ?: return null
+            if (url.startsWith("/")) url = "$mainUrl$url"
+            url
+        } catch (e: Exception) {
+            Log.e("SafakStreamCinema", "resolveViaApi hata ($id): ${e.message}")
+            null
         }
     }
 
