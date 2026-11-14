@@ -4,7 +4,7 @@ include(
     "Betmatik",
     "BeyazElma",
     "DiziFilmizle",
-    "Dizibox",
+    "DiziBox",
     "InatTV",
     "MahsunSports",
     "PapazSports",

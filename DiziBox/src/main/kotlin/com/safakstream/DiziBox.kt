@@ -22,7 +22,7 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONObject
 import org.jsoup.nodes.Document
 
-class Dizibox : MainAPI() {
+class DiziBox : MainAPI() {
     override var mainUrl              = "https://ddizibox.com"
     override var name                 = "DiziBox"
     override val hasMainPage          = true
