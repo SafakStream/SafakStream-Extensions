@@ -36,10 +36,7 @@ class Dizibox : MainAPI() {
     // YENI KATEGORILER (RSS yerine sitenin HTML listelerini kaziyoruz)
     override val mainPage = mainPageOf(
         "${mainUrl}/diziler" to "Tüm Diziler",
-        "${mainUrl}/filmler" to "Tüm Filmler",
-        "${mainUrl}/diziler?tur=yerli" to "Yerli Diziler",
-        "${mainUrl}/diziler?tur=yabanci" to "Yabancı Diziler",
-        "${mainUrl}/filmler?tur=yerli" to "Yerli Filmler"
+        "${mainUrl}/filmler" to "Tüm Filmler"
     )
 
     // ============ ANA SAYFA (HTML) ============
