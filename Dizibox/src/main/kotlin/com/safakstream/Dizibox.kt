@@ -37,8 +37,9 @@ class Dizibox : MainAPI() {
     override val mainPage = mainPageOf(
         "${mainUrl}/diziler" to "Tüm Diziler",
         "${mainUrl}/filmler" to "Tüm Filmler",
-        "${mainUrl}/yeni-diziler" to "Yeni Diziler",
-        "${mainUrl}/yeni-filmler" to "Yeni Filmler"
+        "${mainUrl}/diziler?tur=yerli" to "Yerli Diziler",
+        "${mainUrl}/diziler?tur=yabanci" to "Yabancı Diziler",
+        "${mainUrl}/filmler?tur=yerli" to "Yerli Filmler"
     )
 
     // ============ ANA SAYFA (HTML) ============
