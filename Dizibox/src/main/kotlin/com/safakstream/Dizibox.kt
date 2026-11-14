@@ -33,48 +33,25 @@ class Dizibox : MainAPI() {
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     private val defaultPlayerBase = "https://pilavyerplay.top"
 
+    // YENI KATEGORILER (RSS yerine sitenin HTML listelerini kaziyoruz)
     override val mainPage = mainPageOf(
-        "${mainUrl}/rss.xml" to "Son Eklenenler"
+        "${mainUrl}/diziler" to "Tüm Diziler",
+        "${mainUrl}/filmler" to "Tüm Filmler",
+        "${mainUrl}/yeni-diziler" to "Yeni Diziler",
+        "${mainUrl}/yeni-filmler" to "Yeni Filmler"
     )
 
-    // ============ ANA SAYFA (RSS) ============
+    // ============ ANA SAYFA (HTML) ============
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        if (page > 1) return newHomePageResponse(request.name, emptyList())
-        val body = app.get(request.data, headers = mapOf("User-Agent" to userAgent)).text
-        val items = parseRss(body)
+        // Sayfalama varsa ?page=2 seklinde ekle, yoksa 1. sayfayi cek
+        val url = if (page > 1) "${request.data}?page=$page" else request.data
+        val doc = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
+        val items = parseListingPage(doc)
         return newHomePageResponse(request.name, items)
     }
 
-    private fun parseRss(xml: String): List<SearchResponse> {
-        val doc = org.jsoup.Jsoup.parse(xml, "", org.jsoup.parser.Parser.xmlParser())
-        val results = mutableListOf<SearchResponse>()
-        for (item in doc.select("item")) {
-            val title = item.selectFirst("title")?.text()?.trim() ?: continue
-            val link  = item.selectFirst("link")?.text()?.trim() ?: continue
-            if (link.isBlank()) continue
-            val cleanTitle = title.removeSuffix(" izle").trim()
-            val poster = item.selectFirst("media|content")?.attr("url")
-                ?: item.selectFirst("enclosure")?.attr("url") ?: ""
-            val isMovie = link.contains("/film/")
-            val response = if (isMovie) {
-                newMovieSearchResponse(cleanTitle, link, TvType.Movie)
-            } else {
-                newTvSeriesSearchResponse(cleanTitle, link, TvType.TvSeries)
-            }
-            response.posterUrl = poster
-            if (results.none { it.url == link }) results.add(response)
-        }
-        return results
-    }
-
-    // ============ ARAMA ============
-    override suspend fun search(query: String): List<SearchResponse> {
-        val url = "$mainUrl/ara?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
-        val doc = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
-        return parseSearchResults(doc)
-    }
-
-    private fun parseSearchResults(doc: Document): List<SearchResponse> {
+    // Hem arama hem ana sayfa listeleri icin ortak kaziyici (Senin arama mantiginin aynisi)
+    private fun parseListingPage(doc: Document): List<SearchResponse> {
         val results = mutableListOf<SearchResponse>()
         for (img in doc.select("img[alt]")) {
             val alt = img.attr("alt")
@@ -83,6 +60,7 @@ class Dizibox : MainAPI() {
             val href = a.attr("href")
             if (href.isBlank()) continue
             if (!href.contains("/dizi/") && !href.contains("/film/")) continue
+            
             val cleanTitle = alt.removeSuffix(" izle").trim()
             val poster = img.attr("src")
             val isMovie = href.contains("/film/")
@@ -97,6 +75,13 @@ class Dizibox : MainAPI() {
         return results
     }
 
+    // ============ ARAMA ============
+    override suspend fun search(query: String): List<SearchResponse> {
+        val url = "$mainUrl/ara?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+        val doc = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
+        return parseListingPage(doc)
+    }
+
     // ============ DETAY ============
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url, headers = mapOf("User-Agent" to userAgent)).document
@@ -105,7 +90,6 @@ class Dizibox : MainAPI() {
         val ogTitle = doc.selectFirst("meta[property=og:title]")?.attr("content") ?: ""
         val title = ogTitle.substringBefore(" izle").substringBefore(" |").trim()
         val poster = doc.selectFirst("meta[property=og:image]")?.attr("content") ?: ""
-        // Tam aciklama: once <p class="mt-5 ..."> etiketini ara (film: max-w-3xl, dizi: max-w-2xl), yoksa meta'ya don
         val description = doc.selectFirst("p.mt-5.max-w-3xl")?.text()?.trim()
             ?: doc.selectFirst("p.mt-5.max-w-2xl")?.text()?.trim()
             ?: doc.selectFirst("meta[property=og:description]")?.attr("content") ?: ""
@@ -169,22 +153,15 @@ class Dizibox : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val doc = app.get(data, headers = mapOf("User-Agent" to userAgent)).document
-
-        // 1. data-pv ID'sini al
         val pvId = doc.selectFirst("div[data-pv]")?.attr("data-pv")
             ?: doc.select("div[data-pv]").firstOrNull()?.attr("data-pv")
             ?: return false
-
-        // 2. Player base domainini script src'sinden dinamik al
-        //    Dizi: pilavyerplay.top | Film: play2.pilavyerplay.top
         val scriptSrc = doc.select("script[src*=pilavyerplay]").firstOrNull()?.attr("src")
         val dynamicBase = if (scriptSrc != null && scriptSrc.contains("/assets/js/")) {
             scriptSrc.substringBefore("/assets/js/")
         } else {
             defaultPlayerBase
         }
-
-        // 3. s.php'ye referer ile istek at
         val playerUrl = "$dynamicBase/assets/js/s.php?s=$pvId"
         val playerHtml = app.get(
             playerUrl,
@@ -194,8 +171,6 @@ class Dizibox : MainAPI() {
                 "Origin" to mainUrl
             )
         ).text
-
-        // 4. window.__PLAYER__ JSON'unu parse et
         val playerJsonMatch = Regex("""window\.__PLAYER__\s*=\s*(\{.*?\});""", RegexOption.DOT_MATCHES_ALL)
             .find(playerHtml)?.groupValues?.get(1) ?: return false
 
@@ -203,7 +178,6 @@ class Dizibox : MainAPI() {
         val streamUrl = playerObj.optString("stream", "")
         if (streamUrl.isBlank()) return false
 
-        // 5. Altyazilari ekle
         val subsArray = playerObj.optJSONArray("subs")
         if (subsArray != null) {
             for (i in 0 until subsArray.length()) {
@@ -216,7 +190,6 @@ class Dizibox : MainAPI() {
             }
         }
 
-        // 6. stream.php'ye istek at (m3u8 kontrolu icin)
         val m3u8Response = app.get(
             streamUrl,
             headers = mapOf(
@@ -244,7 +217,6 @@ class Dizibox : MainAPI() {
             return false
         }
 
-        // 7. m3u8 linkini callback'e ver
         callback(
             newExtractorLink(
                 source = this.name,
