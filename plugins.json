@@ -51,16 +51,16 @@
             "SafakStream"
         ],
         "description": "DiziBox - T\u00fcrk\u00e7e dizi ve film izleme platformu",
-        "fileSize": 15911,
+        "fileSize": 15770,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
             "TvSeries",
             "Movie"
         ],
-        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/Dizibox.png",
+        "iconUrl": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/DiziBox.png",
         "apiVersion": 1,
-        "fileHash": "sha256-bd6f28578883b1538886a76d9e011a2bf59de3783b6efa7750f7f0288f2ea7f8"
+        "fileHash": "sha256-f91964f5241c0303f3c55fa518fdcfab9c0a3b321838d867c3539e5073f61629"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/DiziFilmizle.cs3",
