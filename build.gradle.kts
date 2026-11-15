@@ -85,14 +85,6 @@ subprojects {
             iconUrl = "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/icons/Dizibox.png"
             version = 1
         }
-        // DiziPal özel metadata
-        if (project.name == "DiziPal") {
-            description = "DiziPal - Türkçe dizi ve film izleme platformu"
-            language = "tr"
-            tvTypes = listOf("TvSeries", "Movie")
-            iconUrl = "https://dizipal1592.com/assets/favicon/apple-touch-icon.png"
-            version = 1
-        }
 
         // SafakStream Cinema özel metadata
         if (project.name == "SafakStreamCinema") {

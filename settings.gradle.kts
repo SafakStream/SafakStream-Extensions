@@ -14,6 +14,5 @@ include(
     "TrGoals",
     "YouTube",
     "RoketDizi",
-    "DiziPal",
     "HDFilmCehennemi"
 )
