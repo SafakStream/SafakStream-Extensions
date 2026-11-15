@@ -5,6 +5,7 @@ include(
     "BeyazElma",
     "DiziFilmizle",
     "DiziBox",
+    "FilmMakinesi",
     "InatTV",
     "MahsunSports",
     "PapazSports",
