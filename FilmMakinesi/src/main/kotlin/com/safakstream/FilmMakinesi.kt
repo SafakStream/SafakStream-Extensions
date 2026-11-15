@@ -25,7 +25,10 @@ class FilmMakinesi : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}sayfa/$page/"
-        val document = app.get(url, interceptor = webViewInterceptor).document
+        var document = app.get(url).document
+        if (document.title().contains("Attention Required") || document.title().contains("Cloudflare")) {
+            document = app.get(url, interceptor = webViewInterceptor).document
+        }
         val items = document.select("div.item-relative > a.item, a.item-ep, div.tv--section a.item")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, items)
@@ -33,7 +36,10 @@ class FilmMakinesi : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/arama/?s=$query"
-        val document = app.get(url, interceptor = webViewInterceptor).document
+        var document = app.get(url).document
+        if (document.title().contains("Attention Required") || document.title().contains("Cloudflare")) {
+            document = app.get(url, interceptor = webViewInterceptor).document
+        }
         return document.select("div.item-relative > a.item").mapNotNull { it.toSearchResult() }
     }
 
@@ -49,7 +55,10 @@ class FilmMakinesi : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, interceptor = webViewInterceptor).document
+        var document = app.get(url).document
+        if (document.title().contains("Attention Required") || document.title().contains("Cloudflare")) {
+            document = app.get(url, interceptor = webViewInterceptor).document
+        }
         val title = document.selectFirst("h1.title, div.title")?.text()?.trim() ?: return null
         val poster = document.selectFirst("img.thumbnail, meta[property=og:image]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.attr("src")
