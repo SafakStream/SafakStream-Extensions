@@ -72,16 +72,13 @@ class FilmMakinesi : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = fetchWithFallback(url)
         
-        // Başlık düzeltmesi: "izle" ve parantez içi yılları temizle
         val rawTitle = document.selectFirst("h1.title")?.text()?.trim() ?: return null
         val title = rawTitle.substringBefore(" izle").substringBefore(" (").trim()
         
-        // Kapak resmi
         val poster = document.selectFirst("div.cover img.cover-img, meta[property=og:image]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.attr("src")
         } ?: ""
         
-        // Açıklama
         val description = document.selectFirst("div.info-description, meta[name=description]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.text()
         }
@@ -90,12 +87,10 @@ class FilmMakinesi : MainAPI() {
 
         if (isTvSeries) {
             val episodes = mutableListOf<Episode>()
-            // Tüm bölümleri tek seferde çek (sezonlar sekmelerde ama HTML'de hepsi var)
             document.select("a.item-ep").forEach { ep ->
                 val epUrl = fixUrl(ep.attr("href"))
                 val epName = ep.selectFirst("div.ep-title")?.text() ?: ep.text()
                 
-                // URL'den sezon ve bölüm numaralarını çıkar (örn: /sezon-2/bolum-3/)
                 val seasonNum = Regex("sezon-(\\d+)").find(epUrl)?.groupValues?.get(1)?.toIntOrNull() ?: 1
                 val episodeNum = Regex("bolum-(\\d+)").find(epUrl)?.groupValues?.get(1)?.toIntOrNull() ?: 1
                 
@@ -120,20 +115,67 @@ class FilmMakinesi : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val document = fetchWithFallback(data)
         
-        // Video iframe'ini bul (data-src veya src)
-        val iframeElement = document.selectFirst("div.after-player iframe, iframe")
-        var iframe = iframeElement?.attr("data-src")?.ifBlank { iframeElement.attr("src") } ?: return false
+        val embedUrls = mutableListOf<Pair<String, String>>()
         
-        // URL formatını düzelt
-        if (iframe.startsWith("//")) {
-            iframe = "https:$iframe"
-        } else if (!iframe.startsWith("http")) {
-            iframe = fixUrl(iframe)
+        // 1. Dizi bölümlerindeki alternatif sunucuları al
+        document.select("div.video-parts a").forEach { element ->
+            val url = element.attr("data-video_url")
+            val name = element.text()
+            if (url.isNotBlank()) {
+                embedUrls.add(name to url)
+            }
+        }
+        
+        // 2. Eğer alternatif sunucu yoksa iframe'e bak (Filmler için)
+        if (embedUrls.isEmpty()) {
+            val iframeElement = document.selectFirst("div.after-player iframe, iframe")
+            val iframe = iframeElement?.attr("data-src")?.ifBlank { iframeElement.attr("src") }
+            if (!iframe.isNullOrBlank()) {
+                embedUrls.add("FilmMakinesi" to fixUrl(iframe))
+            }
         }
 
-        // Cloudstream'in yerleşik extractor'ını kullan (iframe içindeki videoyu bulmak için)
-        loadExtractor(iframe, data, subtitleCallback, callback)
-        return true
+        if (embedUrls.isEmpty()) return false
+
+        var foundAny = false
+
+        for ((name, url) in embedUrls) {
+            val fixedUrl = fixUrl(url)
+            try {
+                // Embed sayfasını da Cloudflare'i aşarak aç
+                val embedDoc = app.get(fixedUrl, interceptor = webViewInterceptor).document
+                
+                var videoUrl = ""
+                // m3u8 veya mp4 linki ara
+                val regex = Regex("(https?://[^\"'\\s]+?\\.(?:m3u8|mp4)[^\"'\\s]*)")
+                
+                val scriptMatches = embedDoc.select("script").mapNotNull { regex.find(it.data())?.value }
+                if (scriptMatches.isNotEmpty()) {
+                    videoUrl = scriptMatches.first()
+                } else {
+                    val sourceElement = embedDoc.selectFirst("video source, video[src]")
+                    videoUrl = sourceElement?.attr("src") ?: ""
+                }
+
+                if (videoUrl.isNotBlank()) {
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "$name", // Örn: DUAL Close, DUAL Rapid
+                            url = videoUrl
+                        ) {
+                            this.quality = Qualities.Unknown.value
+                            this.referer = fixedUrl
+                        }
+                    )
+                    foundAny = true
+                }
+            } catch (e: Exception) {
+                // Hata olursa bir sonraki sunucuya geç
+            }
+        }
+
+        return foundAny
     }
 
     private fun fixUrl(url: String): String {
