@@ -117,7 +117,7 @@ class FilmMakinesi : MainAPI() {
         
         val embedUrls = mutableListOf<Pair<String, String>>()
         
-        // 1. Dizi bölümlerindeki alternatif sunucuları al
+        // Dizi bölümlerindeki alternatif sunucuları al
         document.select("div.video-parts a").forEach { element ->
             val url = element.attr("data-video_url")
             val name = element.text()
@@ -126,7 +126,7 @@ class FilmMakinesi : MainAPI() {
             }
         }
         
-        // 2. Eğer alternatif sunucu yoksa iframe'e bak (Filmler için)
+        // Filmler için iframe'e bak
         if (embedUrls.isEmpty()) {
             val iframeElement = document.selectFirst("div.after-player iframe, iframe")
             val iframe = iframeElement?.attr("data-src")?.ifBlank { iframeElement.attr("src") }
@@ -142,32 +142,9 @@ class FilmMakinesi : MainAPI() {
         for ((name, url) in embedUrls) {
             val fixedUrl = fixUrl(url)
             try {
-                // Embed sayfasını da Cloudflare'i aşarak aç
-                val embedDoc = app.get(fixedUrl, interceptor = webViewInterceptor).document
-                
-                var videoUrl = ""
-                // m3u8 veya mp4 linki ara
-                val regex = Regex("(https?://[^\"'\\s]+?\\.(?:m3u8|mp4)[^\"'\\s]*)")
-                
-                val scriptMatches = embedDoc.select("script").mapNotNull { regex.find(it.data())?.value }
-                if (scriptMatches.isNotEmpty()) {
-                    videoUrl = scriptMatches.first()
-                } else {
-                    val sourceElement = embedDoc.selectFirst("video source, video[src]")
-                    videoUrl = sourceElement?.attr("src") ?: ""
-                }
-
-                if (videoUrl.isNotBlank()) {
-                    callback.invoke(
-                        newExtractorLink(
-                            source = this.name,
-                            name = "$name", // Örn: DUAL Close, DUAL Rapid
-                            url = videoUrl
-                        ) {
-                            this.quality = Qualities.Unknown.value
-                            this.referer = fixedUrl
-                        }
-                    )
+                // Cloudstream'in kayıtlı extractor'larını kullan (CloseLoad, Rapid, vb.)
+                loadExtractor(fixedUrl, data, subtitleCallback) { link ->
+                    callback.invoke(link)
                     foundAny = true
                 }
             } catch (e: Exception) {

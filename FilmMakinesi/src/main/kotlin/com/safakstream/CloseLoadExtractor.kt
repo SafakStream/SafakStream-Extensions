@@ -4,6 +4,7 @@ import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -16,10 +17,15 @@ open class CloseLoadExtractor : ExtractorApi() {
     override val mainUrl = "https://closeload.filmmakinesi.to"
     override val requiresReferer = true
 
+    private val webViewInterceptor = WebViewResolver(
+        interceptUrl = Regex(".*"),
+        useOkhttp = false
+    )
+
     override suspend fun getUrl(url: String, referer: String?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
         val extRef = referer ?: ""
         Log.d("SafakStream_${this.name}", "url » $url")
-        val iSource = app.get(url, referer = extRef)
+        val iSource = app.get(url, referer = extRef, interceptor = webViewInterceptor)
         val obfuscatedScript = iSource.document.select("script").find {
             it.data().contains("eval(function(p,a,c,k,e")
         }?.data()?.trim()
