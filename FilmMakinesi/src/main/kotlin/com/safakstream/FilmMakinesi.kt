@@ -2,7 +2,7 @@ package com.safakstream
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.network.CloudflareKiller
+import com.lagradost.cloudstream3.network.WebViewResolver
 import org.jsoup.nodes.Element
 
 class FilmMakinesi : MainAPI() {
@@ -13,16 +13,49 @@ class FilmMakinesi : MainAPI() {
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    private val cloudflareKiller by lazy { CloudflareKiller() }
+    // Cloudflare'i aşmak için Chrome header'ları
+    private val chromeHeaders = mapOf(
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language" to "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Sec-Fetch-Dest" to "document",
+        "Sec-Fetch-Mode" to "navigate",
+        "Sec-Fetch-Site" to "none",
+        "Sec-Fetch-User" to "?1",
+        "Upgrade-Insecure-Requests" to "1"
+    )
+
+    // Yedek plan: WebViewResolver
+    private val webViewInterceptor = WebViewResolver(
+        interceptUrl = Regex(".*"),
+        useOkhttp = false
+    )
+
+    // Nikstream gibi sequential istekler
+    override var sequentialMainPage = true
+    override var sequentialMainPageDelay = 100L
+    override var sequentialMainPageScrollDelay = 100L
 
     override val mainPage = mainPageOf(
         "$mainUrl/filmler-fmuyqb/" to "Son Filmler",
         "$mainUrl/yabanci-dizi-izle-fmq45w/" to "Son Diziler"
     )
 
+    // Yardımcı fonksiyon: Chrome header'ları ile dene, engellenirse WebView'e geç
+    private suspend fun fetchWithFallback(url: String): org.jsoup.nodes.Document {
+        val normalDoc = app.get(url, headers = chromeHeaders).document
+        val title = normalDoc.title()
+        return if (title.contains("Attention Required") || title.contains("Cloudflare") || title.contains("Just a moment")) {
+            // Engellendiyse WebView'e geç
+            app.get(url, interceptor = webViewInterceptor).document
+        } else {
+            normalDoc
+        }
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}sayfa/$page/"
-        val document = app.get(url, interceptor = cloudflareKiller).document
+        val document = fetchWithFallback(url)
         val items = document.select("div.item-relative > a.item, a.item-ep, div.tv--section a.item")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, items)
@@ -30,7 +63,7 @@ class FilmMakinesi : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/arama/?s=$query"
-        val document = app.get(url, interceptor = cloudflareKiller).document
+        val document = fetchWithFallback(url)
         return document.select("div.item-relative > a.item").mapNotNull { it.toSearchResult() }
     }
 
@@ -46,7 +79,7 @@ class FilmMakinesi : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, interceptor = cloudflareKiller).document
+        val document = fetchWithFallback(url)
         val title = document.selectFirst("h1.title")?.text()?.trim() ?: return null
         val poster = document.selectFirst("div.cover img.cover-img, meta[property=og:image]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.attr("src")
@@ -82,7 +115,7 @@ class FilmMakinesi : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        val document = app.get(data, interceptor = cloudflareKiller).document
+        val document = fetchWithFallback(data)
         var foundAny = false
 
         document.select("div.video-parts a").forEach { element ->
