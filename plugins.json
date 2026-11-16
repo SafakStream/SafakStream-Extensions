@@ -93,7 +93,7 @@
             "SafakStream"
         ],
         "description": "FilmMakinesi - En yeni ve g\u00fcncel filmleri ve dizileri Full HD kalitesinde Cloudstream \u00fczerinden izleyin.",
-        "fileSize": 12438,
+        "fileSize": 12775,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -102,7 +102,7 @@
         ],
         "iconUrl": "https://filmmakinesi.to/favicon.ico",
         "apiVersion": 1,
-        "fileHash": "sha256-02bd4c0bc9fd1c99f70f9d6bdfff3312b2e56264e354aa534e41cc99a66c0eca"
+        "fileHash": "sha256-1501c52c668803f373cdb73026811f84e43783a68e6258fef96304649c6c02ff"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/HDFilmCehennemi.cs3",
