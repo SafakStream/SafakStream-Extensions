@@ -13,7 +13,6 @@ class FilmMakinesi : MainAPI() {
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    // Cloudflare'i aşmak için Chrome header'ları
     private val chromeHeaders = mapOf(
         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -25,7 +24,6 @@ class FilmMakinesi : MainAPI() {
         "Upgrade-Insecure-Requests" to "1"
     )
 
-    // Yedek plan: Normal istek engellenirse WebView ile dene
     private val webViewInterceptor = WebViewResolver(
         interceptUrl = Regex(".*"),
         useOkhttp = false
@@ -36,13 +34,10 @@ class FilmMakinesi : MainAPI() {
         "$mainUrl/yabanci-dizi-izle-fmq45w/" to "Son Diziler"
     )
 
-    // Cloudflare engelini kontrol eden yardımcı fonksiyon
     private suspend fun fetchWithFallback(url: String): org.jsoup.nodes.Document {
-        // Önce normal Chrome header'ları ile dene
         val normalDoc = app.get(url, headers = chromeHeaders).document
         val title = normalDoc.title()
         return if (title.contains("Attention Required") || title.contains("Cloudflare") || title.contains("Just a moment")) {
-            // Engellendiyse WebView'e geç
             app.get(url, interceptor = webViewInterceptor).document
         } else {
             normalDoc
@@ -76,11 +71,18 @@ class FilmMakinesi : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = fetchWithFallback(url)
-        val title = document.selectFirst("h1.title, div.title")?.text()?.trim() ?: return null
-        val poster = document.selectFirst("img.thumbnail, meta[property=og:image]")?.let {
+        
+        // Başlık düzeltmesi: "izle" ve parantez içi yılları temizle
+        val rawTitle = document.selectFirst("h1.title")?.text()?.trim() ?: return null
+        val title = rawTitle.substringBefore(" izle").substringBefore(" (").trim()
+        
+        // Kapak resmi
+        val poster = document.selectFirst("div.cover img.cover-img, meta[property=og:image]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.attr("src")
         } ?: ""
-        val description = document.selectFirst("div.description, meta[name=description]")?.let {
+        
+        // Açıklama
+        val description = document.selectFirst("div.info-description, meta[name=description]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.text()
         }
 
@@ -88,10 +90,20 @@ class FilmMakinesi : MainAPI() {
 
         if (isTvSeries) {
             val episodes = mutableListOf<Episode>()
-            document.select("div.ep-content a, div.episodes a, a.item-ep").forEach { ep ->
+            // Tüm bölümleri tek seferde çek (sezonlar sekmelerde ama HTML'de hepsi var)
+            document.select("a.item-ep").forEach { ep ->
                 val epUrl = fixUrl(ep.attr("href"))
                 val epName = ep.selectFirst("div.ep-title")?.text() ?: ep.text()
-                episodes.add(newEpisode(epUrl) { this.name = epName })
+                
+                // URL'den sezon ve bölüm numaralarını çıkar (örn: /sezon-2/bolum-3/)
+                val seasonNum = Regex("sezon-(\\d+)").find(epUrl)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                val episodeNum = Regex("bolum-(\\d+)").find(epUrl)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                
+                episodes.add(newEpisode(epUrl) { 
+                    this.name = epName
+                    this.season = seasonNum
+                    this.episode = episodeNum
+                })
             }
             return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = fixUrl(poster)
@@ -107,19 +119,20 @@ class FilmMakinesi : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val document = fetchWithFallback(data)
-        val iframe = document.selectFirst("iframe")?.attr("src") ?: return false
-        val fixedIframe = fixUrl(iframe)
+        
+        // Video iframe'ini bul (data-src veya src)
+        val iframeElement = document.selectFirst("div.after-player iframe, iframe")
+        var iframe = iframeElement?.attr("data-src")?.ifBlank { iframeElement.attr("src") } ?: return false
+        
+        // URL formatını düzelt
+        if (iframe.startsWith("//")) {
+            iframe = "https:$iframe"
+        } else if (!iframe.startsWith("http")) {
+            iframe = fixUrl(iframe)
+        }
 
-        callback.invoke(
-            newExtractorLink(
-                source = this.name,
-                name = this.name,
-                url = fixedIframe
-            ) {
-                this.quality = Qualities.Unknown.value
-                this.referer = data
-            }
-        )
+        // Cloudstream'in yerleşik extractor'ını kullan (iframe içindeki videoyu bulmak için)
+        loadExtractor(iframe, data, subtitleCallback, callback)
         return true
     }
 
