@@ -26,9 +26,20 @@ open class CloseLoadExtractor : ExtractorApi() {
         val extRef = referer ?: ""
         Log.d("SafakStream_${this.name}", "url » $url")
         val iSource = app.get(url, referer = extRef, interceptor = webViewInterceptor)
+        val html = iSource.document.html()
+        Log.d("SafakStream_DEBUG", "=== GELEN HTML (İlk 2000 karakter) ===")
+        Log.d("SafakStream_DEBUG", html.take(2000))
+        Log.d("SafakStream_DEBUG", "=== HTML SONU ===")
+
         val obfuscatedScript = iSource.document.select("script").find {
             it.data().contains("eval(function(p,a,c,k,e")
         }?.data()?.trim()
+
+        if (obfuscatedScript == null) {
+            Log.e("SafakStream_${this.name}", "HATA: Şifreli script bulunamadı! HTML yukarıda.")
+            return
+        }
+
         getSubs(iSource, obfuscatedScript, subtitleCallback)
         getLinks(obfuscatedScript, callback)
     }
@@ -52,13 +63,21 @@ open class CloseLoadExtractor : ExtractorApi() {
 
     private suspend fun getLinks(obfuscatedScript: String?, callback: (ExtractorLink) -> Unit) {
         val rawScript = getAndUnpack(obfuscatedScript!!)
+        Log.d("SafakStream_DEBUG", "=== UNPACKED SCRIPT ===")
+        Log.d("SafakStream_DEBUG", rawScript.take(2000))
+        Log.d("SafakStream_DEBUG", "=== SCRIPT SONU ===")
+
         val helloVarmi = rawScript.contains("dc_hello")
         var dcRegex = Regex("dc_hello\\(\"([^\"]*)\"\\)", setOf(RegexOption.IGNORE_CASE))
         if (!helloVarmi) {
             dcRegex = Regex("""dc_\w+\(\[(.*?)\]\)""", RegexOption.DOT_MATCHES_ALL)
         }
         val match = dcRegex.find(rawScript)
-        val groupValues = match!!.groupValues[1]
+        if (match == null) {
+            Log.e("SafakStream_${this.name}", "HATA: Regex eşleşmedi! Script içeriği yukarıda.")
+            return
+        }
+        val groupValues = match.groupValues[1]
         val lastUrl = if (helloVarmi) {
             Log.d("SafakStream_${this.name}", "groupValues » $groupValues")
             val dcUrl = dcHello(groupValues).substringAfter("http")
