@@ -1,10 +1,8 @@
 package com.safakstream
 
 import android.util.Base64
-import android.util.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.network.WebViewResolver
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -17,29 +15,10 @@ open class CloseLoadExtractor : ExtractorApi() {
     override val mainUrl = "https://closeload.filmmakinesi.to"
     override val requiresReferer = true
 
-    private val webViewInterceptor = WebViewResolver(
-        interceptUrl = Regex(".*"),
-        useOkhttp = false
-    )
-
     override suspend fun getUrl(url: String, referer: String?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
         val extRef = referer ?: ""
-        Log.d("SafakStream_${this.name}", "url » $url")
-        val iSource = app.get(url, referer = extRef, interceptor = webViewInterceptor)
-        val html = iSource.document.html()
-        Log.d("SafakStream_DEBUG", "=== GELEN HTML (İlk 2000 karakter) ===")
-        Log.d("SafakStream_DEBUG", html.take(2000))
-        Log.d("SafakStream_DEBUG", "=== HTML SONU ===")
-
-        val obfuscatedScript = iSource.document.select("script").find {
-            it.data().contains("eval(function(p,a,c,k,e")
-        }?.data()?.trim()
-
-        if (obfuscatedScript == null) {
-            Log.e("SafakStream_${this.name}", "HATA: Şifreli script bulunamadı! HTML yukarıda.")
-            return
-        }
-
+        val iSource = app.get(url, referer = extRef)
+        val obfuscatedScript = iSource.document.select("script").find { it.data().contains("eval(function(p,a,c,k,e") }?.data()?.trim()
         getSubs(iSource, obfuscatedScript, subtitleCallback)
         getLinks(obfuscatedScript, callback)
     }
@@ -50,12 +29,10 @@ open class CloseLoadExtractor : ExtractorApi() {
         }
         val track = obfuscatedScript?.substringAfter("tracks: ")?.substringBefore("]") + "]"
         if (track.startsWith("[") && track.endsWith("]")) {
-            Log.d("SafakStream_${this.name}", "track -> $track")
             val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             val tracks: List<SubSource> = objectMapper.readValue(track)
-            Log.d("SafakStream_${this.name}", "tracks -> $tracks")
-            tracks.forEach { it ->
+            tracks.forEach {
                 subtitleCallback.invoke(SubtitleFile(lang = it.label.toString(), url = mainUrl + it.file.toString()))
             }
         }
@@ -63,40 +40,22 @@ open class CloseLoadExtractor : ExtractorApi() {
 
     private suspend fun getLinks(obfuscatedScript: String?, callback: (ExtractorLink) -> Unit) {
         val rawScript = getAndUnpack(obfuscatedScript!!)
-        Log.d("SafakStream_DEBUG", "=== UNPACKED SCRIPT ===")
-        Log.d("SafakStream_DEBUG", rawScript.take(2000))
-        Log.d("SafakStream_DEBUG", "=== SCRIPT SONU ===")
-
         val helloVarmi = rawScript.contains("dc_hello")
         var dcRegex = Regex("dc_hello\\(\"([^\"]*)\"\\)", setOf(RegexOption.IGNORE_CASE))
         if (!helloVarmi) {
             dcRegex = Regex("""dc_\w+\(\[(.*?)\]\)""", RegexOption.DOT_MATCHES_ALL)
         }
-        val match = dcRegex.find(rawScript)
-        if (match == null) {
-            Log.e("SafakStream_${this.name}", "HATA: Regex eşleşmedi! Script içeriği yukarıda.")
-            return
-        }
+        val match = dcRegex.find(rawScript) ?: return
         val groupValues = match.groupValues[1]
+
         val lastUrl = if (helloVarmi) {
-            Log.d("SafakStream_${this.name}", "groupValues » $groupValues")
-            val dcUrl = dcHello(groupValues).substringAfter("http")
-            Log.d("SafakStream_${this.name}", "dcUrl » $dcUrl")
-            dcUrl
+            dcHello(groupValues).substringAfter("http")
         } else {
             val parts = groupValues.split(",").map { it.trim().removeSurrounding("\"") }
-            Log.d("SafakStream_${this.name}", "parts » $parts")
-            val dcUrl = dcNew(parts)
-            Log.d("SafakStream_${this.name}", "dcUrl » $dcUrl")
-            dcUrl
+            dcNew(parts)
         }
         callback.invoke(
-            newExtractorLink(
-                source = this.name,
-                name = this.name,
-                url = lastUrl,
-                type = ExtractorLinkType.M3U8
-            ) {
+            newExtractorLink(source = this.name, name = this.name, url = lastUrl, type = ExtractorLinkType.M3U8) {
                 this.referer = mainUrl
                 this.quality = Qualities.Unknown.value
             }
@@ -105,17 +64,11 @@ open class CloseLoadExtractor : ExtractorApi() {
 
     fun dcHello(base64Input: String): String {
         val decodedOnce = String(Base64.decode(base64Input, Base64.DEFAULT))
-        val reversedString = decodedOnce.reversed()
-        val decodedTwice = String(Base64.decode(reversedString, Base64.DEFAULT))
-        return if (decodedTwice.contains("+")) {
-            decodedTwice.substringAfterLast("+")
-        } else if (decodedTwice.contains(" ")) {
-            decodedTwice.substringAfterLast(" ")
-        } else if (decodedTwice.contains("|")) {
-            decodedTwice.substringAfterLast("|")
-        } else {
-            decodedTwice
-        }
+        val decodedTwice = String(Base64.decode(decodedOnce.reversed(), Base64.DEFAULT))
+        return if (decodedTwice.contains("+")) decodedTwice.substringAfterLast("+")
+        else if (decodedTwice.contains(" ")) decodedTwice.substringAfterLast(" ")
+        else if (decodedTwice.contains("|")) decodedTwice.substringAfterLast("|")
+        else decodedTwice
     }
 
     fun dcNew(parts: List<String>): String {
