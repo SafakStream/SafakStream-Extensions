@@ -13,6 +13,19 @@ class FilmMakinesi : MainAPI() {
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
+    // Cloudflare'i aşmak için Chrome header'ları
+    private val chromeHeaders = mapOf(
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language" to "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Sec-Fetch-Dest" to "document",
+        "Sec-Fetch-Mode" to "navigate",
+        "Sec-Fetch-Site" to "none",
+        "Sec-Fetch-User" to "?1",
+        "Upgrade-Insecure-Requests" to "1"
+    )
+
+    // Yedek plan: Normal istek engellenirse WebView ile dene
     private val webViewInterceptor = WebViewResolver(
         interceptUrl = Regex(".*"),
         useOkhttp = false
@@ -23,12 +36,22 @@ class FilmMakinesi : MainAPI() {
         "$mainUrl/yabanci-dizi-izle-fmq45w/" to "Son Diziler"
     )
 
+    // Cloudflare engelini kontrol eden yardımcı fonksiyon
+    private suspend fun fetchWithFallback(url: String): org.jsoup.nodes.Document {
+        // Önce normal Chrome header'ları ile dene
+        val normalDoc = app.get(url, headers = chromeHeaders).document
+        val title = normalDoc.title()
+        return if (title.contains("Attention Required") || title.contains("Cloudflare") || title.contains("Just a moment")) {
+            // Engellendiyse WebView'e geç
+            app.get(url, interceptor = webViewInterceptor).document
+        } else {
+            normalDoc
+        }
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}sayfa/$page/"
-        var document = app.get(url).document
-        if (document.title().contains("Attention Required") || document.title().contains("Cloudflare")) {
-            document = app.get(url, interceptor = webViewInterceptor).document
-        }
+        val document = fetchWithFallback(url)
         val items = document.select("div.item-relative > a.item, a.item-ep, div.tv--section a.item")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, items)
@@ -36,10 +59,7 @@ class FilmMakinesi : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/arama/?s=$query"
-        var document = app.get(url).document
-        if (document.title().contains("Attention Required") || document.title().contains("Cloudflare")) {
-            document = app.get(url, interceptor = webViewInterceptor).document
-        }
+        val document = fetchWithFallback(url)
         return document.select("div.item-relative > a.item").mapNotNull { it.toSearchResult() }
     }
 
@@ -55,10 +75,7 @@ class FilmMakinesi : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        var document = app.get(url).document
-        if (document.title().contains("Attention Required") || document.title().contains("Cloudflare")) {
-            document = app.get(url, interceptor = webViewInterceptor).document
-        }
+        val document = fetchWithFallback(url)
         val title = document.selectFirst("h1.title, div.title")?.text()?.trim() ?: return null
         val poster = document.selectFirst("img.thumbnail, meta[property=og:image]")?.let {
             if (it.tagName() == "meta") it.attr("content") else it.attr("src")
@@ -79,7 +96,6 @@ class FilmMakinesi : MainAPI() {
             return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = fixUrl(poster)
                 this.plot = description
-                this.episodes = episodes
             }
         } else {
             return newMovieLoadResponse(title, url, TvType.Movie, url) {
@@ -90,7 +106,7 @@ class FilmMakinesi : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        val document = app.get(data, interceptor = webViewInterceptor).document
+        val document = fetchWithFallback(data)
         val iframe = document.selectFirst("iframe")?.attr("src") ?: return false
         val fixedIframe = fixUrl(iframe)
 
