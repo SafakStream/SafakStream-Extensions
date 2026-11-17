@@ -10,7 +10,6 @@ include(
     "PapazSports",
     "SafakStreamCinema",
     "SelcukFlix",
-    "Streamed",
     "TrGoals",
     "YouTube",
     "RoketDizi",
