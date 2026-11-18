@@ -1,10 +1,12 @@
-package com.safak.ardaspor
+package com.safakstream.ardaspor
 
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
 
+@CloudstreamPlugin
 class ArdaSporProvider : MainAPI() {
     override var mainUrl = "https://ardaspor40.top"
     override var name = "ArdaSpor"
