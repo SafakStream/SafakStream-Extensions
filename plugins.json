@@ -9,7 +9,7 @@
             "SafakStream"
         ],
         "description": "ArdaSpor - Canl\u0131 Ma\u00e7 ve Spor Yay\u0131nlar\u0131 (WebView)",
-        "fileSize": 6724,
+        "fileSize": 6967,
         "repositoryUrl": "https://github.com/SafakStream/SafakStream-Extensions",
         "language": "tr",
         "tvTypes": [
@@ -18,7 +18,7 @@
         ],
         "iconUrl": "https://ardaspor40.top/dimg/89320ardafav.png",
         "apiVersion": 1,
-        "fileHash": "sha256-8dadfca7bb6b8512467238de1f01cc0187d88c810c314a3409dd6655c1dfd7a5"
+        "fileHash": "sha256-27f5851d8dd1e7cf27077141baa6bb45d9703146f899f40d021a88f6e3597e13"
     },
     {
         "url": "https://raw.githubusercontent.com/SafakStream/SafakStream-Extensions/builds/Betmatik.cs3",
